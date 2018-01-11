@@ -29,15 +29,15 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     Dp = 1;
-    ratio_L_d = 15;
-    ratio_d_Dp = 3; 
+    ratio_L_d = 1;
+    ratio_d_Dp = 30; 
     ratio_Dp_h = 30; 
     d = ratio_d_Dp*Dp; 
     H = d/2.; /* half -height of the channel */
     L = ratio_L_d*d; /* length of the channel is 'ratio' times its width */
 
     /* FLOW */
-    Rp = 100;   
+    Rp = 40;   
     Um = Rp*nu/Dp; /* By definition of Rd */
     
     Tm0 = 20. + 273.15; // cup-mixing temperature at the inlet
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
 
     double dt_CFL = 0.5*CFL*h/Umax;
     double dt_diff = r*h*h/nu;
-    double ratio_dtau_dt = 2e-3; 
+    double ratio_dtau_dt = 1e-3; 
     dt = fmin(dt_CFL, dt_diff);
     dtau = ratio_dtau_dt*dt; 
     printf("Red = %f\n", Rd);
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]){
     }
     double Tf = N_write*T_write;
     int nKmax = 2;
-    int Kmax = 50; /* number of ramping steps */
+    int Kmax = 20; /* number of ramping steps */
     
     double t, t_start;
     int iter, iter_start;
@@ -115,15 +115,10 @@ int main(int argc, char *argv[]){
     double* Sp = calloc(Np,sizeof(double));
     double* II = calloc(Np,sizeof(double));
    
-    xg[0]=d;
-    // xg[1]=2.*d; /* particles positioned at d and 2*d */
+    xg[0]=H;
     yg[0]=H;
-    // yg[0]=0.6*d;
-    // yg[1]=0.3*d;
     dp[0]=Dp;
-    // dp[1] = d/3.;
     rp[0]=dp[0]/2.;
-    // rp[1]=dp[1]/2.;
     theta[0] = 0; 
 
     for(int k=0; k<Np; k++){
@@ -276,7 +271,6 @@ int main(int argc, char *argv[]){
             get_Cs(Cs, Ip_S, Cp);
 #endif
             get_ghosts(U, V, P, Told, Cold, CA0, CB0);
-            //printf("CA_ghost = %f \n", Cold[0][0][50]);
             printf("CA_IN = %f \n", Cold[0][1][50]);
 
             get_Ustar(U, Ustar, V, A, Aold, Us, P, I_U, ramp);
