@@ -5,15 +5,21 @@
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
 /*--------------------------------------------------------*/
-//#include <mpi.h>
+#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
 #include <math.h>
 #include <petsc.h>
 #include <petscksp.h>
 #include <petscvec.h>
 #include <petscmat.h>
 #include <petscsys.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define LOCAL 
 /*--------------------------------------------------------*/
@@ -23,7 +29,8 @@
 /* FUNCTIONS TO SOLVE THE FLOW */
 int compute_force_torque_fluxes(double** F, double** G, double** M, double** Qp, double*** Qmp, double*** Ip_U, double*** Ip_V, double*** Ip_S,
                                double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
-                                double* xg, double* yg, double* rp, double* Sp, double* II, int k);
+                           	double* xg, double* yg, double* rp, double* Sp, double* II, 
+				 double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k);
 void get_ghosts(double** U, double** V, double** P, double** Told, double*** Cold, double CA0, double CB0);
 void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,  double* xg, double* yg, double* rp, double* theta, double** coloring);
 void get_Cs(double*** Cs, double*** Ip_S, double** Cp);
@@ -34,7 +41,7 @@ void get_Ustar_EE(double** U, double** Ustar, double** V, double** Aold, double*
 void get_Vstar(double** V, double** Vstar, double** U, double** B, double** Bold, double** Vs, double** P, double** I_V, double ramp);
 void get_Vstar_EE(double** V, double** Vstar, double** U, double** Bold, double** Vs, double** P, double** I_V, double ramp);
 void old_poisson_solver(double** Ustar, double** Vstar, double **phi, double** R);
-void poisson_solver(double** Ustar, double** Vstar, double **phi);
+void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, int nbproc);
 void reset_phi(double** phi);
 void update_flow(double** U, double** V, double** P, double** Ustar, double** Vstar, double** phi);
 void update_temp_species(double** U, double** V,  double** T, double** Told, double** Ts, double** C_T, double** C_Told, double*** C, double*** Cold, double*** Cs, double*** C_C, double*** C_Cold, double** I_S, double ramp);
@@ -80,12 +87,12 @@ static double dH = -1e5; // kJ/mol
 static double Rp;
 static double Rd; 
 static double Um;
-static double Umax;
+//static double Umax;
 static int Np;
 static int Ns;
 
 /* TEMPERATURE PARAMETERS */
-static double Tw0; 
+//static double Tw0; 
 static double Tm0; 
 static double Tp0;
 
@@ -112,6 +119,7 @@ double alpha = 1.98;
 #define CLOSE_FILES \
 fclose(fichier_position); \
 fclose(fichier_forces); \
+fclose(fichier_fluxes); \
 fclose(fichier_U);\
 fclose(fichier_V);\
 fclose(fichier_P);\
@@ -122,9 +130,10 @@ fclose(fichier_data);\
 fclose(fichier_mask);\
 fclose(fichier_Tp);\
 
-#define OPEN_FILES \
+#define DEFINE_FILES \
 FILE* fichier_position = NULL; \
 FILE* fichier_forces = NULL; \
+FILE* fichier_fluxes = NULL; \
 FILE* fichier_U = NULL; \
 FILE* fichier_V = NULL; \
 FILE* fichier_P = NULL; \
@@ -134,17 +143,36 @@ FILE* fichier_CA = NULL; \
 FILE* fichier_CB = NULL; \
 FILE* fichier_data = NULL; \
 FILE* fichier_mask = NULL; \
-fichier_position = fopen("results_dt_dtau_200/position.txt","w");\
-fichier_forces = fopen("results_dt_dtau_200/forces.txt","w");\
-fichier_U = fopen("results_dt_dtau_200/U.txt","w"); \
-fichier_V = fopen("results_dt_dtau_200/V.txt", "w"); \
-fichier_P = fopen("results_dt_dtau_200/P.txt", "w"); \
-fichier_T = fopen("results_dt_dtau_200/T.txt", "w"); \
-fichier_Tp = fopen("results_dt_dtau_200/Tp.txt", "w"); \
-fichier_CA = fopen("results_dt_dtau_200/CA.txt", "w"); \
-fichier_CB = fopen("results_dt_dtau_200/CB.txt", "w"); \
-fichier_data = fopen("results_dt_dtau_200/data.txt", "w"); \
-fichier_mask = fopen("results_dt_dtau_200/mask.txt", "w"); \
+
+#define OPEN_FILES \
+/*char* dirname = "/CECI/home/ucl/imap/bahardy/thesis/2D/channel/fixed/results_1_proc/";\
+char* position_file = strcat(dirname,"position.txt");\
+char* forces_file = strcat(dirname,"forces.txt");\
+char* fluxes_file = strcat(dirname, "fluxes.txt"); \
+char* U_file = strcat(dirname,"U.txt");\
+char* V_file = strcat(dirname,"V.txt");\
+char* P_file = strcat(dirname,"P.txt");\
+char* T_file = strcat(dirname,"T.txt");\
+char* CA_file = strcat(dirname,"CA.txt");\
+char* CB_file = strcat(dirname,"CB.txt");\
+char* Tp_file = strcat(dirname,"Tp.txt");\
+char* data_file = strcat(dirname,"data.txt");\
+char* mask_file = strcat(dirname,"mask.txt");*/\
+fichier_position = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/position.txt","w");\
+if (fichier_position == NULL){ \
+	printf("invalid path ! \n"); \
+}\
+fichier_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/forces.txt","w");\
+fichier_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/fluxes.txt", "w"); \
+fichier_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/U.txt","w"); \
+fichier_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/V.txt","w"); \
+fichier_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/P.txt", "w"); \
+fichier_T = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/T.txt", "w"); \
+fichier_Tp = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/Tp.txt", "w"); \
+fichier_CA = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/CA.txt", "w"); \
+fichier_CB = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/CB.txt", "w"); \
+fichier_data = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/data.txt", "w"); \
+fichier_mask = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/mask.txt", "w"); \
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\
@@ -284,6 +312,7 @@ fprintf(fichier_data,"rho_p\t %f\n",rho_p);\
 fprintf(fichier_data,"rho_f\t %f\n",rho_f);\
 fprintf(fichier_data,"Um\t %f\n", Um); \
 fprintf(fichier_data,"dt\t %f\n", dt); \
+fprintf(fichier_data,"dtau\t %f\n", dtau); \
 fprintf(fichier_data,"n\t %d\n",n);\
 fprintf(fichier_data,"m\t %d\n",m);\
 fprintf(fichier_data,"h\t %f\n",h);\
@@ -294,7 +323,6 @@ fprintf(fichier_data,"Twrite\t %f\n", T_write);\
 fprintf(fichier_data,"Tf\t %f\n", Tf);\
 fprintf(fichier_data, "Np \t %d \n", Np); \
 fprintf(fichier_data, "Ns \t %d \n", Ns); \
-fprintf(fichier_data, "Tw0 \t %f \n", Tw0); \
 fprintf(fichier_data, "Tm0 \t %f \n", Tm0); \
 fprintf(fichier_data, "Tp0 \t %f \n", Tp0); \
 fflush(fichier_data);\
