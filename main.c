@@ -16,7 +16,7 @@
 #endif
 
 //#define RECOVER
-#define MOVE
+//#define MOVE
 #define TEMP
 
 
@@ -38,10 +38,11 @@ int main(int argc, char *argv[]){
 
     /* FLOW */
     Rp = 40;   
-    Um = Rp*nu/Dp; /* By definition of Rd */
+    Um = Rp*nu/Dp; /* By definition of Rp */
     
-    Tm0 = 20. + 273.15; // cup-mixing temperature at the inlet
+    Tm0 = 100. + 273.15; // cup-mixing temperature at the inlet
     Tp0 = 20. + 273.15;
+    dH = 0.; //we cancel the effect of the reaction 
 
     Ns = 2; /* Number of species */ 
     Np = 1; /* Number of particles */ 
@@ -67,12 +68,12 @@ int main(int argc, char *argv[]){
 
     /* TIME INTEGRATION */
 
-    double dt_CFL = 0.5*CFL*h/Umax;
+    double dt_CFL = 0.1*CFL*h/Um; //default value: 0.5*CFL*h/Um
     double dt_diff = r*h*h/nu;
-    double ratio_dtau_dt = 1e-3; 
+    double ratio_dtau_dt = 5e-3; 
     dt = fmin(dt_CFL, dt_diff);
     dtau = ratio_dtau_dt*dt; 
-    printf("Red = %f\n", Rd);
+    printf("Rep = %f\n", Rp);
     printf("ratio L/d = %d \n", ratio_L_d); 
     printf("ratio d/dp = %d \n", ratio_d_Dp); 
     printf("Um = %f\n", Um);

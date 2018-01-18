@@ -134,17 +134,17 @@ FILE* fichier_CA = NULL; \
 FILE* fichier_CB = NULL; \
 FILE* fichier_data = NULL; \
 FILE* fichier_mask = NULL; \
-fichier_position = fopen("results/position.txt","w");\
-fichier_forces = fopen("results/forces.txt","w");\
-fichier_U = fopen("results/U.txt","w"); \
-fichier_V = fopen("results/V.txt", "w"); \
-fichier_P = fopen("results/P.txt", "w"); \
-fichier_T = fopen("results/T.txt", "w"); \
-fichier_Tp = fopen("results/Tp.txt", "w"); \
-fichier_CA = fopen("results/CA.txt", "w"); \
-fichier_CB = fopen("results/CB.txt", "w"); \
-fichier_data = fopen("results/data.txt", "w"); \
-fichier_mask = fopen("results/mask.txt", "w"); \
+fichier_position = fopen("results_dt_dtau_200/position.txt","w");\
+fichier_forces = fopen("results_dt_dtau_200/forces.txt","w");\
+fichier_U = fopen("results_dt_dtau_200/U.txt","w"); \
+fichier_V = fopen("results_dt_dtau_200/V.txt", "w"); \
+fichier_P = fopen("results_dt_dtau_200/P.txt", "w"); \
+fichier_T = fopen("results_dt_dtau_200/T.txt", "w"); \
+fichier_Tp = fopen("results_dt_dtau_200/Tp.txt", "w"); \
+fichier_CA = fopen("results_dt_dtau_200/CA.txt", "w"); \
+fichier_CB = fopen("results_dt_dtau_200/CB.txt", "w"); \
+fichier_data = fopen("results_dt_dtau_200/data.txt", "w"); \
+fichier_mask = fopen("results_dt_dtau_200/mask.txt", "w"); \
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\
@@ -282,7 +282,7 @@ fprintf(fichier_data,"ratio_L_d\t %d\n",ratio_L_d);\
 fprintf(fichier_data,"nu\t %1.8f\n",nu);\
 fprintf(fichier_data,"rho_p\t %f\n",rho_p);\
 fprintf(fichier_data,"rho_f\t %f\n",rho_f);\
-fprintf(fichier_data,"Umax\t %f\n", Umax); \
+fprintf(fichier_data,"Um\t %f\n", Um); \
 fprintf(fichier_data,"dt\t %f\n", dt); \
 fprintf(fichier_data,"n\t %d\n",n);\
 fprintf(fichier_data,"m\t %d\n",m);\

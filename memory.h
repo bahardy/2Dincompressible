@@ -42,6 +42,11 @@ double** Vp = make2DDoubleArray(Np,4);\
 double** Vs = make2DDoubleArray(m,n);\
 double** Vstar = make2DDoubleArray(m,n);\
 double** Wp = make2DDoubleArray(Np,4);\
+double* F_drag = make1DDoubleArray(Np);\
+double* F_lift = make1DDoubleArray(Np);\
+double* Torque = make1DDoubleArray(Np);\
+double* Q_heat = make1DDoubleArray(Np);\
+double* Phi_species = make1DDoubleArray(Np);\
 
 #define FREE_MEMORY \
 for(int s=0; s<Ns; s++){\
@@ -94,7 +99,7 @@ free(Up); free(Vp); free(Wp); free(Tp); \
 free(P); free(phi); free(T); free(Ts); free(Told);  \
 free(Qp); free(Qmp);\
 free(R);\
-free(xg); free(yg); free(Sp); free(rp); free(dp); free(II);
-
+free(xg); free(yg); free(Sp); free(rp); free(dp); free(II);\
+free(F_drag); free(F_lift); free(Torque); free(Q_heat); free(Phi_species);\
 
 #endif // MEMORY_H_INCLUDED
