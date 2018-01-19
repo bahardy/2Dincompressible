@@ -16,12 +16,7 @@
 #include <petscvec.h>
 #include <petscmat.h>
 #include <petscsys.h>
-#include <libgen.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
-#define LOCAL 
 /*--------------------------------------------------------*/
 /* FUNCTIONS PROTOTYPES */
 /*--------------------------------------------------------*/
@@ -158,21 +153,21 @@ char* CB_file = strcat(dirname,"CB.txt");\
 char* Tp_file = strcat(dirname,"Tp.txt");\
 char* data_file = strcat(dirname,"data.txt");\
 char* mask_file = strcat(dirname,"mask.txt");*/\
-fichier_position = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/position.txt","w");\
+fichier_position = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/position.txt","w");\
 if (fichier_position == NULL){ \
 	printf("invalid path ! \n"); \
 }\
-fichier_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/forces.txt","w");\
-fichier_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/fluxes.txt", "w"); \
-fichier_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/U.txt","w"); \
-fichier_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/V.txt","w"); \
-fichier_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/P.txt", "w"); \
-fichier_T = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/T.txt", "w"); \
-fichier_Tp = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/Tp.txt", "w"); \
-fichier_CA = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/CA.txt", "w"); \
-fichier_CB = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/CB.txt", "w"); \
-fichier_data = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/data.txt", "w"); \
-fichier_mask = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results1/mask.txt", "w"); \
+fichier_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/forces.txt","w");\
+fichier_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/fluxes.txt", "w"); \
+fichier_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/U.txt","w"); \
+fichier_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/V.txt","w"); \
+fichier_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/P.txt", "w"); \
+fichier_T = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/T.txt", "w"); \
+fichier_Tp = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/Tp.txt", "w"); \
+fichier_CA = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/CA.txt", "w"); \
+fichier_CB = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/CB.txt", "w"); \
+fichier_data = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/data.txt", "w"); \
+fichier_mask = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results2/mask.txt", "w"); \
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\

@@ -12,7 +12,7 @@
 #include "main.h"
 #include "memory.h"
 #ifndef M_PI
-#define M_PI 3.14159265358979323846
+	#define M_PI 3.14159265358979323846
 #endif
 
 //#define RECOVER
@@ -38,8 +38,7 @@ int main(int argc, char *argv[]){
     L = ratio_L_d*d; /* length of the channel is 'ratio' times its width */
     
     /* FLOW */
-    //Rp = 60.;
-    Rp = 100.;
+    Rp = 40.;
     Um = Rp*nu/Dp; /* By definition of Rd */
     
     Tm0 = 20. + 273.15; // cup-mixing temperature at the inlet
@@ -71,7 +70,7 @@ int main(int argc, char *argv[]){
     
     double dt_CFL = CFL*h/Um;
     double dt_diff = r*h*h/nu;
-    double refine_dt = 2.;
+    double refine_dt = 1.;
     dt = fmin(dt_CFL, dt_diff)/refine_dt;
     double ratio_dtau_dt = 1e-3;
     dtau = ratio_dtau_dt*dt;
@@ -518,9 +517,9 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
         P[m-1][j] = -P[m-2][j];
         
         /* On T and C */
-        /* Inflow : T uniform  */
-        
+        /* Inflow : T uniform  */ 
         Told[0][j] = -0.2*(Told[3][j]-5.*Told[2][j]+15.*Told[1][j]-16.*Tm0);
+
         /* Inflow : CA = CA0; CB = CB0 */
         Cold[0][0][j] = -0.2*(Cold[0][3][j]-5.*Cold[0][2][j]+15.*Cold[0][1][j]-16.*CA0);
         Cold[1][0][j] = -0.2*(Cold[1][3][j]-5.*Cold[1][2][j]+15.*Cold[1][1][j]-16.*CB0);
@@ -799,6 +798,17 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
             ii = i+1; jj = j+1;
             phi[ii][jj] = array[r];
         }
+	for(int ii=0; ii<m; ii++){
+            /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
+            phi[ii][0] = phi[ii][1];
+            phi[ii][n-1] = phi[ii][n-2];
+        }
+        for(int jj=0; jj<n; j++){
+            /*inflow : continuity of pressure gradient  */
+            phi[0][jj] = phi[1][jj];
+            /*outflow : zero pressure at outlet */
+            phi[m-1][jj] = -phi[m-2][jj];
+	}
     }
     else{
         if (myrank == 0){
@@ -907,7 +917,6 @@ void update_flow(double** U, double** V, double** P, double** Ustar, double** Vs
 {
     for (int i=1; i<m-1; i++){
         int j;
-        V[i][0] = (4*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
         for (j=1; j<n-2; j++){
             U[i][j] = Ustar[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
             P[i][j] += phi[i][j];
@@ -916,7 +925,9 @@ void update_flow(double** U, double** V, double** P, double** Ustar, double** Vs
         /* Last value of j is n-2 */
         U[i][j] = Ustar[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
         P[i][j] += phi[i][j];
-        V[i][n-2] = (4*V[i][n-3]-V[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
+
+        V[i][0] = (double) (4*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
+        V[i][n-2] =(double) (4*V[i][n-3]-V[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
     }
 }
 
