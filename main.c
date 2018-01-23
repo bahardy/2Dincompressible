@@ -72,7 +72,7 @@ int main(int argc, char *argv[]){
     double dt_diff = r*h*h/nu;
     double refine_dt = 1.;
     dt = fmin(dt_CFL, dt_diff)/refine_dt;
-    double ratio_dtau_dt = 1e-3;
+    double ratio_dtau_dt = 1e-4;
     dtau = ratio_dtau_dt*dt;
     
     if(rank == 0){
@@ -793,17 +793,17 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
     if ((M*N) % nbproc == 0){
         int length = ((M*N)/nbproc);
         MPI_Allgather(my_array, length, MPI_DOUBLE, array, length, MPI_DOUBLE, PETSC_COMM_WORLD);
-        for (int r = 0; r<M*N; r++){
+        for (r = 0; r<M*N; r++){
             i = r/N; j = r%N;
             ii = i+1; jj = j+1;
             phi[ii][jj] = array[r];
         }
-	for(int ii=0; ii<m; ii++){
+	for(ii=0; ii<m; ii++){
             /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
             phi[ii][0] = phi[ii][1];
             phi[ii][n-1] = phi[ii][n-2];
         }
-        for(int jj=0; jj<n; j++){
+        for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
             /*outflow : zero pressure at outlet */
@@ -812,7 +812,7 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
     }
     else{
         if (myrank == 0){
-            for (int r=rowStart; r<rowEnd; r++) {
+            for (r=rowStart; r<rowEnd; r++) {
                 array[r] = my_array[r];
             }
             for (int k = 1; k < nbproc; k++){
@@ -820,7 +820,7 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
                 MPI_Recv(&my_rowEnd, 1, MPI_INT, k, mytag+2, PETSC_COMM_WORLD, &status[2] );
                 int length_k = my_rowEnd - my_rowStart;
                 MPI_Recv(my_array, length_k, MPI_DOUBLE, k, mytag, PETSC_COMM_WORLD, &status[0] ) ;
-                for (int r=0; r<length_k; r++){
+                for (r=0; r<length_k; r++){
                     int R = r+my_rowStart;
                     array[R] = my_array[r];
                 }
@@ -834,17 +834,17 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
         }
         MPI_Bcast(array, M*N, MPI_DOUBLE, 0, PETSC_COMM_WORLD);
         
-        for(int r = 0; r< M*N; r++){
+        for(r = 0; r< M*N; r++){
             i = r/N; j = r%N;
             ii = i+1; jj = j+1;
             phi[ii][jj] = array[r];
         }
-        for(int ii=0; ii<m; ii++){
+        for(ii=0; ii<m; ii++){
             /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
             phi[ii][0] = phi[ii][1];
             phi[ii][n-1] = phi[ii][n-2];
         }
-        for(int jj=0; jj<n; j++){
+        for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
             /*outflow : zero pressure at outlet */
