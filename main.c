@@ -15,8 +15,8 @@
 	#define M_PI 3.14159265358979323846
 #endif
 
-//#define RECOVER
-//#define MOVE
+#define RECOVER
+#define MOVE
 #define TEMP
 #define WRITE
 
@@ -39,9 +39,9 @@ int main(int argc, char *argv[]){
     
     /* FLOW */
     Rp = 40.;
-    Um = Rp*nu/Dp; /* By definition of Rd */
+    Um = Rp*nu/Dp; /* By definition of Rp */
     
-    Tm0 = 20. + 273.15; // cup-mixing temperature at the inlet
+    Tm0 = 100. + 273.15; // cup-mixing temperature at the inlet
     Tp0 = 20. + 273.15;
     
     Ns = 2; /* Number of species */
@@ -70,13 +70,13 @@ int main(int argc, char *argv[]){
     
     double dt_CFL = CFL*h/Um;
     double dt_diff = r*h*h/nu;
-    double refine_dt = 1.;
+    double refine_dt = 2.;
     dt = fmin(dt_CFL, dt_diff)/refine_dt;
-    double ratio_dtau_dt = 1e-4;
+    double ratio_dtau_dt = 1e-3;
     dtau = ratio_dtau_dt*dt;
     
     if(rank == 0){
-        printf("Red = %f\n", Rd);
+        printf("Rep = %f\n", Rp);
         printf("ratio L/d = %d \n", ratio_L_d);
         printf("ratio d/dp = %d \n", ratio_d_Dp);
         //printf("Umax = %f\n", Umax);
@@ -375,40 +375,40 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-int compute_force_torque_fluxes(double** F, double** G, double** M, double** Qp, double*** Qm, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k)
+int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k)
 {
     /* Force along x-direction */
-    F[k][0] = F[k][1]; /* n-2*/
-    F[k][1] = F[k][2]; /* n-1*/
-    F[k][2] = 0.; /* n*/
+    dudt[k][0] = dudt[k][1]; /* n-2*/
+    dudt[k][1] = dudt[k][2]; /* n-1*/
+    dudt[k][2] = 0.; /* n*/
     
     /* Force along y-direction */
-    G[k][0] = G[k][1];
-    G[k][1] = G[k][2];
-    G[k][2] = 0.;
+    dvdt[k][0] = dvdt[k][1];
+    dvdt[k][1] = dvdt[k][2];
+    dvdt[k][2] = 0.;
     
     /* Moment along z-direction */\
-    M[k][0] = M[k][1];
-    M[k][1] = M[k][2];
-    M[k][2] = 0.;
+    domegadt[k][0] = domegadt[k][1];
+    domegadt[k][1] = domegadt[k][2];
+    domegadt[k][2] = 0.;
     
     /* Particle heat balance  */
-    Qp[k][0] = Qp[k][1]; /* n-2*/
-    Qp[k][1] = Qp[k][2]; /* n-1*/
-    Qp[k][2] = 0.; /* n*/
+    dTdt[k][0] = dTdt[k][1]; /* n-2*/
+    dTdt[k][1] = dTdt[k][2]; /* n-1*/
+    dTdt[k][2] = 0.; /* n*/
     
     for(int s=0; s<Ns; s++){
-        Qm[k][s][0] = Qm[k][s][1];
-        Qm[k][s][1] = Qm[k][s][2];
-        Qm[k][s][2] = 0.;
+        dCdt[k][s][0] = dCdt[k][s][1];
+        dCdt[k][s][1] = dCdt[k][s][2];
+        dCdt[k][s][2] = 0.;
     }
     
-    int startX = ceil((xg[k]-rp[k])/h);
+    int startX = floor((xg[k]-rp[k])/h);
     PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
     int endX = ceil((xg[k]+rp[k])/h);
     PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
     
-    int startY = ceil((yg[k]-rp[k])/h);
+    int startY = floor((yg[k]-rp[k])/h);
     PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
     int endY = ceil((yg[k]+rp[k])/h);
     PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);
@@ -428,7 +428,6 @@ int compute_force_torque_fluxes(double** F, double** G, double** M, double** Qp,
     
     for(int i=startX; i<=endX; i++){
         double xV = (i-0.5)*h;
-        
         for(int j=startY; j<=endY; j++){
             double yU = (j-0.5)*h;
             double f = -Ip_U[k][i][j]*(U[i][j]-Us[i][j])/dtau;
@@ -438,46 +437,47 @@ int compute_force_torque_fluxes(double** F, double** G, double** M, double** Qp,
             for(int s=0; s<Ns; s++){
                 qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j])/dtau;
             }
-            Fint += f; /* units : m/s^2 */
-            Gint += g; /* units : m/s^2 */
-            Mint +=((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s^2 */
-            Qint += q; /*units : K/s */
+            Fint += f*h*h; /* units : m/s^2 */
+            Gint += g*h*h; /* units : m/s^2 */
+            Mint +=((xV-xg[k])*g-(yU-yg[k])*f)*h*h;/* units: m^2/s^2 */
+            Qint += q*h*h; /*units : K/s */
             for(int s=0; s<Ns; s++){
-                Qmint[s] += qm[s]; /*units : mol/(m^3.s) */
+                Qmint[s] += qm[s]*h*h; /*units : mol/m.s */
             }
         }
     }
     
-    F[k][2] = -Fint*h*h/(Sp[k]*(rho_r-1.));
-    G[k][2] = -Gint*h*h/(Sp[k]*(rho_r-1.));
-    M[k][2] = -Mint*h*h/(II[k]*Sp[k]*(rho_r-1.));
+    dudt[k][2] = -Fint/(Sp[k]*(rho_r-1.));
+    dvdt[k][2] = -Gint/(Sp[k]*(rho_r-1.));
+    domegadt[k][2] = -Mint/(II[k]*Sp[k]*(rho_r-1.));
     for(int s=0; s<Ns; s++){
-        Qm[k][s][2] = -Qmint[s]*h*h/Sp[k];
+        dCdt[k][s][2] = -Qmint[s]/Sp[k]; /* units : mol/m3.s */ 
     }
-    double Qr = Qm[k][0][2]*Sp[k]*(-dH);
-    Qp[k][2] = -Qint*h*h/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
-    
+    double Qr = dCdt[k][0][2]*Sp[k]*(-dH); /*units : J/m.s */ 
+    dTdt[k][2] = -Qint/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
+
+    /* Compute Hydrodynamic forces */ 
+
 #ifdef MOVE
-    F_drag[k] = rho_f*(Sp[k]*F[k][2] - Fint*h*h); //[N]
-    F_lift[k] = rho_f*(Sp[k]*G[k][2] - Gint*h*h); //[N]
-    Torque[k] = rho_f*(II[k]*Sp[k]*M[k][2] - Mint*h*h); //[N.m]
-    Q_heat[k] = rho_f*cf*(Sp[k]*Qp[k][2] - Qint*h*h); //[W]
+    F_drag[k] = rho_f*(-rho_r/(rho_r - 1.))*Fint; //[N/m]
+    F_lift[k] = rho_f*(-rho_r/(rho_r - 1.))*Gint; //[N/m]
+    Torque[k] = rho_f*(-rho_r/(rho_r - 1.))*Mint; //[N]
+    Q_heat[k] = rho_f*cf*((-rho_r*cr/(rho_r*cr-1.))*Qint + Qr/(rho_p*cp-rho_f*cf)); //[W/m]
 #endif
     
 #ifndef MOVE
-    F_drag[k] = -rho_f*Fint*h*h; // [N]
-    F_lift[k] = -rho_f*Gint*h*h;
-    Torque[k] = -rho_f*Mint*h*h; //[N.m]
-    Q_heat[k] = -rho_f*cf*Qint*h*h; // [W]
-    Phi_species[k] = -Qmint[0]*h*h; //[mol/s]
+    F_drag[k] = -rho_f*Fint; // [N]
+    F_lift[k] = -rho_f*Gint;
+    Torque[k] = -rho_f*Mint; //[N.m]
+    Q_heat[k] = -rho_f*cf*Qint; // [W]
+    Phi_species[k] = -Qmint[0]; //[mol/s]
     // Here, Phi_species corresponds to the flux of A (reactant) at the surface of particle 0 //
 #endif
     
-    PetscPrintf(PETSC_COMM_WORLD,"F on particle %d = %1.13e \n", k+1, F[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"G on particle %d = %1.13e \n", k+1, G[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"M on particle %d = %1.13e \n", k+1, M[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"Qp on particle %d = %1.13e \n", k+1, Qp[k][2]);
-    
+    PetscPrintf(PETSC_COMM_WORLD,"Force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, F_drag[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, F_lift[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Torque[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q_heat[k]);
     return 0;
 }
 
@@ -523,13 +523,14 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
         /* Inflow : CA = CA0; CB = CB0 */
         Cold[0][0][j] = -0.2*(Cold[0][3][j]-5.*Cold[0][2][j]+15.*Cold[0][1][j]-16.*CA0);
         Cold[1][0][j] = -0.2*(Cold[1][3][j]-5.*Cold[1][2][j]+15.*Cold[1][1][j]-16.*CB0);
-        
+
         /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
         Told[m-1][j] = (7.*Told[m-2][j]-5.*Told[m-3][j]+Told[m-4][j])/3.;
         for(int s=0; s<Ns; s++){
             Cold[s][m-1][j] = (7.*Cold[s][m-2][j]-5.*Cold[s][m-3][j]+Cold[s][m-4][j])/3.;
         }
     }
+	PetscPrintf(PETSC_COMM_WORLD, "CA ghost = %f [mol/m^3]\n", Cold[0][0][50]);
 }
 
 void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,  double* xg, double* yg, double* rp, double* theta, double** coloring)
@@ -558,7 +559,7 @@ void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, dou
                 if (xloc>0 && yloc>0){ //1st Quadrant
                     delta = atan(yloc/xloc);
                 }
-                if (xloc>0 && yloc<0){ //2nd Quadrant
+                if (xloc>0 && yloc<0){ //4th Quadrant
                     delta = atan(yloc/xloc) + 2.*M_PI;
                 }
                 if (xloc<0){
@@ -571,7 +572,7 @@ void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, dou
                     delta = 3.*M_PI/2.;
                 }
                 
-                if((int)((delta-theta[k])/(M_PI/2.)) % 2 ==0 ){
+                if((int)((delta-theta[k])/(M_PI/2.)) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
                 I_S[i][j] += Ip_S[k][i][j];
@@ -926,8 +927,8 @@ void update_flow(double** U, double** V, double** P, double** Ustar, double** Vs
         U[i][j] = Ustar[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
         P[i][j] += phi[i][j];
 
-        V[i][0] = (double) (4*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
-        V[i][n-2] =(double) (4*V[i][n-3]-V[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
+        V[i][0] = (double) (4.*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
+        V[i][n-2] =(double) (4.*V[i][n-3]-V[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
     }
 }
 

@@ -22,7 +22,7 @@
 /*--------------------------------------------------------*/
 
 /* FUNCTIONS TO SOLVE THE FLOW */
-int compute_force_torque_fluxes(double** F, double** G, double** M, double** Qp, double*** Qmp, double*** Ip_U, double*** Ip_V, double*** Ip_S,
+int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S,
                                double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
                            	double* xg, double* yg, double* rp, double* Sp, double* II, 
 				 double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k);
@@ -76,7 +76,7 @@ static double cp = 1000., cf = 1000., cr;
 static double Pr = .7;
 static double alpha_f;
 static double* Df;
-static double dH = -1e5; // kJ/mol
+static double dH = 0; // kJ/mol
 
 /* FLOW */
 static double Rp;
@@ -152,21 +152,21 @@ char* CB_file = strcat(dirname,"CB.txt");\
 char* Tp_file = strcat(dirname,"Tp.txt");\
 char* data_file = strcat(dirname,"data.txt");\
 char* mask_file = strcat(dirname,"mask.txt");*/\
-fichier_position = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/position.txt","w");\
+fichier_position = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/position.txt","w");\
 if (fichier_position == NULL){ \
 	printf("invalid path ! \n"); \
 }\
-fichier_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/forces.txt","w");\
-fichier_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/fluxes.txt", "w"); \
-fichier_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/U.txt","w"); \
-fichier_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/V.txt","w"); \
-fichier_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/P.txt", "w"); \
-fichier_T = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/T.txt", "w"); \
-fichier_Tp = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/Tp.txt", "w"); \
-fichier_CA = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/CA.txt", "w"); \
-fichier_CB = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/CB.txt", "w"); \
-fichier_data = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/data.txt", "w"); \
-fichier_mask = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/mask.txt", "w"); \
+fichier_forces = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/forces.txt","w");\
+fichier_fluxes = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/fluxes.txt", "w"); \
+fichier_U = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/U.txt","w"); \
+fichier_V = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/V.txt","w"); \
+fichier_P = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/P.txt", "w"); \
+fichier_T = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/T.txt", "w"); \
+fichier_Tp = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/Tp.txt", "w"); \
+fichier_CA = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/CA.txt", "w"); \
+fichier_CB = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/CB.txt", "w"); \
+fichier_data = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/data.txt", "w"); \
+fichier_mask = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/mask.txt", "w"); \
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\
@@ -185,22 +185,22 @@ FILE* state_file_particles = NULL;\
 FILE* state_file_particles_velocities = NULL;\
 FILE* state_file_particles_forces = NULL;\
 FILE* state_file_particles_fluxes = NULL;\
-state_file = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state.txt","r+");\
-state_file_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_U.txt","r+");\
-state_file_Aold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Aold.txt","r+");\
-state_file_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_V.txt","r+");\
-state_file_Bold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Bold.txt","r+");\
-state_file_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_P.txt","r+");\
-state_file_Told = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Told.txt","r+");\
-state_file_CTold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CTold.txt","r+");\
-state_file_CAold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CAold.txt","r+");\
-state_file_CCAold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CCAold.txt","r+");\
-state_file_CBold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CBold.txt","r+");\
-state_file_CCBold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CCBold.txt","r+"); \
-state_file_particles = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles.txt","r+");\
-state_file_particles_velocities = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_velocities.txt","r+");\
-state_file_particles_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_forces.txt","r+");\
-state_file_particles_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_fluxes.txt","r+");
+state_file = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state.txt","r+");\
+state_file_U = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_U.txt","r+");\
+state_file_Aold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Aold.txt","r+");\
+state_file_V = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_V.txt","r+");\
+state_file_Bold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Bold.txt","r+");\
+state_file_P = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_P.txt","r+");\
+state_file_Told = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Told.txt","r+");\
+state_file_CTold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CTold.txt","r+");\
+state_file_CAold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CAold.txt","r+");\
+state_file_CCAold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CCAold.txt","r+");\
+state_file_CBold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CBold.txt","r+");\
+state_file_CCBold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CCBold.txt","r+"); \
+state_file_particles = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles.txt","r+");\
+state_file_particles_velocities = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_velocities.txt","r+");\
+state_file_particles_forces = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_forces.txt","r+");\
+state_file_particles_fluxes = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_fluxes.txt","r+");
 
 
 #define RECOVER_STATE \
@@ -241,22 +241,22 @@ fclose(state_file_particles); fclose(state_file_particles_velocities);\
 fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);\
 
 #define SAVE_STATE \
-state_file = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state.txt","w"); \
-state_file_U = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_U.txt","w");\
-state_file_Aold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Aold.txt","w");\
-state_file_V = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_V.txt","w");\
-state_file_Bold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Bold.txt","w");\
-state_file_P = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_P.txt","w");\
-state_file_Told = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_Told.txt","w");\
-state_file_CTold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CTold.txt","w");\
-state_file_CAold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CAold.txt","w");\
-state_file_CCAold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CCAold.txt","w");\
-state_file_CBold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CBold.txt","w");\
-state_file_CCBold = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_CCBold.txt","w"); \
-state_file_particles = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles.txt","w");\
-state_file_particles_velocities = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_velocities.txt","w");\
-state_file_particles_forces = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_forces.txt","w");\
-state_file_particles_fluxes = fopen("/CECI/home/ucl/imap/bahardy/thesis/2D/slip/results4/state/state_particles_fluxes.txt","w"); \
+state_file = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state.txt","w"); \
+state_file_U = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_U.txt","w");\
+state_file_Aold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Aold.txt","w");\
+state_file_V = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_V.txt","w");\
+state_file_Bold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Bold.txt","w");\
+state_file_P = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_P.txt","w");\
+state_file_Told = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_Told.txt","w");\
+state_file_CTold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CTold.txt","w");\
+state_file_CAold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CAold.txt","w");\
+state_file_CCAold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CCAold.txt","w");\
+state_file_CBold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CBold.txt","w");\
+state_file_CCBold = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_CCBold.txt","w"); \
+state_file_particles = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles.txt","w");\
+state_file_particles_velocities = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_velocities.txt","w");\
+state_file_particles_forces = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_forces.txt","w");\
+state_file_particles_fluxes = fopen("/scratch/ucl/imap/bahardy/thesis/2D/slip/results/state/state_particles_fluxes.txt","w"); \
 \
 fprintf(state_file, "%d \t %d \t %lf", iter, l, t); \
 \
