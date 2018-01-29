@@ -15,10 +15,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define RECOVER
+//#define RECOVER
 #define MOVE
 #define TEMP
 #define WRITE
+
+
 
 int main(int argc, char *argv[]){
 
@@ -31,7 +33,7 @@ int main(int argc, char *argv[]){
 	/* DIMENSIONS */
 	Dp = 1;
 	ratio_L_d = 1;
-	ratio_d_Dp = 30;
+	ratio_d_Dp = 10;
 	ratio_Dp_h = 30;
 	d = ratio_d_Dp*Dp;
 	H = d/2.; /* half -height of the channel */
@@ -90,7 +92,6 @@ int main(int argc, char *argv[]){
 	}
 	int T_write; 
 	int N_write;
-	int num;
 	if (argc >= 3){
 		sscanf(argv[1],"%d",&T_write);
 		sscanf(argv[2],"%d",&N_write);
@@ -100,12 +101,13 @@ int main(int argc, char *argv[]){
 		N_write = 200; /* number of times we write in files */
 	}
 	double Tf = N_write*T_write*dt;
+	t_move = Tf/5.; 
 	int nKmax = 2;
-	int Kmax = 20; /* number of ramping steps */
+	int Kmax = 50; /* number of ramping steps */
 
-	double t, t_start;
+	double t = 0.; 
+	double t_start;
 	int iter, iter_start;
-	int l, l_start;
 
 	double ramp = 1./Kmax;
 	if(rank == 0){
@@ -228,7 +230,7 @@ int main(int argc, char *argv[]){
 #endif
 
 			for (int k=0; k<Np; k++){
-				compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k);
+				int flag_out = compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t);
 			}
 
 		}
@@ -255,7 +257,6 @@ int main(int argc, char *argv[]){
 #endif
 		/** -------------------------------TIME STEPPING FROM BEGINNING ------------------------------- **/
 		iter_start = 1;
-		l_start = 1;
 		t_start = 0.;
 	}
 
@@ -266,12 +267,14 @@ int main(int argc, char *argv[]){
 		printf("iter %d : t = %f\n", iter, t);
 	}
 	fflush(stdout);
-	while(t < Tf){
+	while(t < Tf){ 
 		for (int k = 0; k<Np; k++){
 			/*Update particles positions and velocities  */
-#ifdef MOVE
-			update_Xp(xg, yg, theta, Up, Vp, Wp, k);
-			update_Up(Up, Vp, Wp, F, G, M, k);
+#ifdef MOVE		
+			if(t > t_move){ 
+				update_Xp(xg, yg, theta, Up, Vp, Wp, k);
+				update_Up(Up, Vp, Wp, F, G, M, k);
+			}
 #endif
 #ifdef TEMP
 			update_Tp(Tp, Qp, k);
@@ -307,7 +310,7 @@ int main(int argc, char *argv[]){
 		int flag_out = 0;  
 		/*For each particle :*/
 		for (int k = 0; k<Np; k++){
-			flag_out += compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k);
+			flag_out += compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t);
 		}
 
 		if(flag_out > 0){
@@ -341,11 +344,6 @@ int main(int argc, char *argv[]){
 #endif
 		}
 #endif
-		t += dt;
-		iter++;
-
-		PetscPrintf(PETSC_COMM_WORLD,"\n \n iter %d : t = %f\n", iter, t);            
-		fflush(stdout);  
 
 	}
 	printf("rank %d : job done", rank);
@@ -354,20 +352,20 @@ int main(int argc, char *argv[]){
 	/*Save current state */
 	SAVE_STATE
 
-		if (rank ==0){
-			/* Close files */
-			CLOSE_FILES
-		}
+	if (rank ==0){
+		/* Close files */
+		CLOSE_FILES
+	}
 #endif
 
 	/* Free memory */
 	FREE_MEMORY
 
-		PetscFinalize();
+	PetscFinalize();
 	return 0;
 }
 
-int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k)
+int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t)
 {
 	/* Force along x-direction */
 	dudt[k][0] = dudt[k][1]; /* n-2*/
@@ -411,7 +409,7 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	}
 
 	if(endX >= m-1){
-		PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
+			PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
 		return 1;
 	}
 
@@ -448,20 +446,30 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	double Qr = dCdt[k][0][2]*Sp[k]*(-dH); /*units : J/m.s */ 
 	dTdt[k][2] = -Qint/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
 
-	/* Compute Hydrodynamic forces */ 
+	/* Compute Hydrodynamic forces and fluxes */ 
 
 #ifdef MOVE
-	F_drag[k] = rho_f*(-rho_r/(rho_r - 1.))*Fint; //[N/m]
-	F_lift[k] = rho_f*(-rho_r/(rho_r - 1.))*Gint; //[N/m]
-	Torque[k] = rho_f*(-rho_r/(rho_r - 1.))*Mint; //[N]
-	Q_heat[k] = rho_f*cf*((-rho_r*cr/(rho_r*cr-1.))*Qint + Qr/(rho_p*cp-rho_f*cf)); //[W/m]
+	if(t > t_move){
+		F_drag[k] = rho_f*(-rho_r/(rho_r - 1.))*Fint; //[N/m]
+		F_lift[k] = rho_f*(-rho_r/(rho_r - 1.))*Gint; //[N/m]
+		Torque[k] = rho_f*(-rho_r/(rho_r - 1.))*Mint; //[N]
+		Q_heat[k] = rho_f*cf*((-rho_r*cr/(rho_r*cr-1.))*Qint + Qr/(rho_p*cp-rho_f*cf)); //[W/m]
+		Phi_species[k] = -Qmint[0]; //[mol/s]
+	}
+	else{
+	       F_drag[k] = -rho_f*Fint; // [N]
+               F_lift[k] = -rho_f*Gint;
+               Torque[k] = -rho_f*Mint; //[N.m]
+       	       Q_heat[k] = rho_f*cf*(-Qint + Qr/(rho_p*cp-rho_f*cf)); // [W]
+	       Phi_species[k] = -Qmint[0]; //[mol/s]	
+	}
 #endif
 
 #ifndef MOVE
 	F_drag[k] = -rho_f*Fint; // [N]
 	F_lift[k] = -rho_f*Gint;
 	Torque[k] = -rho_f*Mint; //[N.m]
-	Q_heat[k] = -rho_f*cf*Qint; // [W]
+	Q_heat[k] = -rho_f*cf*(Qint + Qr/(rho_p*cp-rho_f*cf)); // [W]
 	Phi_species[k] = -Qmint[0]; //[mol/s]
 	// Here, Phi_species corresponds to the flux of A (reactant) at the surface of particle 0 //
 #endif
@@ -990,21 +998,21 @@ void update_temp_species_EE(double** U, double** V, double** T, double** Told, d
 
 void update_Xp(double* xg, double* yg, double* theta, double** Up, double** Vp, double** Wp,  int k)
 {
-	xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;\
-		 yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;\
-		 theta[k] += dt*(23.*Wp[k][2]-16.*Wp[k][1]+5.*Wp[k][0])/12.;\
+	xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
+		 yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
+		 theta[k] += dt*(23.*Wp[k][2]-16.*Wp[k][1]+5.*Wp[k][0])/12.;
 		 PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
 }
 
 void update_Up(double** Up, double** Vp, double** Wp, double** F, double** G, double** M, int k)
 {
-	Up[k][3] = Up[k][2] + dt*(23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/12.;\
-		   Vp[k][3] = Vp[k][2] + dt*(23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/12.;\
-		   Wp[k][3] = Wp[k][2] + dt*(23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/12.;\
+	Up[k][3] = Up[k][2] + dt*(23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/12.;
+		   Vp[k][3] = Vp[k][2] + dt*(23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/12.;
+		   Wp[k][3] = Wp[k][2] + dt*(23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/12.;
 
-		   Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];\
-		   Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];\
-		   Wp[k][0] = Wp[k][1]; Wp[k][1] = Wp[k][2]; Wp[k][2] = Wp[k][3];\
+		   Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
+		   Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
+		   Wp[k][0] = Wp[k][1]; Wp[k][1] = Wp[k][2]; Wp[k][2] = Wp[k][3];
 }
 
 
@@ -1031,6 +1039,7 @@ void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int 
 			}
 			fprintf(file, "%3.13e", data[i][j]);
 			fprintf(file, "\n");
+			fflush(file); 	
 		}
 	}
 	else{
