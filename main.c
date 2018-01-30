@@ -16,7 +16,7 @@
 #endif
 
 //#define RECOVER
-#define MOVE
+//#define MOVE
 #define TEMP
 #define WRITE
 
@@ -30,17 +30,22 @@ int main(int argc, char *argv[]){
 	MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
 	printf("Hello from rank %d \n", rank);
 
+	const char* SCRATCH = getenv("GLOBALSCRATCH"); 
+	const char* JOB_ID = getenv("SLURM_JOB_ID"); 
+	const char* MY_PATH; 
+	//combine(MY_PATH, $SCRATCH, $JOB_ID);
+
 	/* DIMENSIONS */
 	Dp = 1;
 	ratio_L_d = 1;
-	ratio_d_Dp = 10;
+	ratio_d_Dp = 30;
 	ratio_Dp_h = 30;
 	d = ratio_d_Dp*Dp;
 	H = d/2.; /* half -height of the channel */
 	L = ratio_L_d*d; /* length of the channel is 'ratio' times its width */
 
 	/* FLOW */
-	Rp = 40.;
+	Rp = 100.;
 	Um = Rp*nu/Dp; /* By definition of Rp */
 
 	Tm0 = 100. + 273.15; // cup-mixing temperature at the inlet
@@ -72,9 +77,9 @@ int main(int argc, char *argv[]){
 
 	double dt_CFL = CFL*h/Um;
 	double dt_diff = r*h*h/nu;
-	double refine_dt = 10.;
+	double refine_dt = 2.;
 	dt = fmin(dt_CFL, dt_diff)/refine_dt;
-	double ratio_dtau_dt = 1e-2;
+	double ratio_dtau_dt = 1e-3;
 	dtau = ratio_dtau_dt*dt;
 
 	if(rank == 0){
@@ -101,7 +106,7 @@ int main(int argc, char *argv[]){
 		N_write = 200; /* number of times we write in files */
 	}
 	double Tf = N_write*T_write*dt;
-	t_move = Tf/5.; 
+	//t_move = Tf/5.; 
 	int nKmax = 2;
 	int Kmax = 50; /* number of ramping steps */
 
@@ -1028,6 +1033,39 @@ void update_Cp(double** Cp, double*** Qmp, int k)
 	Cp[k][1] += dt*(23.*(Qmp[k][0][2]+Qmp[k][1][2])-16.*(Qmp[k][0][1]+Qmp[k][1][1])+5.*(Qmp[k][0][0]+Qmp[k][1][0]))/12.;
 	//printf("Concentration of B in particle %d: Cp_B = %3.13e [mol/m3] \n", k+1, Cp[k][1]);
 }
+
+/* I/O related functions */ 
+
+void combine(char* destination, const char* path1, const char* path2)
+{
+	if(path1 == NULL && path2 == NULL) {
+		strcpy(destination, "");;
+	}
+	else if(path2 == NULL || strlen(path2) == 0) {
+		strcpy(destination, path1);
+	}
+	else if(path1 == NULL || strlen(path1) == 0) {
+		strcpy(destination, path2);
+	} 
+	else {
+		char directory_separator[] = "/";
+#ifdef WIN32
+		directory_separator[0] = '\\';
+#endif
+		const char *last_char = path1;
+		while(*last_char != '\0')
+			last_char++;        
+		int append_directory_separator = 0;
+		if(strcmp(last_char, directory_separator) != 0) {
+			append_directory_separator = 1;
+		}
+		strcpy(destination, path1);
+		if(append_directory_separator)
+			strcat(destination, directory_separator);
+		strcat(destination, path2);
+	}
+}
+
 
 void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd)
 {
