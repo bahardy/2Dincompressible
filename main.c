@@ -15,9 +15,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-//#define RECOVER
-//#define MOVE
-#define TEMP
+#define RECOVER
+#define MOVE
+//#define TEMP
 #define WRITE
 
 
@@ -30,34 +30,35 @@ int main(int argc, char *argv[]){
 	MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
 	printf("Hello from rank %d \n", rank);
 
-	const char* SCRATCH = getenv("GLOBALSCRATCH"); 
-	const char* JOB_ID = getenv("SLURM_JOB_ID"); 
-	const char* MY_PATH; 
-	//combine(MY_PATH, $SCRATCH, $JOB_ID);
 
 	/* DIMENSIONS */
 	Dp = 1;
 	ratio_L_d = 1;
-	ratio_d_Dp = 30;
+	ratio_d_Dp = 10;
 	ratio_Dp_h = 30;
 	d = ratio_d_Dp*Dp;
 	H = d/2.; /* half -height of the channel */
 	L = ratio_L_d*d; /* length of the channel is 'ratio' times its width */
 
+	/* PHYSICAL PARAMETERS */
+        Pr = 0.7;
+        nu = 2e-5;
+        rho_f = 1.;
+        rho_p = 1000.;
+        rho_r = rho_p/rho_f;
+        cp = 1000.;
+        cf = 1000.;
+        cr = cp/cf;
+        alpha_f = nu/Pr;
+	
 	/* FLOW */
-	Rp = 100.;
-	Um = Rp*nu/Dp; /* By definition of Rp */
-
+	Rp = 40.;
+	Um = Rp*nu/Dp; 
 	Tm0 = 100. + 273.15; // cup-mixing temperature at the inlet
 	Tp0 = 20. + 273.15;
 
 	Ns = 2; /* Number of species */
 	Np = 1; /* Number of particles */
-
-	/* PHYSICAL PARAMETERS */
-	rho_r = rho_p/rho_f;
-	cr = cp/cf;
-	alpha_f = nu/Pr;
 
 	/* SPECIES PARAMETERS */
 	double CA0 = 1.;
@@ -65,6 +66,7 @@ int main(int argc, char *argv[]){
 	Df = make1DDoubleArray(Ns);
 	Df[0] = 2e-5;
 	Df[1] = 2e-5;
+	dH = 0; 
 
 	/* GRID */
 	N = ratio_Dp_h*ratio_d_Dp;
@@ -74,23 +76,22 @@ int main(int argc, char *argv[]){
 	h = d/N;
 
 	/* TIME INTEGRATION */
-
+	double CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */ 
+        double r = 0.25; /* Fourier condition on diffusive term */ 
 	double dt_CFL = CFL*h/Um;
-	double dt_diff = r*h*h/nu;
-	double refine_dt = 2.;
-	dt = fmin(dt_CFL, dt_diff)/refine_dt;
-	double ratio_dtau_dt = 1e-3;
+	double dt_diff = r*h*h/nu; 
+	dt = fmin(dt_CFL, dt_diff);
+	double ratio_dtau_dt = 1e-2;
 	dtau = ratio_dtau_dt*dt;
 
 	if(rank == 0){
 		printf("Rep = %f\n", Rp);
 		printf("ratio L/d = %d \n", ratio_L_d);
 		printf("ratio d/dp = %d \n", ratio_d_Dp);
-		//printf("Umax = %f\n", Umax);
 		printf("Um = %f\n", Um);
 		printf("dt_CFL = %f\n", dt_CFL);
 		printf("dt_diff = %f\n", dt_diff);
-		printf("dt is reduced by a factor %f with respect to CFL \n", refine_dt);
+		printf("CFL condition set to %f h/Um \n", CFL);
 		printf("dt = %f\n", dt);
 		printf("dtau = %f\n", dtau);
 		printf("ratio dtau/dt = %f \n", ratio_dtau_dt);
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]){
 		N_write = 200; /* number of times we write in files */
 	}
 	double Tf = N_write*T_write*dt;
-	//t_move = Tf/5.; 
+	t_move = Tf/5.; 
 	int nKmax = 2;
 	int Kmax = 50; /* number of ramping steps */
 
@@ -189,8 +190,9 @@ int main(int argc, char *argv[]){
 		get_masks(Ip_S, Ip_U, Ip_V, I_S, I_U, I_V, xg, yg, rp, theta, coloring);
 
 		/* Initialize solid temperature and field based on initial particle temperature/species concentration */
+#ifdef TEMP
 		get_Ts(Ts, Ip_S, Tp);
-
+#endif 
 		/* Get Ghost points */
 		get_ghosts(U, V, P, Told, Cold, 0, 0);
 
@@ -329,25 +331,31 @@ int main(int argc, char *argv[]){
 		PetscPrintf(PETSC_COMM_WORLD,"\n \n iter %d : t = %f\n", iter, t);
 		fflush(stdout);
 #ifdef WRITE
-		if(iter % T_write == 0 && rank == 0){
+		if(rank == 0){
 			fprintf(fichier_position, "%3.13e \t %3.13e \t %3.13e \n ", xg[0], yg[0], theta[0]);
 			fflush(fichier_position);
 			fprintf(fichier_forces, "%3.13e \t %3.13e \t %3.13e \n ", F_drag[0], F_lift[0], Torque[0]);
 			fflush(fichier_forces);
 			fprintf(fichier_fluxes, "%3.13e \t %3.13e \n ", Q_heat[0], Phi_species[0]);
 			fflush(fichier_fluxes);
-			writeFile(fichier_U,U,0,m-1,1,n-1);
-			writeFile(fichier_V,V,1,m-1,0,n-1);
-			writeFile(fichier_P,P,1,m-1,1,n-1);
-			writeFile(fichier_T,T,1,m-1,1,n-1);
-			writeFile(fichier_CA,C[0],1,m-1,1,n-1);
-			writeFile(fichier_CB,C[1],1,m-1,1,n-1);
 			fprintf(fichier_Tp, "%3.13e \n",Tp[0]);
 			fflush(fichier_Tp);
-#ifdef MOVE
-			writeFile(fichier_mask,coloring,1,m-1,1,n-1);
+
+			if(iter % T_write == 0){	
+				writeFile(fichier_U,U,0,m-1,1,n-1);
+				writeFile(fichier_V,V,1,m-1,0,n-1);
+				writeFile(fichier_P,P,1,m-1,1,n-1);
+#ifdef TEMP  
+				writeFile(fichier_T,T,1,m-1,1,n-1);
+				writeFile(fichier_CA,C[0],1,m-1,1,n-1);
+				writeFile(fichier_CB,C[1],1,m-1,1,n-1);
 #endif
+#ifdef MOVE
+				writeFile(fichier_mask,coloring,1,m-1,1,n-1);
+#endif
+			}
 		}
+
 #endif
 
 	}
@@ -383,20 +391,21 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	dvdt[k][2] = 0.;
 
 	/* Moment along z-direction */\
-		domegadt[k][0] = domegadt[k][1];
+	domegadt[k][0] = domegadt[k][1];
 	domegadt[k][1] = domegadt[k][2];
 	domegadt[k][2] = 0.;
 
+#ifdef TEMP
 	/* Particle heat balance  */
 	dTdt[k][0] = dTdt[k][1]; /* n-2*/
 	dTdt[k][1] = dTdt[k][2]; /* n-1*/
 	dTdt[k][2] = 0.; /* n*/
-
 	for(int s=0; s<Ns; s++){
 		dCdt[k][s][0] = dCdt[k][s][1];
 		dCdt[k][s][1] = dCdt[k][s][2];
 		dCdt[k][s][2] = 0.;
 	}
+#endif 
 
 	int startX = floor((xg[k]-rp[k])/h);
 	PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
@@ -418,7 +427,7 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 		return 1;
 	}
 
-	double Fint = 0., Gint = 0., Mint = 0., Qint = 0.;
+	double Fint = 0., Gint = 0., Mint = 0., Qint = 0., Sint =0.;
 	double* Qmint = make1DDoubleArray(Ns);
 
 	for(int i=startX; i<=endX; i++){
@@ -427,29 +436,40 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 			double yU = (j-0.5)*h;
 			double f = -Ip_U[k][i][j]*(U[i][j]-Us[i][j])/dtau;
 			double g = -Ip_V[k][i][j]*(V[i][j]-Vs[i][j])/dtau;
+#ifdef TEMP
 			double q = -Ip_S[k][i][j]*(T[i][j]-Ts[i][j])/dtau;
 			double* qm = make1DDoubleArray(Ns);
 			for(int s=0; s<Ns; s++){
 				qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j])/dtau;
 			}
+#endif 
+			Sint += Ip_U[k][i][j]*h*h;
 			Fint += f*h*h; /* units : m/s^2 */
 			Gint += g*h*h; /* units : m/s^2 */
 			Mint +=((xV-xg[k])*g-(yU-yg[k])*f)*h*h;/* units: m^2/s^2 */
+#ifdef TEMP
 			Qint += q*h*h; /*units : K/s */
 			for(int s=0; s<Ns; s++){
 				Qmint[s] += qm[s]*h*h; /*units : mol/m.s */
 			}
+#endif
 		}
 	}
 
 	dudt[k][2] = -Fint/(Sp[k]*(rho_r-1.));
 	dvdt[k][2] = -Gint/(Sp[k]*(rho_r-1.));
 	domegadt[k][2] = -Mint/(II[k]*Sp[k]*(rho_r-1.));
+
+#ifdef TEMP
 	for(int s=0; s<Ns; s++){
 		dCdt[k][s][2] = -Qmint[s]/Sp[k]; /* units : mol/m3.s */ 
 	}
 	double Qr = dCdt[k][0][2]*Sp[k]*(-dH); /*units : J/m.s */ 
 	dTdt[k][2] = -Qint/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
+#endif 
+	PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", Sint);
+	//fprintf(fichier_surface, "%3.6e \n", Sint); 
+	//fflush(fichier_surface); 
 
 	/* Compute Hydrodynamic forces and fluxes */ 
 
@@ -458,15 +478,19 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 		F_drag[k] = rho_f*(-rho_r/(rho_r - 1.))*Fint; //[N/m]
 		F_lift[k] = rho_f*(-rho_r/(rho_r - 1.))*Gint; //[N/m]
 		Torque[k] = rho_f*(-rho_r/(rho_r - 1.))*Mint; //[N]
+#ifdef TEMP
 		Q_heat[k] = rho_f*cf*((-rho_r*cr/(rho_r*cr-1.))*Qint + Qr/(rho_p*cp-rho_f*cf)); //[W/m]
 		Phi_species[k] = -Qmint[0]; //[mol/s]
+#endif
 	}
 	else{
 	       F_drag[k] = -rho_f*Fint; // [N]
                F_lift[k] = -rho_f*Gint;
                Torque[k] = -rho_f*Mint; //[N.m]
+#ifdef TEMP
        	       Q_heat[k] = rho_f*cf*(-Qint + Qr/(rho_p*cp-rho_f*cf)); // [W]
 	       Phi_species[k] = -Qmint[0]; //[mol/s]	
+#endif 
 	}
 #endif
 
@@ -474,8 +498,10 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	F_drag[k] = -rho_f*Fint; // [N]
 	F_lift[k] = -rho_f*Gint;
 	Torque[k] = -rho_f*Mint; //[N.m]
+#ifdef TEMP
 	Q_heat[k] = -rho_f*cf*(Qint + Qr/(rho_p*cp-rho_f*cf)); // [W]
 	Phi_species[k] = -Qmint[0]; //[mol/s]
+#endif
 	// Here, Phi_species corresponds to the flux of A (reactant) at the surface of particle 0 //
 #endif
 
@@ -483,6 +509,7 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	PetscPrintf(PETSC_COMM_WORLD,"Force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, F_lift[k]);
 	PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Torque[k]);
 	PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q_heat[k]);
+
 	return 0;
 }
 
@@ -501,6 +528,7 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
 		P[i][0] = P[i][1];
 		P[i][n-1] = P[i][n-2];
 
+#ifdef TEMP 
 		/* Walls : adiabatic: dTdn = 0, no mass flux */
 		Told[i][0] = Told[i][1];
 		Told[i][n-1] = Told[i][n-2];
@@ -509,6 +537,7 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
 			Cold[s][i][0] = Cold[s][i][1];
 			Cold[s][i][n-1] = Cold[s][i][n-2];
 		}
+#endif  
 	}
 	for (int j = 0; j<n; j++){
 		/* On V */
@@ -520,7 +549,7 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
 		/* On P */
 		/* Outflow : P = 0 */
 		P[m-1][j] = -P[m-2][j];
-
+#ifdef TEMP 
 		/* On T and C */
 		/* Inflow : T uniform  */ 
 		Told[0][j] = -0.2*(Told[3][j]-5.*Told[2][j]+15.*Told[1][j]-16.*Tm0);
@@ -534,6 +563,7 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
 		for(int s=0; s<Ns; s++){
 			Cold[s][m-1][j] = (7.*Cold[s][m-2][j]-5.*Cold[s][m-3][j]+Cold[s][m-4][j])/3.;
 		}
+#endif  
 	}
 	PetscPrintf(PETSC_COMM_WORLD, "CA ghost = %f [mol/m^3]\n", Cold[0][0][50]);
 }
@@ -1049,9 +1079,6 @@ void combine(char* destination, const char* path1, const char* path2)
 	} 
 	else {
 		char directory_separator[] = "/";
-#ifdef WIN32
-		directory_separator[0] = '\\';
-#endif
 		const char *last_char = path1;
 		while(*last_char != '\0')
 			last_char++;        
