@@ -25,7 +25,7 @@
 int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S,
                                double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
                            	double* xg, double* yg, double* rp, double* Sp, double* II, 
-				 double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t);
+				 double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t, double surf);
 void get_ghosts(double** U, double** V, double** P, double** Told, double*** Cold, double CA0, double CB0);
 void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,  double* xg, double* yg, double* rp, double* theta, double** coloring);
 void get_Cs(double*** Cs, double*** Ip_S, double** Cp);

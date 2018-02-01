@@ -34,7 +34,7 @@ int main(int argc, char *argv[]){
 	/* DIMENSIONS */
 	Dp = 1;
 	ratio_L_d = 1;
-	ratio_d_Dp = 10;
+	ratio_d_Dp = 30;
 	ratio_Dp_h = 30;
 	d = ratio_d_Dp*Dp;
 	H = d/2.; /* half -height of the channel */
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
         Pr = 0.7;
         nu = 2e-5;
         rho_f = 1.;
-        rho_p = 1000.;
+        rho_p = 100.;
         rho_r = rho_p/rho_f;
         cp = 1000.;
         cf = 1000.;
@@ -130,6 +130,7 @@ int main(int argc, char *argv[]){
 	double* rp = calloc(Np,sizeof(double));
 	double* theta = calloc(Np,sizeof(double));
 	double* Sp = calloc(Np,sizeof(double));
+	double surf = 0.; /* particle surface as computed by integration of the mask funciton */ 
 	double* II = calloc(Np,sizeof(double));
 
 	xg[0]=H;
@@ -237,7 +238,7 @@ int main(int argc, char *argv[]){
 #endif
 
 			for (int k=0; k<Np; k++){
-				int flag_out = compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t);
+				int flag_out = compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t, surf);
 			}
 
 		}
@@ -317,7 +318,7 @@ int main(int argc, char *argv[]){
 		int flag_out = 0;  
 		/*For each particle :*/
 		for (int k = 0; k<Np; k++){
-			flag_out += compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t);
+			flag_out += compute_force_torque_fluxes(F, G, M, Qp, Qmp, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, F_drag, F_lift, Torque, Q_heat, Phi_species, k, t, surf);
 		}
 
 		if(flag_out > 0){
@@ -378,7 +379,7 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t)
+int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t, double surf)
 {
 	/* Force along x-direction */
 	dudt[k][0] = dudt[k][1]; /* n-2*/
@@ -427,30 +428,30 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 		return 1;
 	}
 
-	double Fint = 0., Gint = 0., Mint = 0., Qint = 0., Sint =0.;
+	double Fint = 0., Gint = 0., Mint = 0., Qint = 0.;
 	double* Qmint = make1DDoubleArray(Ns);
 
 	for(int i=startX; i<=endX; i++){
 		double xV = (i-0.5)*h;
 		for(int j=startY; j<=endY; j++){
 			double yU = (j-0.5)*h;
-			double f = -Ip_U[k][i][j]*(U[i][j]-Us[i][j])/dtau;
-			double g = -Ip_V[k][i][j]*(V[i][j]-Vs[i][j])/dtau;
+			double f = -Ip_U[k][i][j]*(U[i][j]-Us[i][j]);
+			double g = -Ip_V[k][i][j]*(V[i][j]-Vs[i][j]);
 #ifdef TEMP
-			double q = -Ip_S[k][i][j]*(T[i][j]-Ts[i][j])/dtau;
+			double q = -Ip_S[k][i][j]*(T[i][j]-Ts[i][j]);
 			double* qm = make1DDoubleArray(Ns);
 			for(int s=0; s<Ns; s++){
-				qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j])/dtau;
+				qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j]);
 			}
 #endif 
-			Sint += Ip_U[k][i][j]*h*h;
-			Fint += f*h*h; /* units : m/s^2 */
-			Gint += g*h*h; /* units : m/s^2 */
-			Mint +=((xV-xg[k])*g-(yU-yg[k])*f)*h*h;/* units: m^2/s^2 */
+			surf += Ip_U[k][i][j]*h*h;
+			Fint += (f*h*h)/dtau; /* units : m/s^2 */
+			Gint += (g*h*h)/dtau; /* units : m/s^2 */
+			Mint +=((xV-xg[k])*g-(yU-yg[k])*f)*h*h/dtau;/* units: m^2/s^2 */
 #ifdef TEMP
-			Qint += q*h*h; /*units : K/s */
+			Qint += q*h*h/dtau; /*units : K/s */
 			for(int s=0; s<Ns; s++){
-				Qmint[s] += qm[s]*h*h; /*units : mol/m.s */
+				Qmint[s] += qm[s]*h*h/dtau; /*units : mol/m.s */
 			}
 #endif
 		}
@@ -467,9 +468,9 @@ int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt,
 	double Qr = dCdt[k][0][2]*Sp[k]*(-dH); /*units : J/m.s */ 
 	dTdt[k][2] = -Qint/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
 #endif 
-	PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", Sint);
-	//fprintf(fichier_surface, "%3.6e \n", Sint); 
-	//fflush(fichier_surface); 
+	PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", surf);
+	printf(fichier_surface, "%3.6e \n", surf); 
+	fflush(fichier_surface); 
 
 	/* Compute Hydrodynamic forces and fluxes */ 
 
@@ -590,6 +591,7 @@ void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, dou
 				double xloc = xV-xg[k];
 				double yloc = yU-yg[k];
 				double delta = 0;
+				/* coloring[i][j] += Ip_S[k][i][j];*/
 				coloring[i][j] += Ip_S[k][i][j];
 				if (xloc>0 && yloc>0){ //1st Quadrant
 					delta = atan(yloc/xloc);
