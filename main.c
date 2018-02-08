@@ -238,7 +238,7 @@ int main(int argc, char *argv[]){
             PetscPrintf(PETSC_COMM_WORLD, "\n \n ramp = %f\n",ramp);
             
             for (int k=0; k<Np; k++){
-                integrate_penalization(F, G, M, QQ, PP, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, k, surf);
+                integrate_penalization(F, G, M, QQ, PP, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, k, &surf);
                 /* dudt, dvdt, etc = 0 because the particle is fixed */
                 compute_forces(Fx, Fy, Tz, F, G, M,  dudt, dvdt, dwdt, Sp, II, k);
                 compute_fluxes(Q, Phi, QQ, PP, dTdt, dCdt, Sp, k);
@@ -304,7 +304,7 @@ int main(int argc, char *argv[]){
         for (int k = 0; k<Np; k++){
             
             /* Integrate penalization term */
-            flag_out += integrate_penalization(F, G, M, QQ, PP, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, k, surf);
+            flag_out += integrate_penalization(F, G, M, QQ, PP, Ip_U, Ip_V, Ip_S, U, V, T, C, Us, Vs, Ts, Cs, xg, yg, rp, Sp, II, k, &surf);
             
             /* Velocity - Forces */
             if(t > t_move){
@@ -374,7 +374,8 @@ int main(int argc, char *argv[]){
             fflush(fichier_forces);
             fprintf(fichier_fluxes, "%3.13e \t %3.13e \n ", Q[0], Phi[0][0]);
             fflush(fichier_fluxes);
-            fprintf(fichier_surface, "%3.13e \n", surf);
+	    printf("Surface from outside : %f \n", surf); 
+            fprintf(fichier_surface, "%f \n", surf);
             fflush(fichier_surface);
             fprintf(fichier_Tp, "%3.13e \n",Tp[0]);
             fflush(fichier_Tp);
@@ -450,7 +451,7 @@ void compute_Qr(double** Qr, double*** PP, int k){
 	Qr[k][2] = PP[k][0][2]*(-dH);
 }
 
-int integrate_penalization(double** F, double** G, double** M, double** QQ, double*** PP, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, int k, double surf)
+int integrate_penalization(double** F, double** G, double** M, double** QQ, double*** PP, double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs, double* xg, double* yg, double* rp, double* Sp, double* II, int k, double* pointeur_surf)
 {
     /* Force along x-direction */
     F[k][0] = F[k][1]; /* n-2*/
@@ -500,7 +501,7 @@ int integrate_penalization(double** F, double** G, double** M, double** QQ, doub
         return 1;
     }
     
-    double Fint, Gint, Mint, Qint, *Qmint;
+    double Fint, Gint, Mint, Qint, *Qmint, sint;
     Fint = 0.;
     Gint = 0.;
     Mint = 0.;
@@ -548,7 +549,7 @@ int integrate_penalization(double** F, double** G, double** M, double** QQ, doub
     G[k][2] = -Gint;
     M[k][2] = -Mint;
     QQ[k][2] = -Qint;
-    surf = sint; 
+    *pointeur_surf = sint; 
 
 #ifdef TEMP
     for(int s=0; s<Ns; s++){
@@ -557,7 +558,7 @@ int integrate_penalization(double** F, double** G, double** M, double** QQ, doub
     //double Qr = Phi[k][0][2]*Sp[k]*(-dH); /*units : J/m.s */
     //Q[k][2] = -Qint/(Sp[k]*(rho_r*cr-1.)) + Qr/(Sp[k]*(rho_p*cp-rho_f*cf));
 #endif
-    PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", surf);
+    PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *pointeur_surf);
     /*
      // Compute Hydrodynamic forces and fluxes
      
@@ -610,10 +611,13 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
         /* On U */
         /* Bottom Wall : slip : du/dn= 0 */
         U[i][0] = U[i][1];
-        /* Top Wall : slip : du/dn = 0  */
+	/*No-slip (channel) */
+        // U[i][0] = -0.2*(U[i][3] - 5.*U[i][2] + 15.*U[i][1]); 
+	/* Top Wall : slip : du/dn = 0  */
         U[i][n-1] = U[i][n-2];
+        // U[i][n-1] = -0.2*(U[i][n-4] - 5.*U[i][n-3] + 15.*U[i][n-2]);
         
-        /* On P, T, C */
+	/* On P, T, C */
         /* Walls : dpdn = 0 */
         //P[i][0] = P[i][1];
         //P[i][n-1] = P[i][n-2];
@@ -832,8 +836,6 @@ void get_Vstar(double** V, double** Vstar, double** U, double** B, double** Bold
 {
     /* Vstar  ADAMS-BASHFORTH 2 */
     for (int i=1; i<m-1; i++){
-	    Vstar[i][0] = V[i][0]; 
-	    Vstar[i][n-2] = V[i][n-2]; 
         for (int j=1; j<n-2; j++){
             double Uij = .25*(U[i][j]+U[i-1][j]+U[i][j+1]+U[i-1][j+1]); /* average of the four neighbour points */
             B[i][j] = Uij*(V[i+1][j]-V[i-1][j])/(2.*h) + V[i][j]*(V[i][j+1]-V[i][j-1])/(2.*h);

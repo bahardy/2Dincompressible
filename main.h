@@ -30,7 +30,7 @@ void compute_Qr(double** Qr, double*** PP, int k);
 int integrate_penalization(double** F, double** G, double** M, double** QQ, double*** PP,
                            double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U,
                            double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
-                           double* xg, double* yg, double* rp, double* Sp, double* II, int k, double surf);
+                           double* xg, double* yg, double* rp, double* Sp, double* II, int k, double* surf);
 void get_ghosts(double** U, double** V, double** P, double** Told, double*** Cold, double CA0, double CB0);
 void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,
                double* xg, double* yg, double* rp, double* theta, double** coloring);
@@ -235,6 +235,7 @@ fclose(fichier_position); \
 fclose(fichier_forces); \
 fclose(fichier_fluxes); \
 fclose(fichier_U);\
+fclose(fichier_phi);\
 fclose(fichier_V);\
 fclose(fichier_P);\
 fclose(fichier_T);\
@@ -258,7 +259,8 @@ FILE* fichier_CA = NULL; \
 FILE* fichier_CB = NULL; \
 FILE* fichier_data = NULL; \
 FILE* fichier_mask = NULL; \
-FILE* fichier_surface = NULL; \
+FILE* fichier_surface = NULL;\
+FILE* fichier_phi = NULL;\
 
 #define OPEN_FILES \
 fichier_position = fopen("position.txt","w");\
@@ -274,6 +276,7 @@ fichier_CB = fopen("CB.txt", "w"); \
 fichier_data = fopen("data.txt", "w"); \
 fichier_mask = fopen("mask.txt", "w"); \
 fichier_surface = fopen("surface.txt", "w"); \
+fichier_phi = fopen("phi.txt", "w");\
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\
