@@ -22,12 +22,18 @@
 /*--------------------------------------------------------*/
 
 /* FUNCTIONS TO SOLVE THE FLOW */
-int compute_force_torque_fluxes(double** dudt, double** dvdt, double** domegadt, double** dTdt, double*** dCdt, double*** Ip_U, double*** Ip_V, double*** Ip_S,
-                               double** U, double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
-                           	double* xg, double* yg, double* rp, double* Sp, double* II, 
-				 double* F_drag, double* F_lift, double* Torque, double* Q_heat, double* Phi_species, int k, double t, double surf);
+void compute_forces(double* Fx, double* Fy, double* Tz, double** F, double** G, double** M,
+                    double* dudt, double* dvdt, double* dwdt, double* Sp, double* II,  int k);
+void compute_fluxes(double* Q, double** Phi, double** QQ, double*** PP,
+                    double* dTdt, double** dCdt, double* Sp, int k);
+void compute_Qr(double** Qr, double*** PP, int k);
+int integrate_penalization(double** F, double** G, double** M, double** QQ, double*** PP,
+                           double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U,
+                           double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
+                           double* xg, double* yg, double* rp, double* Sp, double* II, int k, double surf);
 void get_ghosts(double** U, double** V, double** P, double** Told, double*** Cold, double CA0, double CB0);
-void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,  double* xg, double* yg, double* rp, double* theta, double** coloring);
+void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,
+               double* xg, double* yg, double* rp, double* theta, double** coloring);
 void get_Cs(double*** Cs, double*** Ip_S, double** Cp);
 void get_Ts(double** Ts, double*** Ip_S, double* Tp);
 void get_Us_Vs(double** Us, double** Vs, double*** Ip_U, double*** Ip_V, double** Up, double** Vp, double** Wp, double* xg, double* yg);
@@ -42,12 +48,11 @@ void update_flow(double** U, double** V, double** P, double** Ustar, double** Vs
 void update_temp_species(double** U, double** V,  double** T, double** Told, double** Ts, double** C_T, double** C_Told, double*** C, double*** Cold, double*** Cs, double*** C_C, double*** C_Cold, double** I_S, double ramp);
 void update_temp_species_EE(double** U, double** V, double** T, double** Told, double** Ts, double** C_Told, double*** C, double*** Cold, double*** Cs, double*** C_Cold, double** I_S, double ramp);
 void update_Xp(double* xg, double* yg, double* theta, double** Up, double** Vp, double** Wp,  int k);
-void update_Cp(double** Cp, double*** Qmp, int k);
-void update_Up(double** Up, double** Vp, double** Wp, double** F, double** G, double** M, int k);
-void update_Tp(double* Tp, double** Qp, int k);
+void update_Up(double** Up, double** Vp, double** Wp, double* dudt, double* dvdt, double* dwdt, double** F, double** G, double** M, double* II, double* Sp, int k);
+void update_Tp(double* Tp, double* dTdt, double** QQ, double** Qr, double* Sp, int k);
+void update_Cp(double** Cp, double** dCdt, double*** PP, int k);
 
 /* SOME HELPFUL FUNCTIONS */
-void combine(char* destination, const char* path1, const char* path2);
 void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 double* make1DDoubleArray(int arraySize);
 double** make2DDoubleArray(int arraySizeX, int arraySizeY);
@@ -62,19 +67,23 @@ int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY);
 /*--------------------------------------------------------*/
 /*GLOBAL VARIABLE*/
 /* DIMENSIONS */
-static double Dp; 
-static double d; 
+static double Dp;
+static double a;
+static double b;
+static double d;
 static double H;
 static double L;
-static int ratio_L_d; 
-static int ratio_d_Dp; 
-static int ratio_Dp_h; 
+static int ratio_L_d;
+static int ratio_d_Dp;
+static int ratio_Dp_h;
 
 /* PHYSICAL PARAMETERS */
 static double nu;
 static double rho_p, rho_f, rho_r;
 static double cp, cf, cr;
 static double Pr;
+static double Sc; 
+static double Le; 
 static double alpha_f;
 static double* Df;
 static double dH; // kJ/mol
@@ -86,7 +95,7 @@ static int Np;
 static int Ns;
 
 /* TEMPERATURE PARAMETERS */
-static double Tm0; 
+static double Tm0;
 static double Tp0;
 
 
@@ -98,15 +107,128 @@ static int n;
 static double h;
 
 /* TIME INTEGRATION */
-static double t_move; 
+static double t_move;
 static double dt;
 static double dtau;
 
 /* GAUSS_SEIDEL ALGORITHME */
 double SORtol = 1e-6;
-int SORitermax = 1e6;
+int SORitermax = (int) 1e6;
 double alpha = 1.98;
 
+/** -------------MEMORY RELATED MACRO ----------------**/
+
+#define MEMORY_ALLOCATION \
+double** A = make2DDoubleArray(m,n);\
+double** Aold = make2DDoubleArray(m,n);\
+double** B = make2DDoubleArray(m,n);\
+double** Bold = make2DDoubleArray(m,n);\
+double*** C = make3DDoubleArray(Ns,m,n);\
+double*** Cold = make3DDoubleArray(Ns,m,n); \
+double*** Cs = make3DDoubleArray(Ns,m,n); \
+double** Cp = make2DDoubleArray(Np,Ns); \
+double** C_T = make2DDoubleArray(m,n);\
+double** C_Told = make2DDoubleArray(m,n);\
+double*** C_C = make3DDoubleArray(Ns,m,n); \
+double*** C_Cold = make3DDoubleArray(Ns,m,n); \
+double** F = make2DDoubleArray(Np,3);\
+double** G = make2DDoubleArray(Np,3);\
+double*** Ip_S = make3DDoubleArray(Np,m,n);\
+double*** Ip_U = make3DDoubleArray(Np,m,n);\
+double*** Ip_V = make3DDoubleArray(Np,m,n);\
+double** I_S = make2DDoubleArray(m,n);\
+double** coloring = make2DDoubleArray(m,n);\
+double** I_U = make2DDoubleArray(m,n);\
+double** I_V = make2DDoubleArray(m,n);\
+double** M = make2DDoubleArray(Np,3);\
+double** P = make2DDoubleArray(m,n);\
+double** phi = make2DDoubleArray(m,n);\
+double** QQ = make2DDoubleArray(Np,3);\
+double** Qr = make2DDoubleArray(Np,3);\
+double*** PP = make3DDoubleArray(Np, Ns, 3); \
+double** R = make2DDoubleArray(m,n);\
+double** T = make2DDoubleArray(m,n);\
+double** Told = make2DDoubleArray(m,n);\
+double* Tp = make1DDoubleArray(Np);\
+double** Ts = make2DDoubleArray(m,n); \
+double** U = make2DDoubleArray(m,n);\
+double** Up = make2DDoubleArray(Np,4);\
+double** Us = make2DDoubleArray(m,n);\
+double** Ustar = make2DDoubleArray(m,n);\
+double** V = make2DDoubleArray(m,n);\
+double** Vp = make2DDoubleArray(Np,4);\
+double** Vs = make2DDoubleArray(m,n);\
+double** Vstar = make2DDoubleArray(m,n);\
+double** Wp = make2DDoubleArray(Np,4);\
+double* Fx = make1DDoubleArray(Np);\
+double* Fy = make1DDoubleArray(Np);\
+double* Tz = make1DDoubleArray(Np);\
+double* Q = make1DDoubleArray(Np);\
+double** Phi = make2DDoubleArray(Np,Ns);\
+double* dudt = make1DDoubleArray(Np); \
+double* dvdt = make1DDoubleArray(Np); \
+double* dwdt = make1DDoubleArray(Np); \
+double* dTdt = make1DDoubleArray(Np); \
+double** dCdt = make2DDoubleArray(Np,Ns);\
+
+
+#define FREE_MEMORY \
+for(int s=0; s<Ns; s++){\
+    for(int i=0; i<m; i++){ \
+        free(C[s][i]); free(Cold[s][i]); free(Cs[s][i]); \
+        free(C_C[s][i]); free(C_Cold[s][i]);\
+    }\
+}\
+for(int s=0; s<Ns; s++){\
+    free(C[s]); free(Cold[s]); free(Cs[s]);\
+    free(C_C[s]); free(C_Cold[s]);\
+}\
+for(int k=0; k<Np; k++){ \
+    for(int i=0; i<m; i++){ \
+        free(Ip_S[k][i]); free(Ip_U[k][i]); free(Ip_V[k][i]);\
+    }\
+    for(int s=0; s<Ns; s++){\
+        free(PP[k][s]); \
+    }\
+}\
+for(int k=0; k<Np; k++){ \
+    free(Ip_S[k]); free(Ip_U[k]); free(Ip_V[k]);\
+    free(Up[k]); free(Vp[k]); free(Wp[k]);\
+    free(F[k]); free(G[k]); free(M[k]); \
+    free(QQ[k]); free(Qr[k]); free(PP[k]);\
+    free(Cp[k]); free(dCdt[k]); free(Phi[k]);\
+}\
+\
+for(int i=0; i<m; i++){\
+    free(I_S[i]); free(I_U[i]); free(I_V[i]); free(coloring[i]);  \
+    free(U[i]); free(Ustar[i]); free(V[i]); free(Vstar[i]);\
+    free(A[i]); free(Aold[i]); free(B[i]); free(Bold[i]);\
+    free(C_T[i]); free(C_Told[i]); free(Told[i]); \
+    free(Us[i]); free(Vs[i]); free(Ts[i]);\
+    free(P[i]); free(phi[i]); free(T[i]);\
+    free(R[i]);\
+}\
+\
+free(F); free(G); free(M);\
+free(Ip_S); free(Ip_U); free(Ip_V);\
+free(I_S); free(I_U); free(I_V); free(coloring); \
+free(U); free(V); free(Ustar); free(Vstar);\
+free(A); free(Aold); free(B); free(Bold);\
+free(C); free(Cold); free(Cs); free(Cp); \
+free(C_C); free(C_Cold);\
+free(C_T); free(C_Told); \
+free(Df); \
+free(Us); free(Vs); \
+free(Up); free(Vp); free(Wp); free(Tp); \
+free(P); free(phi); free(T); free(Ts); free(Told);  \
+free(QQ); free(PP);\
+free(R);\
+free(xg); free(yg); free(Sp); free(rp); free(dp); free(II);\
+free(Fx); free(Fy); free(Tz); free(Q); free(Phi);\
+free(dudt); free(dvdt); free(dwdt); free(dTdt); free(dCdt);
+
+
+/** -------------FILES RELATED MACRO ----------------**/ 
 
 #define CLOSE_FILES \
 fclose(fichier_position); \
@@ -218,7 +340,7 @@ for(int k=0; k<Np; k++){\
     fscanf(state_file_particles, "%lf %lf %lf %lf %lf %lf", &xg[k], &yg[k], &rp[k], &Tp[k], &Cp[k][0], &Cp[k][1]);\
     fscanf(state_file_particles_velocities, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &Up[k][0], &Up[k][1], &Up[k][2], &Vp[k][0], &Vp[k][1], &Vp[k][2], &Wp[k][0], &Wp[k][1], &Wp[k][2]);\
     fscanf(state_file_particles_forces, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &F[k][0], &F[k][1], &F[k][2], &G[k][0], &G[k][1], &G[k][2], &M[k][0], &M[k][1], &M[k][2]);\
-    fscanf(state_file_particles_fluxes, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &Qp[k][0], &Qp[k][1], &Qp[k][2], &Qmp[k][0][0], &Qmp[k][0][1], &Qmp[k][0][2], &Qmp[k][1][0], &Qmp[k][1][1], &Qmp[k][1][2]);\
+    fscanf(state_file_particles_fluxes, "%lf %lf %lf %lf %lf %lf %lf %lf %lf", &QQ[k][0], &QQ[k][1], &QQ[k][2], &PP[k][0][0], &PP[k][0][1], &PP[k][0][2], &PP[k][1][0], &PP[k][1][1], &PP[k][1][2]);\
 }\
 fclose(state_file);\
 fclose(state_file_U); fclose(state_file_Aold);\
@@ -273,7 +395,7 @@ for(int k=0; k<Np; k++) {\
     fprintf(state_file_particles, "%3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \n", xg[k], yg[k], rp[k], Tp[k], Cp[k][0], Cp[k][1]);\
     fprintf(state_file_particles_velocities, "%3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \n", Up[k][0], Up[k][1], Up[k][2], Vp[k][0], Vp[k][1], Vp[k][2], Wp[k][0], Wp[k][1], Wp[k][2]);\
     fprintf(state_file_particles_forces, "%3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \n", F[k][0], F[k][1], F[k][2], G[k][0], G[k][1], G[k][2], M[k][0], M[k][1], M[k][2]);\
-    fprintf(state_file_particles_fluxes, "%3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \n", Qp[k][0], Qp[k][1], Qp[k][2], Qmp[k][0][0], Qmp[k][0][1], Qmp[k][0][2], Qmp[k][1][0], Qmp[k][1][1], Qmp[k][1][2]);\
+    fprintf(state_file_particles_fluxes, "%3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \t %3.13e \n", QQ[k][0], QQ[k][1], QQ[k][2], PP[k][0][0], PP[k][0][1], PP[k][0][2], PP[k][1][0], PP[k][1][1], PP[k][1][2]);\
 }\
 fclose(state_file);\
 fclose(state_file_U); fclose(state_file_Aold);\
@@ -317,3 +439,4 @@ printf("An error occured in writeFile : invalid file pointer.\n");\
 }
 
 #endif
+

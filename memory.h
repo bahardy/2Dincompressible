@@ -26,8 +26,8 @@ double** I_V = make2DDoubleArray(m,n);\
 double** M = make2DDoubleArray(Np,3);\
 double** P = make2DDoubleArray(m,n);\
 double** phi = make2DDoubleArray(m,n);\
-double** Qp = make2DDoubleArray(Np,3);\
-double*** Qmp = make3DDoubleArray(Np, Ns, 3); \
+double** Q = make2DDoubleArray(Np,3);\
+double*** Phi = make3DDoubleArray(Np, Ns, 3); \
 double** R = make2DDoubleArray(m,n);\
 double** T = make2DDoubleArray(m,n);\
 double** Told = make2DDoubleArray(m,n);\
@@ -47,6 +47,12 @@ double* F_lift = make1DDoubleArray(Np);\
 double* Torque = make1DDoubleArray(Np);\
 double* Q_heat = make1DDoubleArray(Np);\
 double* Phi_species = make1DDoubleArray(Np);\
+double* dudt = make1DDoubleArray(Np); \
+double* dvdt = make1DDoubleArray(Np); \
+double* dwdt = make1DDoubleArray(Np); \
+double* dTdt = make1DDoubleArray(Np); \
+double* dCdt = make1DDoubleArray(Np,Ns);\
+
 
 #define FREE_MEMORY \
 for(int s=0; s<Ns; s++){\
@@ -64,15 +70,15 @@ for(int k=0; k<Np; k++){ \
         free(Ip_S[k][i]); free(Ip_U[k][i]); free(Ip_V[k][i]);\
     }\
     for(int s=0; s<Ns; s++){\
-        free(Qmp[k][s]); \
+        free(Phi[k][s]); \
     }\
 }\
 for(int k=0; k<Np; k++){ \
     free(Ip_S[k]); free(Ip_U[k]); free(Ip_V[k]);\
     free(Up[k]); free(Vp[k]); free(Wp[k]);\
     free(F[k]); free(G[k]); free(M[k]); \
-    free(Qp[k]); free(Qmp[k]);\
-    free(Cp[k]);\
+    free(Q[k]); free(Phi[k]);\
+    free(Cp[k]); free(dCdt[k]);\
 }\
 \
 for(int i=0; i<m; i++){\
@@ -101,5 +107,6 @@ free(Qp); free(Qmp);\
 free(R);\
 free(xg); free(yg); free(Sp); free(rp); free(dp); free(II);\
 free(F_drag); free(F_lift); free(Torque); free(Q_heat); free(Phi_species);\
+free(dudt); free(dvdt); free(dwdt); free(dTdt); free(dCdt); 
 
 #endif // MEMORY_H_INCLUDED
