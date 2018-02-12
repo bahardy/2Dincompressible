@@ -91,6 +91,7 @@ static double dH; // kJ/mol
 /* FLOW */
 static double Rp;
 static double Um;
+static double Umax; 
 static int Np;
 static int Ns;
 

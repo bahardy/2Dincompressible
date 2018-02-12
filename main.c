@@ -58,6 +58,7 @@ int main(int argc, char *argv[]){
     /* FLOW */
     Rp = 100.;
     Um = 1.; 
+    Umax = 1.5*Um;  
     nu = Um*Dp/Rp;
     Tm0 = 100. + 273.15; // cup-mixing temperature at the inlet
     Tp0 = 20. + 273.15;
@@ -78,9 +79,10 @@ int main(int argc, char *argv[]){
     h = d/N;
     
     /* TIME INTEGRATION */
-    double CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
+    double CFL = .1; /*Courant-Freidrichs-Lewy condition on convective term */
     double r = .25; /* Fourier condition on diffusive term */
-    double dt_CFL = CFL*h/Um;
+    double dt_CFL = CFL*h/Umax;
+    //double dt = CFL*h/Um; 
     double dt_diff = r*h*h/nu;
     dt = fmin(dt_CFL, dt_diff);
     double ratio_dtau_dt = 1e-2;
@@ -93,7 +95,8 @@ int main(int argc, char *argv[]){
         printf("Um = %f\n", Um);
         printf("dt_CFL = %f\n", dt_CFL);
         printf("dt_diff = %f\n", dt_diff);
-        printf("CFL condition set to %f h/Um \n", CFL);
+        //printf("CFL condition set to %f h/Um \n", CFL);
+	printf("CFL condition set to %f h/Umax \n", CFL);
         printf("dt = %f\n", dt);
         printf("dtau = %f\n", dtau);
         printf("ratio dtau/dt = %f \n", ratio_dtau_dt);
@@ -184,8 +187,13 @@ int main(int argc, char *argv[]){
         /* VELOCITY : horizontal flow Um  */
         for(int i=0; i<m; i++){
             for(int j=0; j<n; j++){
+		double y_ch = (j-0.5)*h - H;
+		U[i][j] = Umax*(1.-(y_ch/H)*(y_ch/H));
+#ifdef SLIP
                 U[i][j] = Um; /*Plug-Flow*/
+#endif
                 Ustar[i][j] = U[i][j];
+
                 Told[i][j] = Tm0;
             }
         }
@@ -610,12 +618,16 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
     for (int i=0; i<m; i++){
         /* On U */
         /* Bottom Wall : slip : du/dn= 0 */
+#ifdef SLIP 
         U[i][0] = U[i][1];
+#endif 
 	/*No-slip (channel) */
-        // U[i][0] = -0.2*(U[i][3] - 5.*U[i][2] + 15.*U[i][1]); 
+         U[i][0] = -0.2*(U[i][3] - 5.*U[i][2] + 15.*U[i][1]); 
 	/* Top Wall : slip : du/dn = 0  */
+#ifdef SLIP 
         U[i][n-1] = U[i][n-2];
-        // U[i][n-1] = -0.2*(U[i][n-4] - 5.*U[i][n-3] + 15.*U[i][n-2]);
+#endif 
+        U[i][n-1] = -0.2*(U[i][n-4] - 5.*U[i][n-3] + 15.*U[i][n-2]);
         
 	/* On P, T, C */
         /* Walls : dpdn = 0 */
@@ -806,7 +818,10 @@ void get_Ustar(double** U, double** Ustar, double** V, double** A, double** Aold
     }
     /*Outflow condition */
     for (int j=1; j<n-1; j++){
-        Ustar[m-2][j] = U[m-2][j] - dt*Um*(U[m-2][j]-U[m-3][j])/h;
+	    double y_ch = (j-0.5)*h - H; /*y_ch : channel definition of y-coord.  */
+	    double Upoiseuille = Umax*(1.-(y_ch/H)*(y_ch/H));
+
+	    Ustar[m-2][j] = U[m-2][j] - dt*Upoiseuille*(U[m-2][j]-U[m-3][j])/h;
     }
     /*Ustar[0][j] (inflow) is fixed once for all at the beginning */
 }
@@ -1088,9 +1103,13 @@ void update_flow(double** U, double** V, double** P, double** Ustar, double** Vs
         /* Last value of j is n-2 */
         U[i][j] = Ustar[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
         P[i][j] += phi[i][j];
-        
-        V[i][0] = (4.*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
+      
+	V[i][0] = 0; 
+	V[i][n-2] = 0; 
+#ifdef SLIP
+       	V[i][0] = (4.*V[i][1]-V[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
         V[i][n-2] = (4.*V[i][n-3]-V[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
+#endif
     }
 }
 
