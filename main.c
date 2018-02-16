@@ -629,10 +629,6 @@ void get_ghosts(double** U, double** V, double** P, double** Told, double*** Col
 #endif 
         U[i][n-1] = -0.2*(U[i][n-4] - 5.*U[i][n-3] + 15.*U[i][n-2]);
         
-	/* On P, T, C */
-        /* Walls : dpdn = 0 */
-        //P[i][0] = P[i][1];
-        //P[i][n-1] = P[i][n-2];
         
 #ifdef TEMP
         /* Walls : adiabatic: dTdn = 0, no mass flux */
@@ -820,7 +816,6 @@ void get_Ustar(double** U, double** Ustar, double** V, double** A, double** Aold
     for (int j=1; j<n-1; j++){
 	    double y_ch = (j-0.5)*h - H; /*y_ch : channel definition of y-coord.  */
 	    double Upoiseuille = Umax*(1.-(y_ch/H)*(y_ch/H));
-
 	    Ustar[m-2][j] = U[m-2][j] - dt*Upoiseuille*(U[m-2][j]-U[m-3][j])/h;
     }
     /*Ustar[0][j] (inflow) is fixed once for all at the beginning */
@@ -893,6 +888,9 @@ void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, in
     MPI_Status status[3];
     
     /* Create the Laplacian matrix : A  */
+
+    /* CAREFUL : this implementation of POISSON solver is only valid with no-slip boundary condition : V = U = 0 at the walls */ 
+
     MatCreate( PETSC_COMM_WORLD, &A );
     MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, M*N, M*N);
     //MatSetType(A, MATMPIAIJ);
