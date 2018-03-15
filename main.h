@@ -13,271 +13,185 @@
 #include <math.h>
 #include <petsc.h>
 #include <petscksp.h>
-#include <petscvec.h>
-#include <petscmat.h>
-#include <petscsys.h>
 
 /*--------------------------------------------------------*/
+
+typedef struct Data Data;
+struct Data{
+    /*Dimensions*/
+    double Dp;
+    double eps;
+    double a;
+    double b;
+    double d;
+    double H;
+    double L;
+    int ratio_L_d;
+
+
+    /*Physical parameters */
+    double nu;
+    double rho_p, rho_f, rho_r;
+    double cp, cf, cr;
+    double Rep;
+    double Red;
+    double Pr;
+    double Sc;
+    double Le;
+    double Fr;
+    double alpha_f;
+    double* Df;
+    double dH; // kJ/mol
+
+    /*Flow */
+    double u_m; // Mean streamwise velocity
+    double u_max; // Max Poiseuille velocity
+    int Np; // Number of particles
+    int Ns; // Number of species
+    double Tm0; // Initial fluid temperature
+    double Tp0; // Initial particle temperature
+    double CA0; // Inlet A concentration
+    double CB0; // Inlet B concentration
+
+    /*Grid */
+    int M;
+    int N;
+    int m;
+    int n;
+    double h;
+
+    /*Time integration */
+    double CFL;
+    double r;
+    double ramp;
+    int Kmax;
+    int nKmax;
+    double t_move;
+    double dt;
+    double dtau;
+    double ratio_dtau_dt;
+    double Tf;
+    int iter;
+    double Reh_max;
+    double Reh_omega_max;
+
+    /*Writings */
+    int T_write;
+    int N_write;
+
+    /*Fields*/
+    double** coloring;
+    double*** C;
+    double* C0;
+    double*** C_old;
+    double*** Cs;
+    double** Cp;
+    double* dudt;
+    double* dvdt;
+    double* domegadt;
+    double* dTdt;
+    double** dCdt;
+    double** F;
+    double* Fx;
+    double* Fy;
+    double** G;
+    double* II;
+    double* J;
+    double*** Ip_S;
+    double*** Ip_U;
+    double*** Ip_V;
+    double** I_S;
+    double** I_U;
+    double** I_V;
+    double** Mz;
+
+    double** P;
+    double** phi;
+    double** Phi;
+    double*** PP;
+
+    double* Q;
+    double** QQ;
+    double** Qr;
+    double* rp;
+
+    double** Reh;
+    double** Reh_omega;
+    double* Sp;
+    double* theta;
+
+    double** T_n;
+    double** T_n_1;
+    double* Tp;
+    double** Ts;
+
+    double* Tz;
+
+    double** u_n;
+    double** u_n_1;
+    double** Up;
+    double** u_s;
+    double** u_star;
+
+    double** v_n;
+    double** v_n_1;
+    double** Vp;
+    double** v_s;
+    double** v_star;
+
+    double** omega;
+
+    double** Omega_p;
+    double* xg;
+    double* yg;
+    double* dp;
+};
+
+
 /* FUNCTIONS PROTOTYPES */
 /*--------------------------------------------------------*/
 
 /* FUNCTIONS TO SOLVE THE FLOW */
-void compute_forces(double* Fx, double* Fy, double* Tz, double** F, double** G, double** M,
-                    double* dudt, double* dvdt, double* dwdt, double* Sp, double* II,  int k);
-void compute_fluxes(double* Q, double** Phi, double** QQ, double*** PP,
-                    double* dTdt, double** dCdt, double* Sp, int k);
-void compute_Qr(double** Qr, double*** PP, int k);
-int integrate_penalization(double** F, double** G, double** M, double** QQ, double*** PP,
-                           double*** Ip_U, double*** Ip_V, double*** Ip_S, double** U,
-                           double** V, double** T, double*** C, double** Us, double** Vs,double** Ts, double*** Cs,
-                           double* xg, double* yg, double* rp, double* Sp, double* II, int k, double* surf);
-void get_ghosts(double** U, double** V, double** P, double** Told, double*** Cold, double CA0, double CB0);
-void get_masks(double*** Ip_S, double*** Ip_U, double*** Ip_V, double** I_S, double** I_U, double** I_V,
-               double* xg, double* yg, double* rp, double* theta, double** coloring);
-void get_Cs(double*** Cs, double*** Ip_S, double** Cp);
-void get_Ts(double** Ts, double*** Ip_S, double* Tp);
-void get_Us_Vs(double** Us, double** Vs, double*** Ip_U, double*** Ip_V, double** Up, double** Vp, double** Wp, double* xg, double* yg);
-void get_Ustar(double** U, double** Ustar, double** V, double** A, double** Aold, double** Us, double** P, double** I_U, double ramp);
-void get_Ustar_EE(double** U, double** Ustar, double** V, double** Aold, double** Us, double** P, double** I_U, double ramp);
-void get_Vstar(double** V, double** Vstar, double** U, double** B, double** Bold, double** Vs, double** P, double** I_V, double ramp);
-void get_Vstar_EE(double** V, double** Vstar, double** U, double** Bold, double** Vs, double** P, double** I_V, double ramp);
-void old_poisson_solver(double** Ustar, double** Vstar, double **phi, double** R);
-void poisson_solver(double** Ustar, double** Vstar, double **phi, int myrank, int nbproc);
-void reset_phi(double** phi);
-void update_flow(double** U, double** V, double** P, double** Ustar, double** Vstar, double** phi);
-void update_temp_species(double** U, double** V,  double** T, double** Told, double** Ts, double** C_T, double** C_Told, double*** C, double*** Cold, double*** Cs, double*** C_C, double*** C_Cold, double** I_S, double ramp);
-void update_temp_species_EE(double** U, double** V, double** T, double** Told, double** Ts, double** C_Told, double*** C, double*** Cold, double*** Cs, double*** C_Cold, double** I_S, double ramp);
-void update_Xp(double* xg, double* yg, double* theta, double** Up, double** Vp, double** Wp,  int k);
-void update_Up(double** Up, double** Vp, double** Wp, double* dudt, double* dvdt, double* dwdt, double** F, double** G, double** M, double* II, double* Sp, int k);
-void update_Tp(double* Tp, double* dTdt, double** QQ, double** Qr, double* Sp, int k);
-void update_Cp(double** Cp, double** dCdt, double*** PP, int k);
+void compute_forces_fluxes(Data *data,  int k);
+void compute_Qr(double** Qr, double rate, double dH, int k);
+void diagnostic(Data* data);
+int integrate_penalization(Data *data, double* surf, int k);
+void get_ghosts(Data* data, double T0, double* C0);
+void get_masks(Data* data);
+void get_Cs(Data* data);
+void get_Ts(Data* data);
+void get_Us_Vs(Data* data);
+void get_Ustar_Vstar(Data* data, double ramp);
+void get_Ustar_Vstar_EE(Data* data, double ramp);
+PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc);
+void update_flow(Data* data);
+void update_temp_species(Data* data, double ramp);
+void update_temp_species_EE(Data* data, double ramp);
+void update_Xp(Data* data, int k);
+void update_Up(Data* data, int k);
+void update_Tp(Data* data,int k);
+void update_Cp(Data* data, int k);
 
 /* SOME HELPFUL FUNCTIONS */
 void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
+void writeData(FILE* fichier_data, Data data);
 double* make1DDoubleArray(int arraySize);
 double** make2DDoubleArray(int arraySizeX, int arraySizeY);
 double*** make3DDoubleArray(int numberOfparticles, int arraySizeX, int arraySizeY);
-int** make2DIntArray(int arraySizeX, int arraySizeY);
-int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY);
+/*int** make2DIntArray(int arraySizeX, int arraySizeY);
+int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY); */
+void free2Darray(double** array, int dim1);
+void free3Darray(double*** array, int dim1, int dim2);
 
 
-
-/*--------------------------------------------------------*/
-/* DATA */
-/*--------------------------------------------------------*/
-/*GLOBAL VARIABLE*/
-/* DIMENSIONS */
-static double Dp;
-static double a;
-static double b;
-static double d;
-static double H;
-static double L;
-static int ratio_L_d;
-static int ratio_d_Dp;
-static int ratio_Dp_h;
-
-/* PHYSICAL PARAMETERS */
-static double nu;
-static double rho_p, rho_f, rho_r;
-static double cp, cf, cr;
-static double Pr;
-static double Sc; 
-static double Le; 
-static double alpha_f;
-static double* Df;
-static double dH; // kJ/mol
-
-/* FLOW */
-static double Rp;
-static double Um;
-static double Umax; 
-static int Np;
-static int Ns;
-
-/* TEMPERATURE PARAMETERS */
-static double Tm0;
-static double Tp0;
-
-
-/* GRID */
-static int M;
-static int N;
-static int m;
-static int n;
-static double h;
-
-/* TIME INTEGRATION */
-static double t_move;
-static double dt;
-static double dtau;
-
-/* GAUSS_SEIDEL ALGORITHME */
+/*  // GAUSS-SEIDEL ALGORITHM
+void old_poisson_solver(double** Ustar, double** Vstar, double **phi, double** R);
+void reset_phi(double** phi);
 double SORtol = 1e-6;
 int SORitermax = (int) 1e6;
-double alpha = 1.98;
-
-/** -------------MEMORY RELATED MACRO ----------------**/
-
-#define MEMORY_ALLOCATION \
-double** A = make2DDoubleArray(m,n);\
-double** Aold = make2DDoubleArray(m,n);\
-double** B = make2DDoubleArray(m,n);\
-double** Bold = make2DDoubleArray(m,n);\
-double*** C = make3DDoubleArray(Ns,m,n);\
-double*** Cold = make3DDoubleArray(Ns,m,n); \
-double*** Cs = make3DDoubleArray(Ns,m,n); \
-double** Cp = make2DDoubleArray(Np,Ns); \
-double** C_T = make2DDoubleArray(m,n);\
-double** C_Told = make2DDoubleArray(m,n);\
-double*** C_C = make3DDoubleArray(Ns,m,n); \
-double*** C_Cold = make3DDoubleArray(Ns,m,n); \
-double** F = make2DDoubleArray(Np,3);\
-double** G = make2DDoubleArray(Np,3);\
-double*** Ip_S = make3DDoubleArray(Np,m,n);\
-double*** Ip_U = make3DDoubleArray(Np,m,n);\
-double*** Ip_V = make3DDoubleArray(Np,m,n);\
-double** I_S = make2DDoubleArray(m,n);\
-double** coloring = make2DDoubleArray(m,n);\
-double** I_U = make2DDoubleArray(m,n);\
-double** I_V = make2DDoubleArray(m,n);\
-double** M = make2DDoubleArray(Np,3);\
-double** P = make2DDoubleArray(m,n);\
-double** phi = make2DDoubleArray(m,n);\
-double** QQ = make2DDoubleArray(Np,3);\
-double** Qr = make2DDoubleArray(Np,3);\
-double*** PP = make3DDoubleArray(Np, Ns, 3); \
-double** R = make2DDoubleArray(m,n);\
-double** T = make2DDoubleArray(m,n);\
-double** Told = make2DDoubleArray(m,n);\
-double* Tp = make1DDoubleArray(Np);\
-double** Ts = make2DDoubleArray(m,n); \
-double** U = make2DDoubleArray(m,n);\
-double** Up = make2DDoubleArray(Np,4);\
-double** Us = make2DDoubleArray(m,n);\
-double** Ustar = make2DDoubleArray(m,n);\
-double** V = make2DDoubleArray(m,n);\
-double** Vp = make2DDoubleArray(Np,4);\
-double** Vs = make2DDoubleArray(m,n);\
-double** Vstar = make2DDoubleArray(m,n);\
-double** Wp = make2DDoubleArray(Np,4);\
-double* Fx = make1DDoubleArray(Np);\
-double* Fy = make1DDoubleArray(Np);\
-double* Tz = make1DDoubleArray(Np);\
-double* Q = make1DDoubleArray(Np);\
-double** Phi = make2DDoubleArray(Np,Ns);\
-double* dudt = make1DDoubleArray(Np); \
-double* dvdt = make1DDoubleArray(Np); \
-double* dwdt = make1DDoubleArray(Np); \
-double* dTdt = make1DDoubleArray(Np); \
-double** dCdt = make2DDoubleArray(Np,Ns);\
+double alpha = 1.98;*/
 
 
-#define FREE_MEMORY \
-for(int s=0; s<Ns; s++){\
-    for(int i=0; i<m; i++){ \
-        free(C[s][i]); free(Cold[s][i]); free(Cs[s][i]); \
-        free(C_C[s][i]); free(C_Cold[s][i]);\
-    }\
-}\
-for(int s=0; s<Ns; s++){\
-    free(C[s]); free(Cold[s]); free(Cs[s]);\
-    free(C_C[s]); free(C_Cold[s]);\
-}\
-for(int k=0; k<Np; k++){ \
-    for(int i=0; i<m; i++){ \
-        free(Ip_S[k][i]); free(Ip_U[k][i]); free(Ip_V[k][i]);\
-    }\
-    for(int s=0; s<Ns; s++){\
-        free(PP[k][s]); \
-    }\
-}\
-for(int k=0; k<Np; k++){ \
-    free(Ip_S[k]); free(Ip_U[k]); free(Ip_V[k]);\
-    free(Up[k]); free(Vp[k]); free(Wp[k]);\
-    free(F[k]); free(G[k]); free(M[k]); \
-    free(QQ[k]); free(Qr[k]); free(PP[k]);\
-    free(Cp[k]); free(dCdt[k]); free(Phi[k]);\
-}\
-\
-for(int i=0; i<m; i++){\
-    free(I_S[i]); free(I_U[i]); free(I_V[i]); free(coloring[i]);  \
-    free(U[i]); free(Ustar[i]); free(V[i]); free(Vstar[i]);\
-    free(A[i]); free(Aold[i]); free(B[i]); free(Bold[i]);\
-    free(C_T[i]); free(C_Told[i]); free(Told[i]); \
-    free(Us[i]); free(Vs[i]); free(Ts[i]);\
-    free(P[i]); free(phi[i]); free(T[i]);\
-    free(R[i]);\
-}\
-\
-free(F); free(G); free(M);\
-free(Ip_S); free(Ip_U); free(Ip_V);\
-free(I_S); free(I_U); free(I_V); free(coloring); \
-free(U); free(V); free(Ustar); free(Vstar);\
-free(A); free(Aold); free(B); free(Bold);\
-free(C); free(Cold); free(Cs); free(Cp); \
-free(C_C); free(C_Cold);\
-free(C_T); free(C_Told); \
-free(Df); \
-free(Us); free(Vs); \
-free(Up); free(Vp); free(Wp); free(Tp); \
-free(P); free(phi); free(T); free(Ts); free(Told);  \
-free(QQ); free(PP);\
-free(R);\
-free(xg); free(yg); free(Sp); free(rp); free(dp); free(II);\
-free(Fx); free(Fy); free(Tz); free(Q); free(Phi);\
-free(dudt); free(dvdt); free(dwdt); free(dTdt); free(dCdt);
-
-
-/** -------------FILES RELATED MACRO ----------------**/ 
-
-#define CLOSE_FILES \
-fclose(fichier_position); \
-fclose(fichier_forces); \
-fclose(fichier_fluxes); \
-fclose(fichier_U);\
-fclose(fichier_phi);\
-fclose(fichier_V);\
-fclose(fichier_P);\
-fclose(fichier_T);\
-fclose(fichier_CA);\
-fclose(fichier_CB); \
-fclose(fichier_data);\
-fclose(fichier_mask);\
-fclose(fichier_Tp);\
-fclose(fichier_surface);\
-
-#define DEFINE_FILES \
-FILE* fichier_position = NULL; \
-FILE* fichier_forces = NULL; \
-FILE* fichier_fluxes = NULL; \
-FILE* fichier_U = NULL; \
-FILE* fichier_V = NULL; \
-FILE* fichier_P = NULL; \
-FILE* fichier_T = NULL; \
-FILE* fichier_Tp = NULL; \
-FILE* fichier_CA = NULL; \
-FILE* fichier_CB = NULL; \
-FILE* fichier_data = NULL; \
-FILE* fichier_mask = NULL; \
-FILE* fichier_surface = NULL;\
-FILE* fichier_phi = NULL;\
-
-#define OPEN_FILES \
-fichier_position = fopen("position.txt","w");\
-fichier_forces = fopen("forces.txt","w");\
-fichier_fluxes = fopen("fluxes.txt", "w"); \
-fichier_U = fopen("U.txt","w"); \
-fichier_V = fopen("V.txt","w"); \
-fichier_P = fopen("P.txt", "w"); \
-fichier_T = fopen("T.txt", "w"); \
-fichier_Tp = fopen("Tp.txt", "w"); \
-fichier_CA = fopen("CA.txt", "w"); \
-fichier_CB = fopen("CB.txt", "w"); \
-fichier_data = fopen("data.txt", "w"); \
-fichier_mask = fopen("mask.txt", "w"); \
-fichier_surface = fopen("surface.txt", "w"); \
-fichier_phi = fopen("phi.txt", "w");\
 
 #define OPEN_STATE \
 FILE* state_file = NULL;\
@@ -414,33 +328,32 @@ fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);
 
 #define WRITE_DATA \
 if (fichier_data != NULL){\
-fprintf(fichier_data,"d\t %f\n",d);\
-fprintf(fichier_data,"H\t %f\n",H);\
-fprintf(fichier_data,"ratio_L_d\t %d\n",ratio_L_d);\
-fprintf(fichier_data,"nu\t %1.8f\n",nu);\
-fprintf(fichier_data,"rho_p\t %f\n",rho_p);\
-fprintf(fichier_data,"rho_f\t %f\n",rho_f);\
-fprintf(fichier_data,"Um\t %f\n", Um); \
-fprintf(fichier_data,"dt\t %f\n", dt); \
-fprintf(fichier_data,"dtau\t %f\n", dtau); \
-fprintf(fichier_data,"n\t %d\n",n);\
-fprintf(fichier_data,"m\t %d\n",m);\
-fprintf(fichier_data,"h\t %f\n",h);\
-fprintf(fichier_data,"Kmax\t %d\n", Kmax);\
-fprintf(fichier_data,"nKmax\t %d\n", nKmax);\
-fprintf(fichier_data,"Nwrite\t %d\n", N_write);\
-fprintf(fichier_data,"Twrite\t %d\n", T_write);\
-fprintf(fichier_data,"Tf\t %f\n", Tf);\
-fprintf(fichier_data, "Np \t %d \n", Np); \
-fprintf(fichier_data, "Ns \t %d \n", Ns); \
-fprintf(fichier_data, "Tm0 \t %f \n", Tm0); \
-fprintf(fichier_data, "Tp0 \t %f \n", Tp0); \
-fprintf(fichier_data, "Dp \t %f \n", Dp); \
+fprintf(fichier_data,"d\t %f\n",data.d);\
+fprintf(fichier_data,"H\t %f\n",data.H);\
+fprintf(fichier_data,"ratio_L_d\t %d\n",data.ratio_L_d);\
+fprintf(fichier_data,"nu\t %1.8f\n",data.nu);\
+fprintf(fichier_data,"rho_p\t %f\n",data.rho_p);\
+fprintf(fichier_data,"rho_f\t %f\n",data.rho_f);\
+fprintf(fichier_data,"u_m\t %f\n", data.u_m); \
+fprintf(fichier_data,"dt\t %f\n", data.dt); \
+fprintf(fichier_data,"dtau\t %f\n", data.dtau); \
+fprintf(fichier_data,"n\t %d\n",data.n);\
+fprintf(fichier_data,"m\t %d\n",data.m);\
+fprintf(fichier_data,"h\t %f\n",data.h);\
+fprintf(fichier_data,"Kmax\t %d\n", data.Kmax);\
+fprintf(fichier_data,"nKmax\t %d\n", data.nKmax);\
+fprintf(fichier_data,"Nwrite\t %d\n", data.N_write);\
+fprintf(fichier_data,"Twrite\t %d\n", data.T_write);\
+fprintf(fichier_data,"Tf\t %f\n", data.Tf);\
+fprintf(fichier_data, "Np \t %d \n", data.Np); \
+fprintf(fichier_data, "Ns \t %d \n", data.Ns); \
+fprintf(fichier_data, "Tm0 \t %f \n", data.Tm0); \
+fprintf(fichier_data, "Tp0 \t %f \n", data.Tp0); \
+fprintf(fichier_data, "Dp \t %f \n", data.Dp); \
 fflush(fichier_data);\
 }\
 else{\
 printf("An error occured in writeFile : invalid file pointer.\n");\
 }
-
 #endif
 
