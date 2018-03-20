@@ -18,7 +18,7 @@
 #define WRITE
 #define DISK
 #define SLIP
-#define SMOOTHING
+//#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
 
     struct stat st = {0};
     if (stat("results", &st) == -1) {
-        mkdir("results", 0700);
+   	 mkdir("results", 0700);
     }
 
 
@@ -41,9 +41,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 10.;
+    data.d = 30.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 1.*data.d;
+    data.L = 30.*data.Dp;
 
     data.h = data.Dp/30;
     data.eps = 4.*data.h;
@@ -91,12 +91,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .01; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-6;
+    data.ratio_dtau_dt = 1;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -119,8 +119,8 @@ int main(int argc, char *argv[]){
         sscanf(argv[2], "%d", &(data.N_write));
     }
     else{
-        data.T_write = 100; /* number of time steps between two writings */
-        data.N_write = 20; /* number of times we write in files */
+        data.T_write = 30; /* number of time steps between two writings */
+        data.N_write = 100; /* number of times we write in files */
     }
 
 
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]){
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
 
-    double y_ch;
+    //double y_ch;
     /* VELOCITY : horizontal flow Um  */
     for(int i=0; i<m; i++){
         for(int j=0; j<n; j++){
@@ -257,19 +257,23 @@ int main(int argc, char *argv[]){
     /** ----- BOUNDARY CONDITION -----------**/
     for(int j=1; j<n-1; j++) {
 
-#ifndef SLIP
-        y_ch = (j-0.5)*data.h - data.H;
-        data.u_n[0][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-        data.u_n_1[0][j] = data.u_n[0][j];
-        data.u_star[0][j] = data.u_n[0][j];
-#endif
+//#ifndef SLIP
+//        y_ch = (j-0.5)*data.h - data.H;
+//        data.u_n[0][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
+//        data.u_n_1[0][j] = data.u_n[0][j];
+//        data.u_star[0][j] = data.u_n[0][j];
+//#endif
     }
 
     // Ghost point for u_n_1 (first time EE)
     for (int i=0; i<m; i++) {
+#ifdef SLIP
+	// slip walls : dudn = 0
         data.u_n_1[i][0] = data.u_n_1[i][1];
         data.u_n_1[i][n-1] = data.u_n_1[i][n-2];
+#endif
 #ifndef SLIP
+	// no-slip walls : u = 0 
         data.u_n_1[i][0] = -0.2 *(data.u_n_1[i][3] - 5. * data.u_n_1[i][2] + 15. * data.u_n_1[i][1]);
         data.u_n_1[i][n - 1] = -0.2 * (data.u_n_1[i][n - 4] - 5. * data.u_n_1[i][n - 3] + 15. * data.u_n_1[i][n - 2]);
 #endif
@@ -289,31 +293,10 @@ int main(int argc, char *argv[]){
     fclose(fichier_data);
 
     FILE* fichier_stat = fopen("results/stats.txt", "w");
-    FILE* fichier_forces = fopen("results/forces", "w");
-    FILE* fichier_fluxes = fopen("results/fluxes", "w");
-    FILE* fichier_particle = fopen("results/particle", "w");
+    FILE* fichier_forces = fopen("results/forces.txt", "w");
+    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
+    FILE* fichier_particle = fopen("results/particle.txt", "w");
 
-//    /** ------------------------- FIRST STEP WITH EULER EXPLICIT SCHEME --------------------------- **/
-//
-//    /* GET MASK FUNCTIONS */
-//    get_masks(&data);
-//
-//    /* Initialize solid temperature and field based on initial particle temperature/species concentration */
-//#ifdef TEMP
-//    get_Ts(&data);
-//#endif
-//    /* Get Ghost points */
-//    get_ghosts(&data, data.Tm0, data.C0); // C0 is initially {0, 0}
-//
-//    /* Solve the flow */
-//    get_Ustar_Vstar_EE(&data, 0);
-//    poisson_solver(&data, rank, nbproc);
-//    update_flow(&data);
-//
-//    /* Solve temperature and species */
-//#ifdef TEMP
-//    update_temp_species_EE(&data, ramp);
-//#endif
 
     /** ------------------------------- RAMPING ------------------------------- **/
 
@@ -338,7 +321,6 @@ int main(int argc, char *argv[]){
         get_ghosts(&data, data.Tm0, data.C0);
         get_Ustar_Vstar(&data, data.ramp);
         poisson_solver(&data, rank, nbproc);
-        //old_poisson_solver(u_star, v_star, phi, R);
         update_flow(&data);
 #ifdef TEMP
         update_temp_species(&data, ramp);
@@ -417,7 +399,7 @@ int main(int argc, char *argv[]){
         poisson_solver(&data, rank, nbproc);
         clock_t t_final = clock();
         double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
-        PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
+        PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
 
         update_flow(&data);
         diagnostic(&data);
@@ -984,7 +966,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     int m = data->m;
     int n = data->n;
     double h = data->h;
-    double H = data->H;
+    //double H = data->H;
     double nu = data->nu;
 
     double** I_U = data->I_U;
@@ -1003,14 +985,14 @@ void get_Ustar_Vstar(Data* data, double ramp)
     double** P = data->P;
 
     double Umax = data->u_max;
-    //double Um = data->Um;
+    double Um = data->u_m;
 
     double Uij, Vij, Uij_old, Vij_old;
     double H_U, H_U_old;
     double H_V, H_V_old;
     double lapU, lapV;
     double dpdx, dpdy;
-    double Upoiseuille, y_ch;
+    //double Upoiseuille, y_ch;
 
 
     /* u_star ADAMS-BASHFORTH 2 */
@@ -1038,9 +1020,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     }
     /*Outflow condition */
     for (j=1; j<n-1; j++){
-        y_ch = (j-0.5)*h - H; /*y_ch : channel definition of y-coord.  */
-        Upoiseuille = Umax * (1.-(y_ch/H)*(y_ch/H));
-        u_star[m-2][j] = u_n[m-2][j] - dt*Upoiseuille*(u_n[m-2][j]-u_n[m-3][j])/h;
+        u_star[m-2][j] = u_n[m-2][j] - dt*Um*(u_n[m-2][j]-u_n[m-3][j])/h;
     }
     /*u_star[0][j] (inflow) is fixed once for all at the beginning */
 
@@ -1070,76 +1050,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
         free2Darray(v_n_1, m);
     }
 #endif
-}
-
-void get_Ustar_Vstar_EE(Data* data, double ramp)
-{
-
-    double dt = data->dt;
-    double dtau = data->dtau;
-    int m = data->m;
-    int n = data->n;
-    double h = data->h;
-    double H = data->H;
-    double nu = data->nu;
-
-    double** I_U = data->I_U;
-    double** I_V = data->I_V;
-
-    double** u_n = data->u_n;
-    double** u_star = data->u_star;
-    double** u_s = data->u_s;
-
-    double** v_n = data->v_n;
-    double** v_star = data->v_star;
-    double** v_s = data->v_s;
-
-    double** P = data->P;
-
-    double Umax = data->u_max;
-    //double Um = data->Um;
-
-    double Uij, Vij;
-    double H_U;
-    double H_V;
-    double lapU, lapV;
-    double Upoiseuille, y_ch;
-    double dpdx, dpdy;
-
-    /* u_star EULER EXPLICIT */\
-    for (int i=1; i<m-2; i++){
-        for (int j=1; j<n-1; j++){
-            /*only interior points*/
-            /*u_star */
-            Vij = .25*(v_n[i][j]+v_n[i+1][j]+v_n[i][j-1]+v_n[i+1][j-1]); /* average of the four neighbour points */
-            H_U = u_n[i][j]*(u_n[i+1][j]-u_n[i-1][j])/(2.*h) + Vij*(u_n[i][j+1]-u_n[i][j-1])/(2.*h);
-            lapU = (u_n[i+1][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
-            dpdx = (P[i+1][j]-P[i][j])/h;
-
-            u_star[i][j] = (u_n[i][j] + dt*(-H_U - dpdx + nu*lapU + ramp*I_U[i][j]*u_s[i][j]/dtau))/(1.+ramp*I_U[i][j]*dt/dtau);
-        }
-    }
-
-    /*Outflow condition */
-    for (int j=1; j<n-1; j++){
-        y_ch = (j-0.5)*h - H; /*y_ch : channel definition of y-coord.  */
-        Upoiseuille = Umax * (1. - (y_ch / H) * (y_ch / H));
-        u_star[m-2][j] = u_n[m-2][j] - dt*Upoiseuille*(u_n[m-2][j]-u_n[m-3][j])/h;
-    }
-    /*u_star[0][j] (inflow) is fixed once for all at the beginning */
-
-    /* v_star EULER EXPLICIT */
-    for (int i=1; i<m-1; i++){
-        for (int j=1; j<n-2; j++){
-            Uij = .25*(u_n[i][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i-1][j+1]); /* average of the four neighbour points */
-            H_V = Uij*(v_n[i+1][j]-v_n[i-1][j])/(2.*h) + v_n[i][j]*(v_n[i][j+1]-v_n[i][j-1])/(2.*h);
-            lapV = (v_n[i+1][j]+v_n[i-1][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
-            dpdy = (P[i][j+1]-P[i][j])/h;
-
-            v_star[i][j] = (v_n[i][j] + dt*(-H_V - dpdy + nu*lapV + ramp*I_V[i][j]*v_s[i][j]/dtau))/(1.+ramp*I_V[i][j]*dt/dtau);
-        }
-    }
-
 }
 
 
@@ -1173,10 +1083,10 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
     /* Create the Laplacian matrix : A  */
     MatCreate( PETSC_COMM_WORLD, &A );
     MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, M*N, M*N);
-    MatSetType(A, MATSEQAIJ);
-    //MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL);
-    PetscInt nz = 5;
-    MatSeqAIJSetPreallocation(A, nz, NULL);
+    MatSetType(A, MATMPIAIJ);
+    MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL);
+    //PetscInt nz = 5;
+    //MatSeqAIJSetPreallocation(A, nz, NULL);
     //MatSetUp(A);
     //MatSetFromOptions(A);
     //MatSetOption(A, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE);
@@ -1327,58 +1237,6 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
     return ierr;
 }
 
-/*void old_poisson_solver(double** u_star, double** v_star, double **phi, double** R)
-{
-    double e = 0.;
-    int SORiter = 0;
-    do{
-        for (int i=1; i<m-1; i++){
-            for (int j=1; j<n-1; j++){
-                double phistar = .25*(-(h/dt)*(u_star[i][j]-u_star[i-1][j]+v_star[i][j]-v_star[i][j-1])
-                                      + phi[i+1][j] + phi[i-1][j] + phi[i][j+1] + phi[i][j-1]);
-                phi[i][j] = alpha*phistar + (1.-alpha)*phi[i][j];
-            }
-        }
-        //Adapt ghost points on Phi
-        for (int i=1; i<m-1; i++){
-            phi[i][0] = phi[i][1];
-            phi[i][n-1] = phi[i][n-2];
-        }
-
-        // LEFT AND RIGHT
-        for (int j=1; j<n-1; j++){
-            phi[0][j] = phi[1][j];
-            phi[m-1][j] = -phi[m-2][j];
-        }
-
-        double Sum = 0.;
-
-        for (int i=1; i<m-1; i++){
-            for (int j=1; j<n-1; j++){
-                R[i][j] = -(u_star[i][j]-u_star[i-1][j]+v_star[i][j]-v_star[i][j-1])/(h*dt)
-                          +(phi[i+1][j]+phi[i-1][j]+phi[i][j+1]+phi[i][j-1]-4.*phi[i][j])/(h*h);
-                // CACLULER LA SOMME
-                Sum += R[i][j]*R[i][j];
-
-            }
-        }
-
-        e = (h*dt*d/Um)*pow(Sum/(L*d),0.5);
-        SORiter ++;
-    } while (e > SORtol && SORiter < SORitermax);
-    PetscPrintf(PETSC_COMM_WORLD, "e = %1.3e after %d/%d iterations \n",e,SORiter,SORitermax);
-
-}*/
-
-/*void reset_phi(double** phi)
-{
-    for(int i=0; i<m; i++){
-        for(int j=0; j<n; j++){
-            phi[i][j] = 0.;
-        }
-    }
-}*/
-
 
 void update_flow(Data* data) {
 
@@ -1386,7 +1244,7 @@ void update_flow(Data* data) {
     int n = data->n;
     double dt = data->dt;
     double h = data->h;
-    double H = data->H;
+    //double H = data->H;
 
     double **u_new = make2DDoubleArray(m, n);
     double **v_new = make2DDoubleArray(m, n);
@@ -1401,31 +1259,27 @@ void update_flow(Data* data) {
     double** phi = data->phi;
 
     int i, j;
-    double y_ch, u_poiseuille;
+    //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
     for ( j = 0; j < n; j++) {
 #ifndef SLIP
-        y_ch = (j - 0.5) *h - H;
-        u_poiseuille = data->u_max* (1. - (y_ch / H) * (y_ch / H));
-        u_new[0][j] = u_poiseuille;
+        //y_ch = (j - 0.5) *h - H;
+        //u_poiseuille = data->u_max* (1. - (y_ch / H) * (y_ch / H));
+        u_new[0][j] = data->u_m;
 #endif
 #ifdef SLIP
-        u_new[0][j] = 1;
+        u_new[0][j] = data->u_m;
 #endif
     }
-    for (i = 0; i<m; i++)
-    {
-        v_new[i][0] = 0;
-        v_new[i][n-2] = 0;
-    }
 
-    for (i=0; i<m-1; i++){
-        for (j=0; j<n-2; j++) {
+    for (i=1; i<m-1; i++){
+        for (j=1; j<n-2; j++) {
             u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
             v_new[i][j] = v_star[i][j] - dt * (phi[i][j + 1] - phi[i][j]) / h;
             P[i][j] += phi[i][j];
         }
         /* Last value of j is n-2 */
+	// v_new [j-2] = 0 
         u_new[i][j] = u_star[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
         P[i][j] += phi[i][j];
 
@@ -1434,16 +1288,28 @@ void update_flow(Data* data) {
 //        v_new[i][n-2] = (4.*v_n[i][n-3]-v_n[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
 //#endif
     }
-    for(i=0; i<m; i++){
-        omega[i][0] = (v_new[i+1][j] - v_new[i][j])/h; // because dudn = dudy = 0 at the wall
-        omega[i][n-2] = (v_new[i+1][j] - v_new[i][j])/h;
-    }
-    for (i=0; i<m-1; i++){
+    
+    for (i=1; i<m-2; i++){
         for (j=1; j<n-2; j++) {
             omega[i][j] = (v_new[i+1][j] - v_new[i][j])/h - (u_new[i][j+1] - u_new[i][j])/h;
         }
     }
-
+    // One-sided finite diff. 
+    // Inlet and outlet
+    for (j=1; j<n-1; j++){
+	    omega[0][j] = v_new[1][j]/(.5*h)  - (u_new[0][j+1] - u_new[0][j])/h;
+	    omega[m-2][j] =  - (u_new[0][j+1] - u_new[0][j])/h;
+    }
+    for (i=1; i<m-1; i++){
+#ifndef SLIP 
+	    omega[i][0] =  - u_new[i][1]/(.5*h); 
+	    omega[i][n-2] = u_new[i][n-2]/(.5*h); 
+#endif
+#ifdef SLIP 
+	    omega[i][0] = 0;
+	    omega[i][n-2] = 0;
+#endif
+    }	    
     data->u_n_1 = u_n;
     data->u_n = u_new;
     data->v_n_1 = v_n;

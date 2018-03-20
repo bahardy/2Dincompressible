@@ -145,6 +145,10 @@ struct Data{
     double* xg;
     double* yg;
     double* dp;
+
+    double Omega; 
+    double R1; 
+    double R2; 
 };
 
 

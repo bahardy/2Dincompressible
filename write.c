@@ -68,22 +68,28 @@ void writeFields(Data* data, int it)
     int m = data->m; 
     int n = data->n; 
 
-
     FILE* fichier_U = NULL;
     FILE* fichier_V = NULL;
-    FILE* fichier_Vstar = NULL;
-    FILE* fichier_Ustar = NULL;
-    FILE* fichier_Rho = NULL;
+ //   FILE* fichier_Vstar = NULL;
+ //   FILE* fichier_Ustar = NULL;
     FILE* fichier_P = NULL;
+#ifdef TEMP
     FILE* fichier_T = NULL;
     FILE* fichier_YA = NULL;
     FILE* fichier_YB = NULL;
+#endif
     FILE* fichier_Mask = NULL;
     FILE* fichier_Vtx = NULL;
-    FILE* fichier_diagnostic = NULL;
 
     char buffer[10];
     sprintf(buffer, "%d", it);
+
+    char fileMask[30];
+    strcpy(fileMask, "results/Mask");
+    strcat(fileMask, "-");
+    strcat(fileMask, buffer);
+    strcat(fileMask, ".txt");
+    fichier_Mask = fopen(fileMask, "w");
 
     char fileU[30];
     strcpy(fileU, "results/U");
@@ -99,26 +105,20 @@ void writeFields(Data* data, int it)
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
-    char fileV_star[30];
-    strcpy(fileV_star, "results/V_star");
-    strcat(fileV_star, "-");
-    strcat(fileV_star, buffer);
-    strcat(fileV_star, ".txt");
-    fichier_Vstar = fopen(fileV_star, "w");
+//    char fileV_star[30];
+//    strcpy(fileV_star, "results/V_star");
+//    strcat(fileV_star, "-");
+//    strcat(fileV_star, buffer);
+//    strcat(fileV_star, ".txt");
+//    fichier_Vstar = fopen(fileV_star, "w");
 
-    char fileU_star[30];
-    strcpy(fileU_star, "results/U_star");
-    strcat(fileU_star, "-");
-    strcat(fileU_star, buffer);
-    strcat(fileU_star, ".txt");
-    fichier_Ustar = fopen(fileU_star, "w");
+//    char fileU_star[30];
+//    strcpy(fileU_star, "results/U_star");
+//    strcat(fileU_star, "-");
+//    strcat(fileU_star, buffer);
+//    strcat(fileU_star, ".txt");
+//    fichier_Ustar = fopen(fileU_star, "w");
 
-    char fileRho[30];
-    strcpy(fileRho, "results/rho");
-    strcat(fileRho, "-");
-    strcat(fileRho, buffer);
-    strcat(fileRho, ".txt");
-    fichier_Rho = fopen(fileRho, "w");
 
     char fileP[30];
     strcpy(fileP, "results/P");
@@ -133,20 +133,13 @@ void writeFields(Data* data, int it)
     strcat(fileVtx, buffer);
     strcat(fileVtx, ".txt");
     fichier_Vtx = fopen(fileVtx, "w");
-
+#ifdef TEMP
     char fileT[30];
-    strcpy(fileT, "results/T");
+   strcpy(fileT, "results/T");
     strcat(fileT, "-");
     strcat(fileT, buffer);
     strcat(fileT, ".txt");
     fichier_T = fopen(fileT, "w");
-
-    char fileMask[30];
-    strcpy(fileMask, "results/Mask");
-    strcat(fileMask, "-");
-    strcat(fileMask, buffer);
-    strcat(fileMask, ".txt");
-    fichier_Mask = fopen(fileMask, "w");
 
     char fileYA[30];
     strcpy(fileYA, "results/YA");
@@ -161,43 +154,34 @@ void writeFields(Data* data, int it)
     strcat(fileYB, buffer);
     strcat(fileYB, ".txt");
     fichier_YB = fopen(fileYB, "w");
-
-
-//    fprintf(fichier_position, "%3.13e \t %3.13e \t %3.13e \n ", data.xg[0], data.yg[0], data.theta[0]);
-//    fflush(fichier_position);
-//    fprintf(fichier_forces, "%3.13e \t %3.13e \t %3.13e \n ", data.Fx[0], data.Fy[0], data.Tz[0]);
-//    fflush(fichier_forces);
-//    fprintf(fichier_fluxes, "%3.13e \t %3.13e \n ", data.Q[0], data.Phi[0][0]);
-//    fflush(fichier_fluxes);
-//    fprintf(fichier_surface, "%f \n", surf);
-//    fflush(fichier_surface);
-//    fprintf(fichier_Tp, "%3.13e \n",data.Tp[0]);
-//    fflush(fichier_Tp);
+#endif 
 
     write2Darray(fichier_U, data->u_n, 0,m-1,1,n-1);
     write2Darray(fichier_V, data->v_n, 1,m-1,0,n-1);
-    write2Darray(fichier_Vstar, data->v_star, 1,m-1,0,n-1);
-    write2Darray(fichier_Ustar, data->u_star, 0,m-1,1,n-1);
+   // write2Darray(fichier_Vstar, data->v_star, 1,m-1,0,n-1);
+   // write2Darray(fichier_Ustar, data->u_star, 0,m-1,1,n-1);
     write2Darray(fichier_Vtx, data->omega, 1, m-1, 1, n-1);
     write2Darray(fichier_P, data->P,1,m-1,1,n-1);
+#ifdef TEMP 
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
     write2Darray(fichier_YA, data->C[0],1,m-1,1,n-1);
     write2Darray(fichier_YB, data->C[1],1,m-1,1,n-1);
+#endif
     write2Darray(fichier_Mask, data->coloring,1,m-1,1,n-1);
 
 
     fclose(fichier_Mask);
     fclose(fichier_U);
     fclose(fichier_V);
-    fclose(fichier_Vstar);
-    fclose(fichier_Ustar);
-    fclose(fichier_Rho);
+//    fclose(fichier_Vstar);
+//    fclose(fichier_Ustar);
     fclose(fichier_Vtx);
     fclose(fichier_P);
+#ifdef TEMP
     fclose(fichier_T);
     fclose(fichier_YA);
     fclose(fichier_YB);
-    fclose(fichier_diagnostic);
+#endif
     
 }
 
