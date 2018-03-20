@@ -5,8 +5,10 @@
 #ifndef WRITE_H
 #define WRITE_H
 
+#include "main.h"
+
+
 void writeFields(Data* data, int it);
-void writeStatistics(Data* data, FILE* file);
 void write2Darray(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);
 

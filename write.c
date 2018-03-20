@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "main.h"
 #include "write.h"
 
 void writeData(FILE* fichier_data, Data data)
@@ -71,18 +70,24 @@ void writeFields(Data* data, int it)
 
     FILE* fichier_U = NULL;
     FILE* fichier_V = NULL;
-    FILE* fichier_Vstar = NULL;
-    FILE* fichier_Ustar = NULL;
+    //FILE* fichier_Vstar = NULL;
+    //FILE* fichier_Ustar = NULL;
     FILE* fichier_P = NULL;
     FILE* fichier_T = NULL;
     FILE* fichier_YA = NULL;
     FILE* fichier_YB = NULL;
     FILE* fichier_Mask = NULL;
     FILE* fichier_Vtx = NULL;
-    FILE* fichier_diagnostic = NULL;
 
     char buffer[10];
     sprintf(buffer, "%d", it);
+
+    char fileMask[30];
+    strcpy(fileMask, "results/Mask");
+    strcat(fileMask, "-");
+    strcat(fileMask, buffer);
+    strcat(fileMask, ".txt");
+    fichier_Mask = fopen(fileMask, "w");
 
     char fileU[30];
     strcpy(fileU, "results/U");
@@ -98,19 +103,19 @@ void writeFields(Data* data, int it)
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
-    char fileV_star[30];
-    strcpy(fileV_star, "results/V_star");
-    strcat(fileV_star, "-");
-    strcat(fileV_star, buffer);
-    strcat(fileV_star, ".txt");
-    fichier_Vstar = fopen(fileV_star, "w");
+//    char fileV_star[30];
+//    strcpy(fileV_star, "results/V_star");
+//    strcat(fileV_star, "-");
+//    strcat(fileV_star, buffer);
+//    strcat(fileV_star, ".txt");
+//    fichier_Vstar = fopen(fileV_star, "w");
 
-    char fileU_star[30];
-    strcpy(fileU_star, "results/U_star");
-    strcat(fileU_star, "-");
-    strcat(fileU_star, buffer);
-    strcat(fileU_star, ".txt");
-    fichier_Ustar = fopen(fileU_star, "w");
+//    char fileU_star[30];
+//    strcpy(fileU_star, "results/U_star");
+//    strcat(fileU_star, "-");
+//    strcat(fileU_star, buffer);
+//    strcat(fileU_star, ".txt");
+//    fichier_Ustar = fopen(fileU_star, "w");
 
 
     char fileP[30];
@@ -127,19 +132,13 @@ void writeFields(Data* data, int it)
     strcat(fileVtx, ".txt");
     fichier_Vtx = fopen(fileVtx, "w");
 
+#ifdef TEMP
     char fileT[30];
     strcpy(fileT, "results/T");
     strcat(fileT, "-");
     strcat(fileT, buffer);
     strcat(fileT, ".txt");
     fichier_T = fopen(fileT, "w");
-
-    char fileMask[30];
-    strcpy(fileMask, "results/Mask");
-    strcat(fileMask, "-");
-    strcat(fileMask, buffer);
-    strcat(fileMask, ".txt");
-    fichier_Mask = fopen(fileMask, "w");
 
     char fileYA[30];
     strcpy(fileYA, "results/YA");
@@ -154,31 +153,31 @@ void writeFields(Data* data, int it)
     strcat(fileYB, buffer);
     strcat(fileYB, ".txt");
     fichier_YB = fopen(fileYB, "w");
+#endif
 
-
+    write2Darray(fichier_Mask, data->coloring,1,m-1,1,n-1);
     write2Darray(fichier_U, data->u_n, 0,m-1,1,n-1);
     write2Darray(fichier_V, data->v_n, 1,m-1,0,n-1);
-    //write2Darray(fichier_Vstar, data->v_star, 1,m-1,0,n-1);
-    //write2Darray(fichier_Ustar, data->u_star, 0,m-1,1,n-1);
-    write2Darray(fichier_Vtx, data->omega, 0, m-1, 0, n-1);
+    write2Darray(fichier_Vtx, data->omega, 1, m-1, 1, n-1);
     write2Darray(fichier_P, data->P,1,m-1,1,n-1);
+#ifdef TEMP 
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
     write2Darray(fichier_YA, data->C[0],1,m-1,1,n-1);
     write2Darray(fichier_YB, data->C[1],1,m-1,1,n-1);
-    write2Darray(fichier_Mask, data->coloring,1,m-1,1,n-1);
+#endif
+
 
 
     fclose(fichier_Mask);
     fclose(fichier_U);
     fclose(fichier_V);
-    fclose(fichier_Vstar);
-    fclose(fichier_Ustar);
+//    fclose(fichier_Vstar);
+//    fclose(fichier_Ustar);
     fclose(fichier_Vtx);
     fclose(fichier_P);
     fclose(fichier_T);
     fclose(fichier_YA);
     fclose(fichier_YB);
-    fclose(fichier_diagnostic);
     
 }
 

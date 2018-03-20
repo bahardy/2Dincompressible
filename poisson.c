@@ -66,5 +66,5 @@
 //
 //    } while (e > data->SORtol && SORiter < data->SORitermax);
 //    PetscPrintf(PETSC_COMM_WORLD, "ERROR  = %1.3e after %d/%d iterations \n",e, SORiter, data->SORitermax);
-
 //}
+

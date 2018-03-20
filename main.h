@@ -145,6 +145,10 @@ struct Data{
     double* xg;
     double* yg;
     double* dp;
+
+    double Omega; 
+    double R1; 
+    double R2;
 };
 
 
@@ -324,7 +328,6 @@ fclose(state_file_CAold); fclose(state_file_CCAold);\
 fclose(state_file_CBold); fclose(state_file_CCBold);\
 fclose(state_file_particles); fclose(state_file_particles_velocities);\
 fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);
-
 
 
 #endif
