@@ -41,9 +41,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 10.*data.Dp;
+    data.d = 30.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 10.*data.Dp;
+    data.L = 30.*data.Dp;
 
     data.h = data.Dp/30;
     data.eps = 4.*data.h;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .01; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -255,15 +255,15 @@ int main(int argc, char *argv[]){
     }
 
     /** ----- BOUNDARY CONDITION -----------**/
-    for(int j=1; j<n-1; j++) {
-
+//    for(int j=1; j<n-1; j++) {
+//
 //#ifndef SLIP
 //        y_ch = (j-0.5)*data.h - data.H;
 //        data.u_n[0][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
 //        data.u_n_1[0][j] = data.u_n[0][j];
 //        data.u_star[0][j] = data.u_n[0][j];
 //#endif
-    }
+//    }
 
     // Ghost point for u_n_1 (first time EE)
     for (int i=0; i<m; i++) {
@@ -284,6 +284,9 @@ int main(int argc, char *argv[]){
     for(int k=0; k<Np; k++){
         data.Tp[k] = data.Tp0;
     }
+
+    /*Initialization of the mask */ 
+    get_masks(&data);
 
 
     /** -------- Some files creation and data writing-------- **/
@@ -334,6 +337,7 @@ int main(int argc, char *argv[]){
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
         writeFields(&data, 0);
+	writeMask(&data); 
     }
 #endif
 
@@ -380,7 +384,6 @@ int main(int argc, char *argv[]){
         }
 
         /** --- SOLVE FLUID PHASE --- */
-        get_masks(&data);
 #ifdef  MOVE
         /*Compute the mask functions */
         get_masks(&data);
@@ -1083,7 +1086,8 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
     /* Create the Laplacian matrix : A  */
     MatCreate( PETSC_COMM_WORLD, &A );
     MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, M*N, M*N);
-    MatSetType(A, MATMPIAIJ);
+    MatSetType(A, MATAIJ);
+    MatSeqAIJSetPreallocation(A, 5, NULL); 
     MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL);
     //PetscInt nz = 5;
     //MatSeqAIJSetPreallocation(A, nz, NULL);

@@ -62,16 +62,24 @@ void writeData(FILE* fichier_data, Data data)
     }
 }
 
+void writeMask(Data* data)
+{	
+	int m = data->m; 
+	int n = data->n; 
+
+	FILE* fichier_Mask = NULL;
+	fichier_Mask = fopen("results/Mask.txt", "w");
+	write2Darray(fichier_Mask, data->coloring, 1, m-1, 1, n-1); 
+	fclose(fichier_Mask); 
+}
+
 void writeFields(Data* data, int it)
 {
     int m = data->m; 
     int n = data->n; 
 
-
     FILE* fichier_U = NULL;
     FILE* fichier_V = NULL;
-    //FILE* fichier_Vstar = NULL;
-    //FILE* fichier_Ustar = NULL;
     FILE* fichier_P = NULL;
     FILE* fichier_T = NULL;
     FILE* fichier_YA = NULL;
@@ -82,12 +90,14 @@ void writeFields(Data* data, int it)
     char buffer[10];
     sprintf(buffer, "%d", it);
 
+#ifdef MOVE
     char fileMask[30];
     strcpy(fileMask, "results/Mask");
     strcat(fileMask, "-");
     strcat(fileMask, buffer);
     strcat(fileMask, ".txt");
     fichier_Mask = fopen(fileMask, "w");
+#endif
 
     char fileU[30];
     strcpy(fileU, "results/U");
@@ -103,27 +113,12 @@ void writeFields(Data* data, int it)
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
-//    char fileV_star[30];
-//    strcpy(fileV_star, "results/V_star");
-//    strcat(fileV_star, "-");
-//    strcat(fileV_star, buffer);
-//    strcat(fileV_star, ".txt");
-//    fichier_Vstar = fopen(fileV_star, "w");
-
-//    char fileU_star[30];
-//    strcpy(fileU_star, "results/U_star");
-//    strcat(fileU_star, "-");
-//    strcat(fileU_star, buffer);
-//    strcat(fileU_star, ".txt");
-//    fichier_Ustar = fopen(fileU_star, "w");
-
-
-    char fileP[30];
-    strcpy(fileP, "results/P");
-    strcat(fileP, "-");
-    strcat(fileP, buffer);
-    strcat(fileP, ".txt");
-    fichier_P = fopen(fileP, "w");
+//    char fileP[30];
+//    strcpy(fileP, "results/P");
+//    strcat(fileP, "-");
+//    strcat(fileP, buffer);
+//    strcat(fileP, ".txt");
+//    fichier_P = fopen(fileP, "w");
 
     char fileVtx[30];
     strcpy(fileVtx, "results/Vtx");
@@ -155,29 +150,32 @@ void writeFields(Data* data, int it)
     fichier_YB = fopen(fileYB, "w");
 #endif
 
+#ifdef MOVE
     write2Darray(fichier_Mask, data->coloring,1,m-1,1,n-1);
+#endif 
     write2Darray(fichier_U, data->u_n, 0,m-1,1,n-1);
     write2Darray(fichier_V, data->v_n, 1,m-1,0,n-1);
     write2Darray(fichier_Vtx, data->omega, 1, m-1, 1, n-1);
-    write2Darray(fichier_P, data->P,1,m-1,1,n-1);
+    //write2Darray(fichier_P, data->P,1,m-1,1,n-1);
 #ifdef TEMP 
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
     write2Darray(fichier_YA, data->C[0],1,m-1,1,n-1);
     write2Darray(fichier_YB, data->C[1],1,m-1,1,n-1);
 #endif
 
-
-
+    //CLOSE FILES 
+#ifdef MOVE
     fclose(fichier_Mask);
+#endif
     fclose(fichier_U);
     fclose(fichier_V);
-//    fclose(fichier_Vstar);
-//    fclose(fichier_Ustar);
     fclose(fichier_Vtx);
-    fclose(fichier_P);
+    //fclose(fichier_P);
+#ifdef TEMP
     fclose(fichier_T);
     fclose(fichier_YA);
     fclose(fichier_YB);
+#endif 
     
 }
 

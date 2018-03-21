@@ -9,6 +9,7 @@
 
 
 void writeFields(Data* data, int it);
+void writeMask(Data* data); 
 void write2Darray(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);
 
