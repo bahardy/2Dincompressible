@@ -12,12 +12,12 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
+#define MOVE
 //#define TEMP
-//#define RAMPING
+#define RAMPING
 #define WRITE
 #define DISK
-#define SLIP
+//#define SLIP
 #define SMOOTHING
 //#define ELLIPSE
 
@@ -41,9 +41,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 30.*data.Dp;
+    data.d = 3.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 30.*data.Dp;
+    data.L = 12.*data.Dp;
 
     data.h = data.Dp/30;
     data.eps = 4.*data.h;
@@ -91,12 +91,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .01; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 2;
+    data.ratio_dtau_dt = 1;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.H;
+    data.xg[0] = data.d;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -295,10 +295,10 @@ int main(int argc, char *argv[]){
     writeData(fichier_data, data);
     fclose(fichier_data);
 
-    FILE* fichier_stat = fopen("results/stats.txt", "w");
-    FILE* fichier_forces = fopen("results/forces.txt", "w");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
-    FILE* fichier_particle = fopen("results/particle.txt", "w");
+    FILE* fichier_stat = fopen("results/stats.txt", "w+");
+    FILE* fichier_forces = fopen("results/forces.txt", "w+");
+    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
+    FILE* fichier_particle = fopen("results/particle.txt", "w+");
 
 
     /** ------------------------------- RAMPING ------------------------------- **/
@@ -337,7 +337,7 @@ int main(int argc, char *argv[]){
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
         writeFields(&data, 0);
-	writeMask(&data); 
+	    writeMask(&data);
     }
 #endif
 
@@ -435,6 +435,11 @@ int main(int argc, char *argv[]){
     }
 
 
+    fclose(fichier_forces);
+    fclose(fichier_fluxes);
+    fclose(fichier_particle);
+    fclose(fichier_stat);
+
     /* Free memory */
     free(data.xg), free(data.yg), free(data.theta), free(data.dp), free(data.rp), free(data.Sp), free(data.II), free(data.J);
     free(data.dudt), free(data.dvdt), free(data.domegadt), free(data.dTdt); free2Darray(data.dCdt, Np);
@@ -480,9 +485,9 @@ void compute_forces_fluxes(Data* data, int k)
     double rho_f = data->rho_f;
     double cf = data->cf;
 
-    PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
     PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k]);
     PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k]);
@@ -498,8 +503,8 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"Force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, Fx[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, Fy[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Phi[k][0]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Phi[k][0]);
 }
 
 
@@ -646,7 +651,7 @@ int integrate_penalization(Data *data, double* surf, int k)
                 qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j]);
             }
 #endif
-            sint += Ip_U[k][i][j]*h*h;
+            sint += Ip_S[k][i][j]*h*h;
             Fint += f; /* units : m/s^2 */
             Gint += g; /* units : m/s^2 */
             Mint += ((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s^2 */
@@ -823,31 +828,31 @@ void get_masks(Data* data)
 #ifdef SMOOTHING
 
                 //Smoothing S
-                dist = sqrt((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])) - rp[k];
+                dist = rp[k] - sqrt((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k]));
                 if( dist < - data->eps)
-                    Ip_S[k][i][j] = 1;
-                else if( fabs(dist) <= data->eps)
-                    Ip_S[k][i][j] = .5*(1 - dist/data->eps - (1./M_PI)*sin( M_PI* dist/data->eps) );
-                else if( dist > data->eps)
                     Ip_S[k][i][j] = 0;
+                else if( fabs(dist) <= data->eps)
+                    Ip_S[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
+                else if( dist > data->eps)
+                    Ip_S[k][i][j] = 1;
 
                 //Smoothing U
-                dist = sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k])) - rp[k];
+                dist = rp[k] - sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k]));
                 if( dist < - data->eps)
-                    Ip_U[k][i][j] = 1;
-                else if( fabs(dist) <=data->eps)
-                    Ip_U[k][i][j] = .5*(1 + fabs(dist)/data->eps + (1./M_PI)*sin( M_PI* fabs(dist)/data->eps) );
-                else if( dist > data->eps)
                     Ip_U[k][i][j] = 0;
+                else if( fabs(dist) <=data->eps)
+                    Ip_U[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
+                else if( dist > data->eps)
+                    Ip_U[k][i][j] = 1;
 
                 //Smoothing V
-                dist = sqrt((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k])) - rp[k];
+                dist = rp[k] - sqrt((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k]));
                 if( dist < - data->eps)
-                    Ip_V[k][i][j] = 1;
-                else if( fabs(dist) <= data->eps)
-                    Ip_V[k][i][j] = .5*(1 + fabs(dist)/data->eps + (1./M_PI)*sin( M_PI* fabs(dist)/data->eps) );
-                else if( dist > data->eps)
                     Ip_V[k][i][j] = 0;
+                else if( fabs(dist) <= data->eps)
+                    Ip_V[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
+                else if( dist > data->eps)
+                    Ip_V[k][i][j] = 1;
 
 #endif
 
@@ -855,22 +860,6 @@ void get_masks(Data* data)
                 yloc = yS-yg[k];
                 delta;
                 coloring[i][j] += Ip_S[k][i][j];
-                delta = atan2(yloc, xloc) + 2*M_PI;
-                /*if (xloc>0 && yloc>0){ //1st Quadrant
-                    delta = atan(yloc/xloc);
-                }
-                if (xloc>0 && yloc<0){ //4th Quadrant
-                    delta = atan(yloc/xloc) + 2.*M_PI;
-                }
-                if (xloc<0){
-                    delta = atan(yloc/xloc) + M_PI;
-                }
-                if (xloc == 0 && yloc > 0){
-                    delta = M_PI/2.;
-                }
-                if (xloc == 0 && yloc < 0){
-                    delta = 3.*M_PI/2.;
-                }*/
 
                 if((int)((delta-theta[k])/(M_PI/2.)) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
