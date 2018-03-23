@@ -14,10 +14,10 @@
 //#define RECOVER
 #define MOVE
 //#define TEMP
-#define RAMPING
+//#define RAMPING
 #define WRITE
 #define DISK
-//#define SLIP
+#define SLIP
 #define SMOOTHING
 //#define ELLIPSE
 
@@ -41,18 +41,18 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 3.*data.Dp;
+    data.d = 4.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 12.*data.Dp;
+    data.L = 16.*data.Dp;
 
-    data.h = data.Dp/30;
+    data.h = data.Dp/40;
     data.eps = 4.*data.h;
 
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
     data.Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data.Sc = data.Le*data.Pr;
-    data.Rep = 40.;
+    data.Rep = 100.;
     data.Fr = sqrt(1e3);
 
     /* FLOW */
@@ -91,12 +91,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .02; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1;
+    data.ratio_dtau_dt = 0.01;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -220,6 +220,14 @@ int main(int argc, char *argv[]){
     data.theta[0] = 0; // M_PI/10.
 
 
+    data.Up[0][0] = 1.;
+    data.Up[0][1] = data.Up[0][0];
+    data.Up[0][2] = data.Up[0][0];
+    data.Up[0][3] = data.Up[0][2];
+
+
+
+
     for(int k=0; k<Np; k++){
 #ifdef DISK
         data.Sp[k]=M_PI*data.rp[k]*data.rp[k];
@@ -244,7 +252,7 @@ int main(int argc, char *argv[]){
         for(int j=0; j<n; j++){
 //            y_ch = (j-0.5)*data.h - data.H;
 //            data.u_n[i][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-            data.u_n[i][j] = 1;
+            data.u_n[i][j] = 0;
 
             /* v_n is initially at zero */
 
@@ -1258,7 +1266,7 @@ void update_flow(Data* data) {
         u_new[0][j] = data->u_m;
 #endif
 #ifdef SLIP
-        u_new[0][j] = data->u_m;
+        //u_new[0][j] = data->u_m;
 #endif
     }
 
@@ -1497,12 +1505,12 @@ void update_Up(Data* data, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) ;
-    Up[k][3] = Up[k][2] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
-    Vp[k][3] = Vp[k][2] + dt*dvdt[k];
-    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
-    Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
+//    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) ;
+//    Up[k][3] = Up[k][2] + dt*dudt[k];
+//    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
+//    Vp[k][3] = Vp[k][2] + dt*dvdt[k];
+//    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
+//    Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
