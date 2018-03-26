@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "write.h"
-#define MOVE
+//#define MOVE
 
 void writeData(FILE* fichier_data, Data data)
 {
