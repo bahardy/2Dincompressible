@@ -12,8 +12,8 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
-//#define TEMP
+#define MOVE
+#define TEMP
 //#define RAMPING
 #define WRITE
 #define DISK
@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
 
     struct stat st = {0};
     if (stat("results", &st) == -1) {
-   	 mkdir("results", 0700);
+        mkdir("results", 0700);
     }
 
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     data.H = 0.5*data.d;
     data.L = 9.*data.Dp;
     data.h = data.Dp/30;
-    data.eps = .01;
+    data.eps = 0.5*data.h;
 
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -61,12 +61,12 @@ int main(int argc, char *argv[]){
 
     /* ENERGY */
     data.alpha_f = data.nu/data.Pr;
-    data.Tm0 = 1; // 100. + 273.15; // cup-mixing temperature at the inlet
-    data.Tp0 = 0.5; //20. + 273.15; // initial particle temperature
+    data.Tm0 = 1; // cup-mixing temperature at the inlet
+    data.Tp0 = 0.5; // initial particle temperature
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 1000.;
+    data.rho_p = 100.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .01; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 0; //data.Tf/10.;
+    data.t_move = 0.5; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.H;
+    data.xg[0] = data.d;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -223,8 +223,6 @@ int main(int argc, char *argv[]){
     //data.Up[0][1] = data.Up[0][0];
     //data.Up[0][2] = data.Up[0][0];
     //data.Up[0][3] = data.Up[0][2];
-
-
 
 
     for(int k=0; k<Np; k++){
@@ -258,6 +256,7 @@ int main(int argc, char *argv[]){
             data.u_n_1[i][j] = data.u_n[i][j];
             data.u_star[i][j] = data.u_n[i][j];
             data.T_n[i][j] = data.Tm0;
+            data.T_n_1[i][j] = data.T_n[i][j];
         }
     }
 
@@ -284,8 +283,10 @@ int main(int argc, char *argv[]){
         data.u_n_1[i][0] = -0.2 *(data.u_n_1[i][3] - 5. * data.u_n_1[i][2] + 15. * data.u_n_1[i][1]);
         data.u_n_1[i][n - 1] = -0.2 * (data.u_n_1[i][n - 4] - 5. * data.u_n_1[i][n - 3] + 15. * data.u_n_1[i][n - 2]);
 #endif
+        // Ghost point for T_n_1 (first time EE)
+        data.T_n_1[i][0] = data.T_n_1[i][1];
+        data.T_n_1[i][n-1] = data.T_n_1[i][n-2];
     }
-
 
     /*Initialization of particles temperatures */
     for(int k=0; k<Np; k++){
@@ -294,7 +295,6 @@ int main(int argc, char *argv[]){
 
     /*Initialization of the mask */ 
     get_masks(&data);
-
 
     /** -------- Some files creation and data writing-------- **/
 
@@ -405,7 +405,6 @@ int main(int argc, char *argv[]){
         get_ghosts(&data, data.Tm0, data.C0);
         get_Ustar_Vstar(&data, data.ramp);
         clock_t t_init = clock();
-        //old_poisson_solver(u_star, v_star, phi, R);
         poisson_solver(&data, rank, nbproc);
         clock_t t_final = clock();
         double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
@@ -413,10 +412,6 @@ int main(int argc, char *argv[]){
 
         update_flow(&data);
         diagnostic(&data);
-
-#ifdef TEMP
-        update_temp_species(&data, ramp);
-#endif
 
 
 #ifdef WRITE
@@ -427,8 +422,8 @@ int main(int argc, char *argv[]){
             fflush(fichier_forces);
             fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Phi[0][0]);
             fflush(fichier_fluxes);
-            fprintf(fichier_fluxes, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0], data.Tp[0]);
-            fflush(fichier_fluxes);
+            fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0], data.Tp[0]);
+            fflush(fichier_particle);
 
             if(data.iter % data.T_write == 0){
                 writeFields(&data, data.iter);
@@ -658,21 +653,21 @@ int integrate_penalization(Data *data, double* surf, int k)
             }
 #endif
             sint += Ip_S[k][i][j]*h*h;
-            Fint += f; /* units : m/s^2 */
-            Gint += g; /* units : m/s^2 */
-            Mint += ((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s^2 */
+            Fint += f; /* units : m/s */
+            Gint += g; /* units : m/s */
+            Mint += ((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s */
 #ifdef TEMP
-            Qint += q*h*h/dtau; /*units : K/s */
+            Qint += q; /*units : K */
             for(int s=0; s<Ns; s++){
-                Qmint[s] += qm[s]*h*h/dtau; /*units : mol/m.s */
+                Qmint[s] += qm[s]; /*units : mol/m.s */
             }
 #endif
         }
     }
-    Fint *= h2/dtau;
+    Fint *= h2/dtau; /* units : m^3/s; */
     Gint *= h2/dtau;
     Mint *= h2/dtau;
-    Qint *= h2/dtau;
+    Qint *= h2/dtau; /* units : K*m^2/s */
 
     F[k][2] = -Fint;
     G[k][2] = -Gint;
@@ -1042,12 +1037,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
         }
     }
-#ifndef TEMP
-    if (data->iter > 1) {
-        free2Darray(u_n_1, m);
-        free2Darray(v_n_1, m);
-    }
-#endif
 }
 
 
@@ -1245,19 +1234,21 @@ void update_flow(Data* data) {
     double **u_new = make2DDoubleArray(m, n);
     double **v_new = make2DDoubleArray(m, n);
 
-    double** u_n = data->u_n;
-    double** v_n = data->v_n;
-    double** omega = data->omega;
-    double** P = data->P;
+    double **u_n_1 = data->u_n_1;
+    double **u_n = data->u_n;
+    double **v_n_1 = data->v_n_1;
+    double **v_n = data->v_n;
+    double **omega = data->omega;
+    double **P = data->P;
 
-    double** u_star = data->u_star;
-    double** v_star = data->v_star;
-    double** phi = data->phi;
+    double **u_star = data->u_star;
+    double **v_star = data->v_star;
+    double **phi = data->phi;
 
     int i, j;
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
-    for ( j = 0; j < n; j++) {
+    for (j = 0; j < n; j++) {
 #ifndef SLIP
         //y_ch = (j - 0.5) *h - H;
         //u_poiseuille = data->u_max* (1. - (y_ch / H) * (y_ch / H));
@@ -1268,197 +1259,106 @@ void update_flow(Data* data) {
 #endif
     }
 
-    for (i=1; i<m-1; i++){
-        for (j=1; j<n-2; j++) {
+    for (i = 1; i < m - 1; i++) {
+        for (j = 1; j < n - 2; j++) {
             u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
             v_new[i][j] = v_star[i][j] - dt * (phi[i][j + 1] - phi[i][j]) / h;
             P[i][j] += phi[i][j];
         }
         /* Last value of j is n-2 */
-	// v_new [j-2] = 0 
-        u_new[i][j] = u_star[i][j] - dt*(phi[i+1][j]-phi[i][j])/h;
+        // v_new [j-2] = 0
+        u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
         P[i][j] += phi[i][j];
-
-//#ifdef SLIP
-//        v_new[i][0] = (4.*v_n[i][1]-v_n[i][2])/3.;/* to cancel gradient at the slip boundary : dv/dn = 0 */  /* Second-order accuracy */
-//        v_new[i][n-2] = (4.*v_n[i][n-3]-v_n[i][n-4])/3.; /* to cancel gradient at the slip boundary : dv/dn = 0 */
-//#endif
     }
-    
-    for (i=1; i<m-2; i++){
-        for (j=1; j<n-2; j++) {
-            omega[i][j] = (v_new[i+1][j] - v_new[i][j])/h - (u_new[i][j+1] - u_new[i][j])/h;
+
+    for (i = 1; i < m - 2; i++) {
+        for (j = 1; j < n - 2; j++) {
+            omega[i][j] = (v_new[i + 1][j] - v_new[i][j]) / h - (u_new[i][j + 1] - u_new[i][j]) / h;
         }
     }
     // One-sided finite diff. 
     // Inlet and outlet
-    for (j=1; j<n-1; j++){
-	    omega[0][j] = v_new[1][j]/(.5*h)  - (u_new[0][j+1] - u_new[0][j])/h;
-	    omega[m-2][j] =  - (u_new[0][j+1] - u_new[0][j])/h;
+    for (j = 1; j < n - 1; j++) {
+        omega[0][j] = v_new[1][j] / (.5 * h) - (u_new[0][j + 1] - u_new[0][j]) / h;
+        omega[m - 2][j] = -(u_new[0][j + 1] - u_new[0][j]) / h;
     }
-    for (i=1; i<m-1; i++){
-#ifndef SLIP 
-	    omega[i][0] =  - u_new[i][1]/(.5*h); 
-	    omega[i][n-2] = u_new[i][n-2]/(.5*h); 
+    for (i = 1; i < m - 1; i++) {
+#ifndef SLIP
+        omega[i][0] =  - u_new[i][1]/(.5*h);
+        omega[i][n-2] = u_new[i][n-2]/(.5*h);
 #endif
-#ifdef SLIP 
-	    omega[i][0] = 0;
-	    omega[i][n-2] = 0;
+#ifdef SLIP
+        omega[i][0] = 0;
+        omega[i][n - 2] = 0;
 #endif
-    }	    
-    data->u_n_1 = u_n;
-    data->u_n = u_new;
-    data->v_n_1 = v_n;
-    data->v_n = v_new;
-}
+    }
 
-void update_temp_species(Data* data, double ramp)
-{
+#ifdef TEMP
+    /* TEMPERATURE AND SPECIES */
 
-    int m = data->m;
-    int n = data->n;
+    double **T_new = make2DDoubleArray(m, n);
+    double **T_n = data->T_n;
+    double **T_n_1 = data->T_n_1;
+    double **Ts = data->Ts;
+    double ***Cs = data->Cs;
+
     int Ns = data->Ns;
-    double h = data->h;
-    double dt = data->dt;
-    double dtau = data->dtau;
+    double ***C_new = make3DDoubleArray(Ns, m, n);
+    double ***C = data->C;
+    double ***C_old = data->C_old;
+
     double alpha_f = data->alpha_f;
-
-    double** I_S = data->I_S;
-    double* Df = data->Df;
-    double** u_n = data->u_n;
-    double** u_n_1 = data->u_n_1;
-    double** v_n = data->v_n;
-    double** v_n_1 = data->v_n_1;
-
-
-    double** T_new = make2DDoubleArray(m,n);
-    double** T_n = data->T_n;
-    double** T_n_1 = data->T_n_1;
-    double** Ts = data->Ts;
-    double*** Cs = data->Cs;
-
-
-    double*** C_new = make3DDoubleArray(Ns,m,n);
-    double*** C = data->C;
-    double*** C_old = data->C_old;
+    double *Df = data->Df;
+    double **I_S = data->I_S;
+    double ramp = data->ramp;
+    double dtau = data->dtau;
 
     double Uij, Uij_old, Vij, Vij_old;
     double H_T, H_T_old, lapT;
     double H_C, H_C_old, lapC;
 
-    /* Adams-Bashfort 2 */
-    for (int i=1; i<m-1; i++){
-        for (int j=1; j<n-1; j++){
+    for (i = 1; i < m - 1; i++) {
+        for (j = 1; j < n - 1; j++) {
 
             // Need to have a value for velocities at cell center
-            Uij = .5*(u_n[i][j]+u_n[i-1][j]); /* average of the two neighbour points along x-direction */
-            Vij = .5*(v_n[i][j]+v_n[i-1][j]); /* average of the two neighbour points along y-direction */
-            Uij_old = .5*(u_n_1[i][j]+u_n_1[i-1][j]);
-            Vij_old = .5*(v_n_1[i][j]+v_n_1[i-1][j]);
+            Uij = .5 * (u_n[i][j] + u_n[i - 1][j]); /* average of the two neighbour points along x-direction */
+            Vij = .5 * (v_n[i][j] + v_n[i - 1][j]); /* average of the two neighbour points along y-direction */
+            Uij_old = .5 * (u_n_1[i][j] + u_n_1[i - 1][j]);
+            Vij_old = .5 * (v_n_1[i][j] + v_n_1[i - 1][j]);
 
             // Advective terms
-            H_T_old = Uij_old*(T_n_1[i+1][j]-T_n_1[i-1][j])/(2.*h) + Vij_old*(T_n_1[i][j+1]-T_n_1[i][j-1])/(2.*h);
-            H_T = Uij*(T_n[i+1][j]-T_n[i-1][j])/(2.*h) + Vij*(T_n[i][j+1]-T_n[i][j-1])/(2.*h);
+            H_T_old = Uij_old * (T_n_1[i + 1][j] - T_n_1[i - 1][j]) / (2. * h) +
+                      Vij_old * (T_n_1[i][j + 1] - T_n_1[i][j - 1]) / (2. * h);
+            H_T = Uij * (T_n[i + 1][j] - T_n[i - 1][j]) / (2. * h) + Vij * (T_n[i][j + 1] - T_n[i][j - 1]) / (2. * h);
             // Laplacian
-            lapT = (T_n[i+1][j]+T_n[i-1][j]+T_n[i][j+1]+T_n[i][j-1]-4.*T_n[i][j])/(h*h);
+            lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
-            T_new[i][j] = (T_n[i][j] + dt*(-1.5*H_T + 0.5*H_T_old
-                                           + alpha_f*lapT
-                                           + ramp*I_S[i][j]*Ts[i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+                                             + alpha_f * lapT
+                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
+                          (1. + ramp * I_S[i][j] * dt / dtau);
 
-            for (int s=0; s<Ns; s++){
+            for (int s = 0; s < Ns; s++) {
                 // Advective terms
-                H_C_old = Uij_old*(C_old[s][i+1][j]-C_old[s][i-1][j])/(2.*h) + Vij_old*(C_old[s][i][j+1]-C_old[s][i][j-1])/(2.*h);
-                H_C = Uij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h) + Vij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h);
+                H_C_old = Uij_old * (C_old[s][i + 1][j] - C_old[s][i - 1][j]) / (2. * h) +
+                          Vij_old * (C_old[s][i][j + 1] - C_old[s][i][j - 1]) / (2. * h);
+                H_C = Uij * (C[s][i + 1][j] - C[s][i - 1][j]) / (2. * h) +
+                      Vij * (C[s][i + 1][j] - C[s][i - 1][j]) / (2. * h);
                 // Laplacian
-                lapC = (C[s][i+1][j]+C[s][i-1][j]+C[s][i][j+1]+C[s][i][j-1]-4.*C[s][i][j])/(h*h);
+                lapC = (C[s][i + 1][j] + C[s][i - 1][j] + C[s][i][j + 1] + C[s][i][j - 1] - 4. * C[s][i][j]) / (h * h);
 
-                C_new[s][i][j] = (C[s][i][j] + dt*(-1.5*H_C + 0.5*H_C_old
-                                                   + Df[s]*lapC
-                                                   + ramp*I_S[i][j]*Cs[s][i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+                C_new[s][i][j] = (C[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                                                     + Df[s] * lapC
+                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau)) /
+                                 (1. + ramp * I_S[i][j] * dt / dtau);
             }
+
         }
     }
 
-    free2Darray(T_n_1, m);
-    free3Darray(C_old, Ns, m);
-
-    data->T_n_1 = T_n;
-    data->T_n = T_new;
-
-    data->C_old = C;
-    data->C = C_new;
-
-/*    for (int i=1; i<m-1; i++){
-        for (int j=1; j<n-1; j++){
-            C_Told[i][j] = C_T[i][j];
-            Told[i][j] = T_n[i][j];
-            for (int s=0; s<Ns; s++){
-                C_C_old[s][i][j] = C_C[s][i][j];
-                C_old[s][i][j] = C[s][i][j];
-            }
-        }
-    }*/
-
-}
-
-void update_temp_species_EE(Data* data, double ramp)
-{
-
-    int m = data->m;
-    int n = data->n;
-    int Ns = data->Ns;
-    double h = data->h;
-    double dt = data->dt;
-    double dtau = data->dtau;
-    double alpha_f = data->alpha_f;
-
-    double** I_S = data->I_S;
-    double* Df = data->Df;
-    double** u_n = data->u_n;
-    double** v_n = data->v_n;
-
-    double** T_new = make2DDoubleArray(m,n);
-    double** T_n = data->T_n;
-    double** Ts = data->Ts;
-    double*** Cs = data->Cs;
-
-
-    double*** C_new = make3DDoubleArray(Ns,m,n);
-    double*** C = data->C;
-
-    double Uij, Vij;
-    double H_T, lapT;
-    double H_C, lapC;
-
-    /* Adams-Bashfort 2 */
-    for (int i=1; i<m-1; i++){
-        for (int j=1; j<n-1; j++){
-
-            // Need to have a value for velocities at cell center
-            Uij = .5*(u_n[i][j]+u_n[i-1][j]); /* average of the two neighbour points along x-direction */
-            Vij = .5*(v_n[i][j]+v_n[i-1][j]); /* average of the two neighbour points along y-direction */
-
-            // Advective terms
-            H_T = Uij*(T_n[i+1][j]-T_n[i-1][j])/(2.*h) + Vij*(T_n[i][j+1]-T_n[i][j-1])/(2.*h);
-            // Laplacian
-            lapT = (T_n[i+1][j]+T_n[i-1][j]+T_n[i][j+1]+T_n[i][j-1]-4.*T_n[i][j])/(h*h);
-
-            T_new[i][j] = (T_n[i][j] + dt*(-H_T
-                                           + alpha_f*lapT
-                                           + ramp*I_S[i][j]*Ts[i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
-
-            for (int s=0; s<Ns; s++){
-                // Advective terms
-                H_C = Uij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h) + Vij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h);
-                // Laplacian
-                lapC = (C[s][i+1][j]+C[s][i-1][j]+C[s][i][j+1]+C[s][i][j-1]-4.*C[s][i][j])/(h*h);
-
-                C_new[s][i][j] = (C[s][i][j] + dt*(-H_C
-                                                   + Df[s]*lapC
-                                                   + ramp*I_S[i][j]*Cs[s][i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
-            }
-        }
+    if (data->iter > 1) {
+        free2Darray(T_n_1, m);
+        free3Darray(C_old, Ns, m);
     }
 
     data->T_n_1 = T_n;
@@ -1466,7 +1366,151 @@ void update_temp_species_EE(Data* data, double ramp)
 
     data->C_old = C;
     data->C = C_new;
+
+#endif
+
+    if (data->iter > 1) {
+        free2Darray(u_n_1, m);
+        free2Darray(v_n_1, m);
+    }
+
+    data->u_n_1 = u_n;
+    data->u_n = u_new;
+
+    data->v_n_1 = v_n;
+    data->v_n = v_new;
+
 }
+
+//void update_temp_species(Data* data, double ramp)
+//{
+//
+//    int m = data->m;
+//    int n = data->n;
+//    int Ns = data->Ns;
+//    double h = data->h;
+//    double dt = data->dt;
+//    double dtau = data->dtau;
+//    double alpha_f = data->alpha_f;
+//
+//    double** I_S = data->I_S;
+//    double* Df = data->Df;
+//    double** u_n = data->u_n;
+//    double** u_n_1 = data->u_n_1;
+//    double** v_n = data->v_n;
+//    double** v_n_1 = data->v_n_1;
+//
+//
+//    /* Adams-Bashfort 2 */
+//    for (int i=1; i<m-1; i++){
+//        for (int j=1; j<n-1; j++){
+//
+//            // Need to have a value for velocities at cell center
+//            Uij = .5*(u_n[i][j]+u_n[i-1][j]); /* average of the two neighbour points along x-direction */
+//            Vij = .5*(v_n[i][j]+v_n[i-1][j]); /* average of the two neighbour points along y-direction */
+//            Uij_old = .5*(u_n_1[i][j]+u_n_1[i-1][j]);
+//            Vij_old = .5*(v_n_1[i][j]+v_n_1[i-1][j]);
+//
+//            // Advective terms
+//            H_T_old = Uij_old*(T_n_1[i+1][j]-T_n_1[i-1][j])/(2.*h) + Vij_old*(T_n_1[i][j+1]-T_n_1[i][j-1])/(2.*h);
+//            H_T = Uij*(T_n[i+1][j]-T_n[i-1][j])/(2.*h) + Vij*(T_n[i][j+1]-T_n[i][j-1])/(2.*h);
+//            // Laplacian
+//            lapT = (T_n[i+1][j]+T_n[i-1][j]+T_n[i][j+1]+T_n[i][j-1]-4.*T_n[i][j])/(h*h);
+//
+//            T_new[i][j] = (T_n[i][j] + dt*(-1.5*H_T + 0.5*H_T_old
+//                                           + alpha_f*lapT
+//                                           + ramp*I_S[i][j]*Ts[i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+//
+//            for (int s=0; s<Ns; s++){
+//                // Advective terms
+//                H_C_old = Uij_old*(C_old[s][i+1][j]-C_old[s][i-1][j])/(2.*h) + Vij_old*(C_old[s][i][j+1]-C_old[s][i][j-1])/(2.*h);
+//                H_C = Uij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h) + Vij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h);
+//                // Laplacian
+//                lapC = (C[s][i+1][j]+C[s][i-1][j]+C[s][i][j+1]+C[s][i][j-1]-4.*C[s][i][j])/(h*h);
+//
+//                C_new[s][i][j] = (C[s][i][j] + dt*(-1.5*H_C + 0.5*H_C_old
+//                                                   + Df[s]*lapC
+//                                                   + ramp*I_S[i][j]*Cs[s][i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+//            }
+//        }
+//    }
+//
+//    free2Darray(T_n_1, m);
+//    free3Darray(C_old, Ns, m);
+//
+//    data->T_n_1 = T_n;
+//    data->T_n = T_new;
+//
+//    data->C_old = C;
+//    data->C = C_new;
+//
+//}
+
+//void update_temp_species_EE(Data* data, double ramp)
+//{
+//
+//    int m = data->m;
+//    int n = data->n;
+//    int Ns = data->Ns;
+//    double h = data->h;
+//    double dt = data->dt;
+//    double dtau = data->dtau;
+//    double alpha_f = data->alpha_f;
+//
+//    double** I_S = data->I_S;
+//    double* Df = data->Df;
+//    double** u_n = data->u_n;
+//    double** v_n = data->v_n;
+//
+//    double** T_new = make2DDoubleArray(m,n);
+//    double** T_n = data->T_n;
+//    double** Ts = data->Ts;
+//    double*** Cs = data->Cs;
+//
+//
+//    double*** C_new = make3DDoubleArray(Ns,m,n);
+//    double*** C = data->C;
+//
+//    double Uij, Vij;
+//    double H_T, lapT;
+//    double H_C, lapC;
+//
+//    /* Adams-Bashfort 2 */
+//    for (int i=1; i<m-1; i++){
+//        for (int j=1; j<n-1; j++){
+//
+//            // Need to have a value for velocities at cell center
+//            Uij = .5*(u_n[i][j]+u_n[i-1][j]); /* average of the two neighbour points along x-direction */
+//            Vij = .5*(v_n[i][j]+v_n[i-1][j]); /* average of the two neighbour points along y-direction */
+//
+//            // Advective terms
+//            H_T = Uij*(T_n[i+1][j]-T_n[i-1][j])/(2.*h) + Vij*(T_n[i][j+1]-T_n[i][j-1])/(2.*h);
+//            // Laplacian
+//            lapT = (T_n[i+1][j]+T_n[i-1][j]+T_n[i][j+1]+T_n[i][j-1]-4.*T_n[i][j])/(h*h);
+//
+//            T_new[i][j] = (T_n[i][j] + dt*(-H_T
+//                                           + alpha_f*lapT
+//                                           + ramp*I_S[i][j]*Ts[i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+//
+//            for (int s=0; s<Ns; s++){
+//                // Advective terms
+//                H_C = Uij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h) + Vij*(C[s][i+1][j]-C[s][i-1][j])/(2.*h);
+//                // Laplacian
+//                lapC = (C[s][i+1][j]+C[s][i-1][j]+C[s][i][j+1]+C[s][i][j-1]-4.*C[s][i][j])/(h*h);
+//
+//                C_new[s][i][j] = (C[s][i][j] + dt*(-H_C
+//                                                   + Df[s]*lapC
+//                                                   + ramp*I_S[i][j]*Cs[s][i][j]/dtau))/(1.+ramp*I_S[i][j]*dt/dtau);
+//            }
+//        }
+//    }
+//
+//    data->T_n_1 = T_n;
+//    data->T_n = T_new;
+//
+//    data->C_old = C;
+//    data->C = C_new;
+//}
 
 void update_Xp(Data* data, int k)
 {
