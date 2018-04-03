@@ -13,6 +13,7 @@
 
 //#define RECOVER
 //#define MOVE
+#define TWO_WAY
 //#define TEMP
 //#define RAMPING
 #define WRITE
@@ -41,11 +42,11 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 3.*data.Dp;
+    data.d = 30.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 9.*data.Dp;
+    data.L = 30.*data.Dp;
     data.h = data.Dp/30;
-    data.eps = .01;
+    data.eps = 0.5*data.h;
 
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .1; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -218,14 +219,13 @@ int main(int argc, char *argv[]){
     data.rp[0] = .5*data.Dp;
     data.theta[0] = 0; // M_PI/10.
 
-
-    //data.Up[0][0] = 1.;
-    //data.Up[0][1] = data.Up[0][0];
-    //data.Up[0][2] = data.Up[0][0];
-    //data.Up[0][3] = data.Up[0][2];
-
-
-
+#ifndef TWO_WAY
+    //impulsively started cylinder : we impose the motion 
+    data.Up[0][0] = 1.;
+    data.Up[0][1] = data.Up[0][0];
+    data.Up[0][2] = data.Up[0][0];
+    data.Up[0][3] = data.Up[0][2];
+#endif
 
     for(int k=0; k<Np; k++){
 #ifdef DISK
@@ -1503,12 +1503,14 @@ void update_Up(Data* data, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
+#ifdef TWO_WAY
     dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) ;
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
+#endif 
 
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
