@@ -13,6 +13,7 @@
 
 #define WRITE
 
+void get_u_theta(Data* data, double** u_theta);
 
 int main(int argc, char *argv[]){
 
@@ -31,7 +32,6 @@ int main(int argc, char *argv[]){
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
 
-    data.Dp = 1;
     data.L = 2.2;
     data.H = 0.5*data.L;
     data.Omega = 1.25;
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]){
     data.R2 = 1;
 
     data.h = data.L/200.;
-    data.eps = 4.*data.h;
+    //data.eps = 0.5*data.h;
 
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
     data.Fr = sqrt(1e3);
 
     /* FLOW */
-    data.u_m = data.Omega*data.R2;
+    data.u_m = data.Omega*data.R1;
     data.nu = 0.1; //data.u_m*data.Dp/data.Rep;
 
     /* ENERGY */
@@ -75,21 +75,19 @@ int main(int argc, char *argv[]){
 
     /* TIME INTEGRATION */
     data.CFL = .1; /*Courant-Freidrichs-Lewy condition on convective term */
-    data.r = .25; /* Fourier condition on diffusive term */
+    data.r = .1; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
+    printf("dt_CFL =  %f \t dt_diff = %f \n", dt_CFL, dt_diff);
 
-    data.ratio_dtau_dt = 1e-3;
+    data.ratio_dtau_dt = 1e-4;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
     if(rank == 0){
-        printf("Rep = %f\n", data.Rep);
-        printf("ratio L/d = %f \n", data.L/data.d);
-        printf("Um = %f\n", data.u_m);
         printf("dt_CFL = %f\n", dt_CFL);
         printf("dt_diff = %f\n", dt_diff);
-        printf("CFL condition set to %f h/Umax \n", data.CFL);
+        printf("CFL condition set to %f h/u_m \n", data.CFL);
         printf("dt = %f\n", data.dt);
         printf("dtau = %f\n", data.dtau);
         printf("ratio dtau/dt = %f \n", data.ratio_dtau_dt);
@@ -116,7 +114,6 @@ int main(int argc, char *argv[]){
     double t, t_start;
     int iter_start;
     data.ramp = 1;
-    double surf = 0.;
 
     if(rank == 0){
         printf("Write every %d * dt \n", data.T_write);
@@ -150,18 +147,7 @@ int main(int argc, char *argv[]){
     data.v_s = make2DDoubleArray(m,n);
     data.v_star = make2DDoubleArray(m,n);
 
-
-
-    /** -------- Some files creation and data writing-------- **/
-
-    //FILE* fichier_data = fopen("results/data.txt", "w");
-    //writeData(fichier_data, data);
-    //fclose(fichier_data);
-
-    FILE* fichier_stat = fopen("results/stats.txt", "w");
-    FILE* fichier_forces = fopen("results/forces.txt", "w");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
-    FILE* fichier_particle = fopen("results/particle.txt", "w");
+    double** u_theta = make2DDoubleArray(m,n);
 
     /** -------------------------------TIME STEPPING ------------------------------- **/
 
@@ -171,16 +157,33 @@ int main(int argc, char *argv[]){
     for(int K=0; K<=data.nKmax*data.Kmax; K++) {
         data.ramp = fmin(1., (double) K / data.Kmax);
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN ramp = %f \n", data.ramp);
-        get_ghosts(&data, data.Tm0, data.C0);
         get_Ustar_Vstar(&data, data.ramp);
         poisson_solver(&data, rank, nbproc);
         update_flow(&data);
+        get_ghosts(&data, data.Tm0, data.C0);
+        get_u_theta(&data, u_theta);
     }
 
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
         writeFields(&data, 0);
+        writeMask(&data);
+
+        FILE* fichier_Uth = NULL;
+        char buffer[10];
+        sprintf(buffer, "%d", data.iter);
+
+        char fileUth[30];
+        strcpy(fileUth, "results/Uth");
+        strcat(fileUth, "-");
+        strcat(fileUth, buffer);
+        strcat(fileUth, ".txt");
+        fichier_Uth = fopen(fileUth, "w");
+
+        write2Darray(fichier_Uth, u_theta, 1,m-1, 1,n-1);
+
+        fclose(fichier_Uth);
     }
 #endif
 
@@ -188,6 +191,8 @@ int main(int argc, char *argv[]){
     iter_start = 1;
     t_start = 0.;
 
+    t = t_start;
+    data.iter = iter_start;
 
     while(t < data.Tf){
 
@@ -204,12 +209,28 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
 
         update_flow(&data);
-
+        get_ghosts(&data, data.Tm0, data.C0);
+        get_u_theta(&data, u_theta);
 
 #ifdef WRITE
         if(rank == 0){
             if(data.iter % data.T_write == 0){
                 writeFields(&data, data.iter);
+                writeMask(&data);
+                FILE* fichier_Uth = NULL;
+                char buffer[10];
+                sprintf(buffer, "%d", data.iter);
+
+                char fileUth[30];
+                strcpy(fileUth, "results/Uth");
+                strcat(fileUth, "-");
+                strcat(fileUth, buffer);
+                strcat(fileUth, ".txt");
+                fichier_Uth = fopen(fileUth, "w");
+
+                write2Darray(fichier_Uth, u_theta, 1,m-1, 1,n-1);
+
+                fclose(fichier_Uth);
             }
         }
 #endif
@@ -221,7 +242,7 @@ int main(int argc, char *argv[]){
 
 
     /* Free memory */
-    free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m);
+    free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m); free2Darray(u_theta, m);
     free2Darray(data.v_n,m), free2Darray(data.v_n_1,m), free2Darray(data.v_star,m), free2Darray(data.v_s,m);
     free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m);
     free2Darray(data.P,m), free2Darray(data.phi, m);
@@ -277,7 +298,7 @@ void get_ghosts(Data* data, double T0, double* C0)
     for (int i=0; i<m; i++){
         /* On u_n */
 
-        /* No-slip (channel) */
+        /* No-slip */
         u_n[i][0] = -0.2*(u_n[i][3] - 5.*u_n[i][2] + 15.*u_n[i][1]);
         u_n[i][n-1] = -0.2*(u_n[i][n-4] - 5.*u_n[i][n-3] + 15.*u_n[i][n-2]);
 
@@ -287,7 +308,6 @@ void get_ghosts(Data* data, double T0, double* C0)
         /* On v_n */
         /* no-slip */
         v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
-        /* Natural outflow : dV/dx =0 */
         v_n[m-1][j] = -0.2*(v_n[m-4][j] - 5.*v_n[m-1][j] + 15.*v_n[m-2][j]);
     }
 }
@@ -338,6 +358,7 @@ void get_Us_Vs(Data* data){
     double** u_s = data-> u_s;
     double** v_s = data-> v_s;
 
+    double R1 = data->R1;
     int m = data->m;
     int n = data->n;
     double h = data->h;
@@ -345,16 +366,16 @@ void get_Us_Vs(Data* data){
 
     double xU, xV, yU, yV;
     for(int i=0; i<m; i++){
-        xV = (i-H)*h;
+        xV = (i-0.5)*h;
         xU = i*h;
         for(int j=0; j<n; j++){
-            yU = (j-H)*h;
+            yU = (j-0.5)*h;
             yV = j*h;
-            if((xU-H)*(xU-H) + (yU-H)*(yU-H) > data->R2*data->R2)
+            if((xU-H)*(xU-H) + (yU-H)*(yU-H) < R1*R1)
             {
                 u_s[i][j]= -data->Omega*(yU-H);
             }
-            if ((xV - H) * (xV - H) + (yV - H) * (yV - H) > data->R2 * data->R2)
+            if ((xV-H)*(xV-H) + (yV-H) * (yV-H) < R1*R1)
             {
                 v_s[i][j] = data->Omega*(xV - H);
             }
@@ -371,7 +392,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     int m = data->m;
     int n = data->n;
     double h = data->h;
-    //double H = data->H;
     double nu = data->nu;
 
     double** I_U = data->I_U;
@@ -413,11 +433,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // pressure term
             dpdx = (P[i+1][j]-P[i][j])/h;
 
-            if (H_U != H_U_old && data->ramp == 0){
-                printf("Problem at first time step ! ");
-            }
-
-
             u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
         }
     }
@@ -443,12 +458,11 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
         }
     }
-#ifndef TEMP
-    if (data->iter > 1) {
+
+    if (data->ramp > 0) {
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
-#endif
 }
 
 
@@ -631,7 +645,6 @@ void update_flow(Data* data) {
     int n = data->n;
     double dt = data->dt;
     double h = data->h;
-    //double H = data->H;
 
     double **u_new = make2DDoubleArray(m, n);
     double **v_new = make2DDoubleArray(m, n);
@@ -658,6 +671,27 @@ void update_flow(Data* data) {
     data->u_n = u_new;
     data->v_n_1 = v_n;
     data->v_n = v_new;
+}
+
+void get_u_theta(Data* data, double** u_theta){
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
+    int m = data->m;
+    int n = data->n;
+    double h = data->h;
+    double H = data->H;
+    int i, j;
+    double xloc, yloc;
+    double theta;
+
+    for (i=1; i<m-1; i++){
+        xloc = (i-0.5)*h - H;
+        for (j=1; j<n-1; j++) {
+            yloc = (j-0.5)*h - H;
+            theta = atan2(yloc,xloc);
+            u_theta[i][j] = .5*(v_n[i][j] + v_n[i][j-1])*cos(theta) - .5*(u_n[i][j] + u_n[i-1][j])*sin(theta);
+        }
+    }
 }
 
 
