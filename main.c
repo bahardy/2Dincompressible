@@ -14,7 +14,7 @@
 //#define RECOVER
 #define MOVE
 //#define TEMP
-//#define TWO_WAY
+#define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 30.*data.Dp;
+    data.d = 10.*data.Dp;
     data.H = 0.5*data.d;
     data.L = 30.*data.Dp;
     data.h = data.Dp/30;
@@ -52,13 +52,14 @@ int main(int argc, char *argv[]){
     data.Pr = 0.7;
     data.Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data.Sc = data.Le*data.Pr;
-    data.Rep = 40.;
+    //data.Rep = 40.;
     data.Fr = sqrt(1e3);
 
     /* FLOW */
     data.u_m = 1.;
-    data.u_max = 1.5*data.u_m;
-    data.nu = data.u_m*data.Dp/data.Rep;
+    //data.u_max = 1.5*data.u_m;
+    data.nu = 0.03926;//data.u_m*data.Dp/data.Rep;
+    data.g = 9.81;
 
     /* ENERGY */
     data.alpha_f = data.nu/data.Pr;
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 100.;
+    data.rho_p = 2.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -91,17 +92,17 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .025; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = .005; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1;
+    data.ratio_dtau_dt = 5;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
     if(rank == 0){
-        printf("Rep = %f\n", data.Rep);
+        //printf("Rep = %f\n", data.Rep);
         printf("ratio L/d = %f \n", data.L/data.d);
         printf("Um = %f\n", data.u_m);
         printf("dt_CFL = %f\n", dt_CFL);
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 0.5; //data.Tf/10.;
+    data.t_move = 0; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -213,7 +214,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.H;
+    data.xg[0] = 25.*data.Dp;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -263,15 +264,9 @@ int main(int argc, char *argv[]){
     }
 
     /** ----- BOUNDARY CONDITION -----------**/
-//    for(int j=1; j<n-1; j++) {
 
-//#ifndef SLIP
-        //y_ch = (j-0.5)*data.h - data.H;
-    //    data.u_n[0][j] = 1;  //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-      //  data.u_n_1[0][j] = data.u_n[0][j];
-       // data.u_star[0][j] = data.u_n[0][j];
-//#endif
-  //  }
+    //y_ch = (j-0.5)*data.h - data.H;
+    //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
 
     // Ghost point for u_n_1 (first time EE)
     for (int i=0; i<m; i++) {
@@ -401,7 +396,7 @@ int main(int argc, char *argv[]){
         get_Ts(&data);
         get_Cs(&data);
 #endif
-        get_ghosts(&data, data.Tm0, data.C0);
+        //get_ghosts(&data, data.Tm0, data.C0);
         get_Ustar_Vstar(&data, data.ramp);
         clock_t t_init = clock();
         poisson_solver(&data, rank, nbproc);
@@ -410,6 +405,9 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
 
         update_flow(&data);
+        get_ghosts(&data, data.Tm0, data.C0);
+        get_vorticity(&data);
+
         diagnostic(&data);
 
 
@@ -421,7 +419,8 @@ int main(int argc, char *argv[]){
             fflush(fichier_forces);
             fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Phi[0][0]);
             fflush(fichier_fluxes);
-            fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0], data.Tp[0]);
+            fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \t %3.13e  \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0],
+                    data.Up[0][3], data.Vp[0][3], data.Omega_p[0][3], data.Tp[0]);
             fflush(fichier_particle);
 
             if(data.iter % data.T_write == 0){
@@ -486,9 +485,9 @@ void compute_forces_fluxes(Data* data, int k)
     double rho_f = data->rho_f;
     double cf = data->cf;
 
-    //PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
-    //PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
-    //PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
     PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k]);
     PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k]);
@@ -501,8 +500,8 @@ void compute_forces_fluxes(Data* data, int k)
     Phi[k][0] = PP[k][0][2];
 
 
-    PetscPrintf(PETSC_COMM_WORLD,"Force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, Fx[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, Fy[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, Fx[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, Fy[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Phi[k][0]);
@@ -725,7 +724,7 @@ void get_ghosts(Data* data, double T0, double* C0)
     for (int j = 0; j<n; j++){
         /* On v_n */
         /* Inflow : horizontal flow --> v_n = 0 */
-        v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
+        v_n[0][j] = v_n[1][j];//= -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
         /* Natural outflow : dV/dx =0 */
         v_n[m-1][j] = v_n[m-2][j];
 
@@ -1012,7 +1011,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     }
     /*Outflow condition */
     for (j=1; j<n-1; j++){
-        u_star[m-2][j] = u_n[m-2][j] - dt*Um*(u_n[m-2][j]-u_n[m-3][j])/h;
+        u_star[m-2][j] = u_n[m-2][j]; //- dt*Um*(u_n[m-2][j]-u_n[m-3][j])/h;
     }
     /*u_star[0][j] (inflow) is fixed once for all at the beginning */
 
@@ -1247,16 +1246,6 @@ void update_flow(Data* data) {
     int i, j;
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
-    for (j = 0; j < n; j++) {
-#ifndef SLIP
-        //y_ch = (j - 0.5) *h - H;
-        //u_poiseuille = data->u_max* (1. - (y_ch / H) * (y_ch / H));
-        u_new[0][j] = data->u_m;
-#endif
-#ifdef SLIP
-        u_new[0][j] = data->u_m;
-#endif
-    }
 
     for (i = 1; i < m - 1; i++) {
         for (j = 1; j < n - 2; j++) {
@@ -1270,25 +1259,17 @@ void update_flow(Data* data) {
         P[i][j] += phi[i][j];
     }
 
-    for (i = 1; i < m - 2; i++) {
-        for (j = 1; j < n - 2; j++) {
-            omega[i][j] = (v_new[i + 1][j] - v_new[i][j]) / h - (u_new[i][j + 1] - u_new[i][j]) / h;
-        }
-    }
-    // One-sided finite diff. 
-    // Inlet and outlet
-    for (j = 1; j < n - 1; j++) {
-        omega[0][j] = v_new[1][j] / (.5 * h) - (u_new[0][j + 1] - u_new[0][j]) / h;
-        omega[m - 2][j] = -(u_new[0][j + 1] - u_new[0][j]) / h;
-    }
-    for (i = 1; i < m - 1; i++) {
+    // INFLOW/OUTFLOW
+    for (j = 0; j < n; j++){
 #ifndef SLIP
-        omega[i][0] =  - u_new[i][1]/(.5*h);
-        omega[i][n-2] = u_new[i][n-2]/(.5*h);
+        //y_ch = (j - 0.5) *h - H;
+        //u_poiseuille = data->u_max* (1. - (y_ch / H) * (y_ch / H));
+        u_new[0][j] = data->u_m;
 #endif
 #ifdef SLIP
-        omega[i][0] = 0;
-        omega[i][n - 2] = 0;
+        u_new[0][j] = (4.*u_n[1][j] - u_n[0][j])/3.;
+        u_new[m-2][j] = (4.*u_n[m-3][j] - u_n[m-4][j])/3.;
+        //u_new[0][j] = u_n[0][j];
 #endif
     }
 
@@ -1381,11 +1362,30 @@ void update_flow(Data* data) {
 
 }
 
+
+void get_vorticity(Data* data){
+    int m = data->m;
+    int n = data->n;
+    double h = data->h;
+
+    int i,j;
+
+    double** omega = data->omega;
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
+
+    for (i = 0; i < m - 1; i++) {
+        for (j = 1; j < n - 2; j++) {
+            omega[i][j] = (v_n[i + 1][j] - v_n[i][j]) / h - (u_n[i][j + 1] - u_n[i][j]) / h;
+        }
+    }
+}
+
 void update_Xp(Data* data, int k)
 {
     double* xg = data->xg;
     double* yg = data->yg;
-    double* theta = data->yg;
+    double* theta = data->theta;
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
@@ -1417,7 +1417,7 @@ void update_Up(Data* data, int k)
     double dt = data->dt;
 
 #ifdef TWO_WAY
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) ;
+    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - data->g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
@@ -1425,6 +1425,7 @@ void update_Up(Data* data, int k)
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 #endif
 
+    printf("Up = %f \n", Up[k][3]);
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
     Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];
