@@ -31,6 +31,7 @@ struct Data{
 
     /*Physical parameters */
     double nu;
+    double g;
     double rho_p, rho_f, rho_r;
     double cp, cf, cr;
     double Rep;
@@ -166,11 +167,9 @@ void get_Cs(Data* data);
 void get_Ts(Data* data);
 void get_Us_Vs(Data* data);
 void get_Ustar_Vstar(Data* data, double ramp);
-void get_Ustar_Vstar_EE(Data* data, double ramp);
+void get_vorticity(Data* data);
 PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc);
 void update_flow(Data* data);
-void update_temp_species(Data* data, double ramp);
-void update_temp_species_EE(Data* data, double ramp);
 void update_Xp(Data* data, int k);
 void update_Up(Data* data, int k);
 void update_Tp(Data* data,int k);
