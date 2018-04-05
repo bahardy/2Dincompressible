@@ -19,7 +19,7 @@
 #define WRITE
 #define DISK
 #define SLIP
-#define SMOOTHING
+//#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -42,12 +42,13 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 10.*data.Dp;
+    data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 30.*data.Dp;
+    data.L = 10.*data.Dp;
     data.h = data.Dp/30;
+#ifdef SMOOTHING
     data.eps = 0.5*data.h;
-
+#endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
     data.Le = 1; /* Lewis number, ratio between Sc and Prandtl */
@@ -214,7 +215,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 25.*data.Dp;
+    data.xg[0] = 9.*data.Dp;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -243,6 +244,16 @@ int main(int argc, char *argv[]){
 #endif
     }
 
+    /** -------- Some files creation and data writing-------- **/
+
+    FILE* fichier_data = fopen("results/data.txt", "w");
+    writeData(fichier_data, data);
+    fclose(fichier_data);
+
+    FILE* fichier_stat = fopen("results/stats.txt", "w+");
+    FILE* fichier_forces = fopen("results/forces.txt", "w+");
+    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
+    FILE* fichier_particle = fopen("results/particle.txt", "w+");
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
 
@@ -292,17 +303,6 @@ int main(int argc, char *argv[]){
 
     /*Initialization of the mask */ 
     get_masks(&data);
-
-    /** -------- Some files creation and data writing-------- **/
-
-    FILE* fichier_data = fopen("results/data.txt", "w");
-    writeData(fichier_data, data);
-    fclose(fichier_data);
-
-    FILE* fichier_stat = fopen("results/stats.txt", "w+");
-    FILE* fichier_forces = fopen("results/forces.txt", "w+");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
-    FILE* fichier_particle = fopen("results/particle.txt", "w+");
 
 
     /** ------------------------------- RAMPING ------------------------------- **/
