@@ -12,16 +12,16 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
+#define MOVE
 //#define TEMP
 #define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
-#define CHANNEL
-//#define GRAVITY
-//#define SMOOTHING
+#define CAVITY
+#define GRAVITY
+#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -61,8 +61,8 @@ int main(int argc, char *argv[]){
     /* FLOW */
     data.u_m = 1.;
     //data.u_max = 1.5*data.u_m;
-    //data.nu = 0.03926;
-    data.nu = data.u_m*data.Dp/data.Rep;
+    data.nu = 0.03926;
+    //data.nu = data.u_m*data.Dp/data.Rep;
 #ifdef GRAVITY
     data.g = 9.81;
 #endif
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 100.;
+    data.rho_p = 2.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -97,12 +97,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = .1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-4;
+    data.ratio_dtau_dt = 5;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.H; //9.*data.Dp;
+    data.xg[0] = 9.*data.Dp;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -266,7 +266,7 @@ int main(int argc, char *argv[]){
         for(int j=0; j<n; j++){
 //            y_ch = (j-0.5)*data.h - data.H;
 //            data.u_n[i][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-            data.u_n[i][j] = data.u_m;
+            data.u_n[i][j] = 0;//data.u_m;
 
             /* v_n is initially at zero */
 
