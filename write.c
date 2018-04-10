@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "write.h"
-#define MOVE
 #define TEMP
 
 void writeData(FILE* fichier_data, Data data)
@@ -83,7 +82,7 @@ void writeFields(Data* data, int it)
 
     FILE* fichier_U = NULL;
     FILE* fichier_V = NULL;
-    FILE* fichier_P = NULL;
+    //FILE* fichier_P = NULL;
     FILE* fichier_T = NULL;
     FILE* fichier_YA = NULL;
     FILE* fichier_YB = NULL;
@@ -93,14 +92,12 @@ void writeFields(Data* data, int it)
     char buffer[10];
     sprintf(buffer, "%d", it);
 
-#ifdef MOVE
     char fileMask[30];
     strcpy(fileMask, "results/Mask");
     strcat(fileMask, "-");
     strcat(fileMask, buffer);
     strcat(fileMask, ".txt");
     fichier_Mask = fopen(fileMask, "w");
-#endif
 
     char fileU[30];
     strcpy(fileU, "results/U");
@@ -139,37 +136,33 @@ void writeFields(Data* data, int it)
     fichier_T = fopen(fileT, "w");
 
     char fileYA[30];
-    strcpy(fileYA, "results/YA");
+    strcpy(fileYA, "results/CA");
     strcat(fileYA, "-");
     strcat(fileYA, buffer);
     strcat(fileYA, ".txt");
     fichier_YA = fopen(fileYA, "w");
 
     char fileYB[30];
-    strcpy(fileYB, "results/YB");
+    strcpy(fileYB, "results/CB");
     strcat(fileYB, "-");
     strcat(fileYB, buffer);
     strcat(fileYB, ".txt");
     fichier_YB = fopen(fileYB, "w");
 #endif
 
-#ifdef MOVE
     write2Darray(fichier_Mask, data->coloring,1,m-1,1,n-1);
-#endif 
     write2Darray(fichier_U, data->u_n, 0,m-1,1,n-1);
     write2Darray(fichier_V, data->v_n, 1,m-1,0,n-1);
     write2Darray(fichier_Vtx, data->omega, 1, m-1, 1, n-1);
     //write2Darray(fichier_P, data->P,1,m-1,1,n-1);
 #ifdef TEMP 
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
-    write2Darray(fichier_YA, data->C[0],1,m-1,1,n-1);
-    write2Darray(fichier_YB, data->C[1],1,m-1,1,n-1);
+    write2Darray(fichier_YA, data->C_n[0],1,m-1,1,n-1);
+    write2Darray(fichier_YB, data->C_n[1],1,m-1,1,n-1);
 #endif
 
     //CLOSE FILES 
-#ifdef MOVE
     fclose(fichier_Mask);
-#endif
     fclose(fichier_U);
     fclose(fichier_V);
     fclose(fichier_Vtx);

@@ -26,7 +26,6 @@ struct Data{
     double d;
     double H;
     double L;
-    int ratio_L_d;
 
 
     /*Physical parameters */
@@ -35,7 +34,6 @@ struct Data{
     double rho_p, rho_f, rho_r;
     double cp, cf, cr;
     double Rep;
-    double Red;
     double Pr;
     double Sc;
     double Le;
@@ -82,9 +80,9 @@ struct Data{
 
     /*Fields*/
     double** coloring;
-    double*** C;
+    double*** C_n;
+    double*** C_n_1;
     double* C0;
-    double*** C_old;
     double*** Cs;
     double** Cp;
     double* dudt;
@@ -108,7 +106,8 @@ struct Data{
 
     double** P;
     double** phi;
-    double** Phi;
+
+    double** Qm;
     double*** PP;
 
     double* Q;
@@ -176,13 +175,13 @@ void update_Tp(Data* data,int k);
 void update_Cp(Data* data, int k);
 
 /* SOME HELPFUL FUNCTIONS */
-void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
+//void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);
 double* make1DDoubleArray(int arraySize);
 double** make2DDoubleArray(int arraySizeX, int arraySizeY);
 double*** make3DDoubleArray(int numberOfparticles, int arraySizeX, int arraySizeY);
-/*int** make2DIntArray(int arraySizeX, int arraySizeY);
-int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY); */
+int** make2DIntArray(int arraySizeX, int arraySizeY);
+int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY);
 void free2Darray(double** array, int dim1);
 void free3Darray(double*** array, int dim1, int dim2);
 
@@ -196,7 +195,7 @@ double alpha = 1.98;*/
 
 
 
-#define OPEN_STATE \
+/*#define OPEN_STATE \
 FILE* state_file = NULL;\
 FILE* state_file_U = NULL;\
 FILE* state_file_Aold = NULL;\
@@ -233,14 +232,13 @@ state_file_CCBold = fopen("state/state_CCBold.txt","r+"); \
 state_file_particles = fopen("state/state_particles.txt","r+");\
 state_file_particles_velocities = fopen("state/state_particles_velocities.txt","r+");\
 state_file_particles_forces = fopen("state/state_particles_forces.txt","r+");\
-state_file_particles_fluxes = fopen("state/state_particles_fluxes.txt","r+");
+state_file_particles_fluxes = fopen("state/state_particles_fluxes.txt","r+");*/
 
 
-#define RECOVER_STATE \
+/*#define RECOVER_STATE \
 ramp = 1.; \
 printf("ramp = %f \n", ramp); \
 fscanf(state_file, "%d", &iter_start);\
-/*fscanf(state_file, "%d", &l_start);*/\
 fscanf(state_file, "%lf", &t_start); \
 \
 for(int i=0; i<m; i++){\
@@ -271,9 +269,9 @@ fclose(state_file_Told); fclose(state_file_CTold);\
 fclose(state_file_CAold); fclose(state_file_CCAold);\
 fclose(state_file_CBold); fclose(state_file_CCBold);\
 fclose(state_file_particles); fclose(state_file_particles_velocities);\
-fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);\
+fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);\*/
 
-#define SAVE_STATE \
+/*#define SAVE_STATE \
 state_file = fopen("state/state.txt","w"); \
 state_file_U = fopen("state/state_U.txt","w");\
 state_file_Aold = fopen("state/state_Aold.txt","w");\
@@ -326,7 +324,7 @@ fclose(state_file_Told); fclose(state_file_CTold);\
 fclose(state_file_CAold); fclose(state_file_CCAold);\
 fclose(state_file_CBold); fclose(state_file_CCBold);\
 fclose(state_file_particles); fclose(state_file_particles_velocities);\
-fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);
+fclose(state_file_particles_forces); fclose(state_file_particles_fluxes);*/
 
 
 #endif

@@ -12,16 +12,16 @@
 #endif
 
 //#define RECOVER
-#define MOVE
-//#define TEMP
+//#define MOVE
+#define TEMP
 #define TWO_WAY
-//#define RAMPING
+#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
-#define CAVITY
-#define GRAVITY
-#define SMOOTHING
+#define CHANNEL
+//#define GRAVITY
+//#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -46,8 +46,9 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 10.*data.Dp;
-    data.h = data.Dp/30;
+    data.L = 5.*data.Dp;
+    data.h = data.Dp/40;
+    data.eps = 0;
 #ifdef SMOOTHING
     data.eps = data.h;
 #endif
@@ -61,8 +62,9 @@ int main(int argc, char *argv[]){
     /* FLOW */
     data.u_m = 1.;
     //data.u_max = 1.5*data.u_m;
-    data.nu = 0.03926;
-    //data.nu = data.u_m*data.Dp/data.Rep;
+    //data.nu = 0.03926;
+    data.nu = data.u_m*data.Dp/data.Rep;
+    data.g = 0;
 #ifdef GRAVITY
     data.g = 9.81;
 #endif
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 2.;
+    data.rho_p = 1000.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -97,17 +99,17 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.5; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 5;
+    data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
     if(rank == 0){
-        //printf("Rep = %f\n", data.Rep);
+        printf("Rep = %f\n", data.Rep);
         printf("ratio L/d = %f \n", data.L/data.d);
         printf("Um = %f\n", data.u_m);
         printf("dt_CFL = %f\n", dt_CFL);
@@ -154,9 +156,9 @@ int main(int argc, char *argv[]){
     int Ns = data.Ns;
 
     data.coloring = make2DDoubleArray(m,n);
-    data.C = make3DDoubleArray(Ns,m,n);
+    data.C_n = make3DDoubleArray(Ns,m,n);
     data.C0 = make1DDoubleArray(Ns); // inlet concentration
-    data.C_old = make3DDoubleArray(Ns,m,n);
+    data.C_n_1 = make3DDoubleArray(Ns,m,n);
     data.Cs = make3DDoubleArray(Ns,m,n);
     data.Cp = make2DDoubleArray(Np,Ns);
     data.dudt = make1DDoubleArray(Np);
@@ -181,7 +183,7 @@ int main(int argc, char *argv[]){
     data.omega = make2DDoubleArray(m,n);
     data.Omega_p = make2DDoubleArray(Np,4);
     data.phi = make2DDoubleArray(m,n);
-    data.Phi = make2DDoubleArray(Np,Ns);
+    data.Qm = make2DDoubleArray(Np,Ns);
     data.P = make2DDoubleArray(m,n);
     data.PP = make3DDoubleArray(Np, Ns, 3);
     data.Q = make1DDoubleArray(Np);
@@ -218,7 +220,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 9.*data.Dp;
+    data.xg[0] = data.d;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -266,14 +268,12 @@ int main(int argc, char *argv[]){
         for(int j=0; j<n; j++){
 //            y_ch = (j-0.5)*data.h - data.H;
 //            data.u_n[i][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-            data.u_n[i][j] = 0;//data.u_m;
-
-            /* v_n is initially at zero */
-
+            data.u_n[i][j] = data.u_m;
             data.u_n_1[i][j] = data.u_n[i][j];
             data.u_star[i][j] = data.u_n[i][j];
             data.T_n[i][j] = data.Tm0;
             data.T_n_1[i][j] = data.T_n[i][j];
+            /* v_n is initially at zero */
         }
     }
 
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]){
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
         writeFields(&data, 0);
-	    writeMask(&data);
+	    //writeMask(&data);
     }
 #endif
 
@@ -417,7 +417,7 @@ int main(int argc, char *argv[]){
             fflush(fichier_stat);
             fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
             fflush(fichier_forces);
-            fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Phi[0][0]);
+            fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Qm[0][0]);
             fflush(fichier_fluxes);
             fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \t %3.13e  \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0],
                     data.Up[0][3], data.Vp[0][3], data.Omega_p[0][3], data.Tp[0]);
@@ -434,7 +434,6 @@ int main(int argc, char *argv[]){
 
     }
 
-
     fclose(fichier_forces);
     fclose(fichier_fluxes);
     fclose(fichier_particle);
@@ -443,13 +442,13 @@ int main(int argc, char *argv[]){
     /* Free memory */
     free(data.xg), free(data.yg), free(data.theta), free(data.dp), free(data.rp), free(data.Sp), free(data.II), free(data.J);
     free(data.dudt), free(data.dvdt), free(data.domegadt), free(data.dTdt); free2Darray(data.dCdt, Np);
-    free(data.Fx), free(data.Fy), free(data.Tz), free(data.Q), free2Darray(data.Phi, Np);
+    free(data.Fx), free(data.Fy), free(data.Tz), free(data.Q), free2Darray(data.Qm, Np);
     free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m);
     free2Darray(data.v_n,m), free2Darray(data.v_n_1,m), free2Darray(data.v_star,m), free2Darray(data.v_s,m);
     free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m);
     free2Darray(data.P,m), free2Darray(data.phi, m);
     free2Darray(data.T_n,m),  free2Darray(data.T_n_1,m), free2Darray(data.Ts, m);
-    free3Darray(data.C, Ns, m), free3Darray(data.C_old, Ns, m), free3Darray(data.Cs, Ns, m), free(data.C0);
+    free3Darray(data.C_n, Ns, m), free3Darray(data.C_n_1, Ns, m), free3Darray(data.Cs, Ns, m), free(data.C0);
     free2Darray(data.Up,Np), free2Darray(data.Vp, Np), free2Darray(data.Omega_p,Np), free(data.Tp), free2Darray(data.Cp, Np);
     free2Darray(data.F, Np), free2Darray(data.G, Np), free2Darray(data.Mz, Np), free2Darray(data.QQ, Np), free3Darray(data.PP, Np,Ns), free2Darray(data.Qr, Np);
     free2Darray(data.I_S, m), free2Darray(data.I_U, m), free2Darray(data.I_V, m), free2Darray(data.coloring, m);
@@ -466,7 +465,7 @@ void compute_forces_fluxes(Data* data, int k)
     double* Fy = data->Fy;
     double* Tz = data->Tz;
     double* Q = data->Q;
-    double** Phi = data->Phi;
+    double** Qm = data->Qm;
 
     double** F = data->F;
     double** G = data->G;
@@ -497,7 +496,7 @@ void compute_forces_fluxes(Data* data, int k)
     Fy[k] = rho_f*(Sp[k]*dvdt[k] + G[k][2]);
     Tz[k] = rho_f*(Sp[k]*II[k]*domegadt[k] + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
-    Phi[k][0] = PP[k][0][2];
+    Qm[k][0] = PP[k][0][2];
 
 
     PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, Fx[k]);
@@ -560,7 +559,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     double*** Ip_S = data->Ip_S;
     double** u_n = data->u_n;
     double** v_n = data->v_n;
-    double*** C = data->C;
+    double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
     double** v_s = data->v_s;
@@ -647,7 +646,7 @@ int integrate_penalization(Data *data, double* surf, int k)
             double q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
             double* qm = make1DDoubleArray(Ns);
             for(int s=0; s<Ns; s++){
-                qm[s] = -Ip_S[k][i][j]*(C[s][i][j]-Cs[s][i][j]);
+                qm[s] = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
             }
 #endif
             sint += Ip_S[k][i][j]*h*h;
@@ -687,7 +686,7 @@ void get_ghosts(Data* data, double T0, double* C0)
     double** u_n = data->u_n;
     double** v_n = data->v_n;
     double** T_n = data->T_n;
-    double*** C = data->C;
+    double*** C = data->C_n;
 
     int m = data->m;
     int n = data->n;
@@ -722,12 +721,12 @@ void get_ghosts(Data* data, double T0, double* C0)
 
     /* Along x = 0 and x = L */
     for (int j = 0; j<n; j++){
-        /* On v_n */
-        /* Inflow : horizontal flow --> v_n = 0 */
 #ifdef CAVITY
+        /* slip */
         v_n[0][j] = v_n[1][j];
 #endif
 #ifdef CHANNEL
+        /* Inflow : horizontal flow --> v_n = 0 */
         v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
 #endif
         /* Natural outflow : dV/dx =0 */
@@ -765,7 +764,7 @@ void get_masks(Data* data)
     double* yg = data->yg;
     double* theta = data->theta;
     double* rp = data->rp;
-
+    //double dist;
     int m = data->m;
     int n = data->n;
     double h = data->h;
@@ -773,7 +772,6 @@ void get_masks(Data* data)
 
     double xU, xV, yU, yV, yS, xS;
     double xloc, yloc, delta;
-    double dist;
 
     for(int i=0; i<m; i++){
         xU = i*h;
@@ -980,7 +978,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
     double** P = data->P;
 
-    double Umax = data->u_max;
     double Um = data->u_m;
 
     double Uij, Vij, Uij_old, Vij_old;
@@ -1006,18 +1003,14 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // pressure term
             dpdx = (P[i+1][j]-P[i][j])/h;
 
-            if (H_U != H_U_old && data->ramp == 0){
-                printf("Problem at first time step ! ");
-            }
-
             u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
         }
     }
 
 #ifdef CAVITY
     for (j=1; j<n-1; j++){
-        u_star[0][j] = (4.*u_n[1][j] - u_n[2][j])/3.;
-        u_star[m-2][j] = (4.*u_n[m-3][j] - u_n[m-4][j])/3.;
+        u_star[0][j] = u_n[1][j];//(4.*u_n[1][j] - u_n[2][j])/3.;
+        u_star[m-2][j] = u_n[m-3][j];//(4.*u_n[m-3][j] - u_n[m-4][j])/3.;
     }
 #endif
 
@@ -1028,7 +1021,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     }
 #endif
     /*u_star[0][j] (inflow) is fixed once for all at the beginning */
-
 
     /* v_star  ADAMS-BASHFORTH 2 */
     for (i=1; i<m-1; i++){
@@ -1052,8 +1044,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
 #ifdef CAVITY
     for (i=1; i<m-1; i++){
-        v_star[i][0] = (4.*v_n[i][1] - v_n[i][2])/3.;
-        v_star[i][n-2] = (4.*v_n[i][n-3] - v_n[i][n-4])/3.;
+        v_star[i][0] = v_n[i][1]; //(4.*v_n[i][1] - v_n[i][2])/3.;
+        v_star[i][n-2] = v_n[i][n-3]; //(4.*v_n[i][n-3] - v_n[i][n-4])/3.;
     }
 #endif
 }
@@ -1284,7 +1276,6 @@ void update_flow(Data* data) {
     double **u_n = data->u_n;
     double **v_n_1 = data->v_n_1;
     double **v_n = data->v_n;
-    double **omega = data->omega;
     double **P = data->P;
 
     double **u_star = data->u_star;
@@ -1295,18 +1286,16 @@ void update_flow(Data* data) {
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
 
-    for (i = 1; i < m - 1; i++) {
-        for (j = 1; j < n - 1; j++) {
+    for (i = 0; i < m - 1; i++) {
+        for (j = 0; j < n - 1; j++) {
             u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
             v_new[i][j] = v_star[i][j] - dt * (phi[i][j + 1] - phi[i][j]) / h;
-            if (j == n-2){
-                printf("v_new top = %f \n", v_new[i][j]);
-            }
             P[i][j] += phi[i][j];
         }
     }
-#ifdef CHANNEL
-    // INFLOW/OUTFLOW
+
+//#ifdef CHANNEL
+// INFLOW/OUTFLOW
 
 //    for (i = 1; i < m - 1 ; i++) {
 //        //v = 0 everywhere
@@ -1319,7 +1308,7 @@ void update_flow(Data* data) {
 //        v_new[m-2][j] = v_star[m-2][j] - dt * (phi[m-2][j + 1] - phi[m-2][j]) / h;
 //        P[m-2][j] += phi[m-2][j];
 //    }
-#endif
+//#endif
 
 //#ifdef CAVITY
 //
@@ -1353,8 +1342,8 @@ void update_flow(Data* data) {
 
     int Ns = data->Ns;
     double ***C_new = make3DDoubleArray(Ns, m, n);
-    double ***C = data->C;
-    double ***C_old = data->C_old;
+    double ***C_n = data->C_n;
+    double ***C_n_1 = data->C_n_1;
 
     double alpha_f = data->alpha_f;
     double *Df = data->Df;
@@ -1389,14 +1378,14 @@ void update_flow(Data* data) {
 
             for (int s = 0; s < Ns; s++) {
                 // Advective terms
-                H_C_old = Uij_old * (C_old[s][i + 1][j] - C_old[s][i - 1][j]) / (2. * h) +
-                          Vij_old * (C_old[s][i][j + 1] - C_old[s][i][j - 1]) / (2. * h);
-                H_C = Uij * (C[s][i + 1][j] - C[s][i - 1][j]) / (2. * h) +
-                      Vij * (C[s][i + 1][j] - C[s][i - 1][j]) / (2. * h);
+                H_C_old = Uij_old * (C_n_1[s][i + 1][j] - C_n_1[s][i - 1][j]) / (2. * h) +
+                          Vij_old * (C_n_1[s][i][j + 1] - C_n_1[s][i][j - 1]) / (2. * h);
+                H_C = Uij * (C_n[s][i + 1][j] - C_n[s][i - 1][j]) / (2. * h) +
+                      Vij * (C_n[s][i][j + 1] - C_n[s][i][j - 1]) / (2. * h);
                 // Laplacian
-                lapC = (C[s][i + 1][j] + C[s][i - 1][j] + C[s][i][j + 1] + C[s][i][j - 1] - 4. * C[s][i][j]) / (h * h);
+                lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 
-                C_new[s][i][j] = (C[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
                                                      + Df[s] * lapC
                                                      + ramp * I_S[i][j] * Cs[s][i][j] / dtau)) /
                                  (1. + ramp * I_S[i][j] * dt / dtau);
@@ -1405,20 +1394,20 @@ void update_flow(Data* data) {
         }
     }
 
-    if (data->iter > 1) {
+    if (data->ramp > 0) { //data->iter > 1
         free2Darray(T_n_1, m);
-        free3Darray(C_old, Ns, m);
+        free3Darray(C_n_1, Ns, m);
     }
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
 
-    data->C_old = C;
-    data->C = C_new;
+    data->C_n_1 = C_n;
+    data->C_n = C_new;
 
 #endif
 
-    if (data->iter > 1) {
+    if (data->ramp > 0) { //data->iter > 1
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
@@ -1480,13 +1469,14 @@ void update_Up(Data* data, int k)
     double** F = data->F;
     double** G = data->G;
     double** M = data->Mz;
+    double g = data->g;
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
 #ifdef TWO_WAY
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - data->g;
+    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
