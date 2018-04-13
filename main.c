@@ -21,7 +21,7 @@
 #define SLIP
 #define CHANNEL
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-3;
+    data.ratio_dtau_dt = 1e-2;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -319,9 +319,8 @@ int main(int argc, char *argv[]){
         data.ramp = fmin(1., (double) K / data.Kmax);
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN ramp = %f \n", data.ramp);
-
+        get_masks(&data);
         for (int k = 0; k < Np; k++) {
-            get_masks(&data);
             integrate_penalization(&data, &surf, k);
             /* dudt, dvdt, etc = 0 because the particle is fixed */
             compute_forces_fluxes(&data, k);
@@ -764,7 +763,7 @@ void get_masks(Data* data)
     double* yg = data->yg;
     double* theta = data->theta;
     double* rp = data->rp;
-    //double dist;
+    double dist;
     int m = data->m;
     int n = data->n;
     double h = data->h;
@@ -1038,7 +1037,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
-
         }
     }
 
