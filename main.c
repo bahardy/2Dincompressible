@@ -12,7 +12,7 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
+#define MOVE
 #define TEMP
 #define TWO_WAY
 #define RAMPING
@@ -44,10 +44,10 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 5.*data.Dp;
+    data.d = 3.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 5.*data.Dp;
-    data.h = data.Dp/40;
+    data.L = 9.*data.Dp;
+    data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
     data.eps = data.h;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 1000.;
+    data.rho_p = 100.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -99,12 +99,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.5; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-2;
+    data.ratio_dtau_dt = 1;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 0; //data.Tf/10.;
+    data.t_move = 1; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]){
         data.ramp = fmin(1., (double) K / data.Kmax);
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN ramp = %f \n", data.ramp);
-        get_masks(&data);
+	get_masks(&data); 
         for (int k = 0; k < Np; k++) {
             integrate_penalization(&data, &surf, k);
             /* dudt, dvdt, etc = 0 because the particle is fixed */
@@ -1037,6 +1037,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
+
         }
     }
 
@@ -1280,6 +1281,13 @@ void update_flow(Data* data) {
     double **v_star = data->v_star;
     double **phi = data->phi;
 
+    int starter;
+#ifdef RAMPING 
+    starter = data->ramp + 1;
+#elif 
+    starter = data->iter;
+#endif
+
     int i, j;
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
@@ -1392,7 +1400,7 @@ void update_flow(Data* data) {
         }
     }
 
-    if (data->ramp > 0) { //data->iter > 1
+    if (starter > 1) { //data->iter > 1
         free2Darray(T_n_1, m);
         free3Darray(C_n_1, Ns, m);
     }
@@ -1405,7 +1413,7 @@ void update_flow(Data* data) {
 
 #endif
 
-    if (data->ramp > 0) { //data->iter > 1
+    if (starter > 1) { //data->iter > 1
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
