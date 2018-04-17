@@ -12,7 +12,7 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
+#define MOVE
 //#define TEMP
 #define TWO_WAY
 #define RAMPING
@@ -45,8 +45,8 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 15.*data.Dp;
-    data.h = data.Dp/30;
+    data.L = 5.*data.Dp;
+    data.h = data.Dp/40;
     data.eps = 0;
 #ifdef SMOOTHING
     data.eps = 2*data.h;
@@ -1031,6 +1031,9 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dpdy = (P[i][j+1]-P[i][j])/h;
 
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
+
+            /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
+
         }
     }
 }
