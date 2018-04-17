@@ -21,7 +21,7 @@
 #define SLIP
 #define CHANNEL
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -44,9 +44,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 3.*data.Dp;
+    data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 9.*data.Dp;
+    data.L = 10.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 100.;
+    data.rho_p = 1000.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -99,12 +99,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1;
+    data.ratio_dtau_dt = 1e-2;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -140,6 +140,7 @@ int main(int argc, char *argv[]){
     double t, t_start;
     int iter_start;
     data.ramp = 1;
+    data.iter = 0; 
     double surf = 0.;
 
     if(rank == 0){
@@ -1281,13 +1282,6 @@ void update_flow(Data* data) {
     double **v_star = data->v_star;
     double **phi = data->phi;
 
-    int starter;
-#ifdef RAMPING 
-    starter = data->ramp + 1;
-#elif 
-    starter = data->iter;
-#endif
-
     int i, j;
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
@@ -1400,7 +1394,7 @@ void update_flow(Data* data) {
         }
     }
 
-    if (starter > 1) { //data->iter > 1
+    if (data->ramp > 0 && data->iter != 1) {
         free2Darray(T_n_1, m);
         free3Darray(C_n_1, Ns, m);
     }
@@ -1413,7 +1407,7 @@ void update_flow(Data* data) {
 
 #endif
 
-    if (starter > 1) { //data->iter > 1
+    if (data->ramp > 0 && data->iter != 1) {
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
