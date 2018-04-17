@@ -370,7 +370,9 @@ int main(int argc, char *argv[]){
             /* Velocity - Forces */
             if(t > data.t_move){
                 update_Xp(&data, k);
+#ifdef TWO_WAY
                 update_Up(&data, k);
+#endif
             }
 #endif
 #ifdef  TEMP
@@ -443,7 +445,7 @@ int main(int argc, char *argv[]){
     free(data.Fx), free(data.Fy), free(data.Tz), free(data.Q), free2Darray(data.Qm, Np);
     free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m);
     free2Darray(data.v_n,m), free2Darray(data.v_n_1,m), free2Darray(data.v_star,m), free2Darray(data.v_s,m);
-    free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m);
+    free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m); free2Darray(data.CFL_array, m);
     free2Darray(data.P,m), free2Darray(data.phi, m);
     free2Darray(data.T_n,m),  free2Darray(data.T_n_1,m), free2Darray(data.Ts, m);
     free3Darray(data.C_n, Ns, m), free3Darray(data.C_n_1, Ns, m), free3Darray(data.Cs, Ns, m), free(data.C0);
@@ -1323,6 +1325,8 @@ void update_flow(Data* data) {
 
     if (data->ramp > 0) { //data->iter > 1
         free2Darray(T_n_1, m);
+        free3Darray(C_n_1, Ns, m);
+    }
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
@@ -1400,14 +1404,12 @@ void update_Up(Data* data, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
-#ifdef TWO_WAY
     dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
-#endif
 
     PetscPrintf(PETSC_COMM_WORLD, "Up = %f \n", Up[k][3]);
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
