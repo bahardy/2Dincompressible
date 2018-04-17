@@ -13,7 +13,7 @@
 
 //#define RECOVER
 #define MOVE
-//#define TEMP
+#define TEMP
 #define TWO_WAY
 #define RAMPING
 #define WRITE
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 10.*data.Dp;
+    data.L = 15.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -321,6 +321,8 @@ int main(int argc, char *argv[]){
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN ramp = %f \n", data.ramp);
         get_masks(&data);
+        get_Ts(&data);
+        get_Cs(&data);
         for (int k = 0; k < Np; k++) {
             integrate_penalization(&data, &surf, k);
             /* dudt, dvdt, etc = 0 because the particle is fixed */
