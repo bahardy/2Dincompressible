@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 5.*data.Dp;
+    data.L = 15.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-3;
+    data.ratio_dtau_dt = 1e-2;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -139,6 +139,7 @@ int main(int argc, char *argv[]){
     double t, t_start;
     int iter_start;
     data.ramp = 1;
+    data.iter = 0;
     double surf = 0.;
 
     if(rank == 0){
@@ -220,7 +221,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 2.;
+    data.xg[0] = data.d;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -1323,7 +1324,7 @@ void update_flow(Data* data) {
         }
     }
 
-    if (data->ramp > 0) { //data->iter > 1
+    if (data->ramp > 0 && data->iter != 1) {
         free2Darray(T_n_1, m);
         free3Darray(C_n_1, Ns, m);
     }
@@ -1336,7 +1337,7 @@ void update_flow(Data* data) {
 
 #endif
 
-    if (data->ramp > 0) { //data->iter > 1
+    if (data->ramp > 0 && data->iter != 1) {
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
