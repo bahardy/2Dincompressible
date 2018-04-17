@@ -13,15 +13,14 @@
 
 //#define RECOVER
 //#define MOVE
-#define TEMP
+//#define TEMP
 #define TWO_WAY
 #define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
-#define CHANNEL
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -47,10 +46,10 @@ int main(int argc, char *argv[]){
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
     data.L = 5.*data.Dp;
-    data.h = data.Dp/40;
+    data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = data.h;
+    data.eps = 2*data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -75,7 +74,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 1000.;
+    data.rho_p = 100.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -99,12 +98,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.5; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-2;
+    data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -156,6 +155,7 @@ int main(int argc, char *argv[]){
     int Ns = data.Ns;
 
     data.coloring = make2DDoubleArray(m,n);
+    data.CFL_array = make2DDoubleArray(m,n);
     data.C_n = make3DDoubleArray(Ns,m,n);
     data.C0 = make1DDoubleArray(Ns); // inlet concentration
     data.C_n_1 = make3DDoubleArray(Ns,m,n);
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.d;
+    data.xg[0] = 2.;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -255,10 +255,10 @@ int main(int argc, char *argv[]){
     writeData(fichier_data, data);
     fclose(fichier_data);
 
-    FILE* fichier_stat = fopen("results/stats.txt", "w+");
-    FILE* fichier_forces = fopen("results/forces.txt", "w+");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
-    FILE* fichier_particle = fopen("results/particle.txt", "w+");
+    FILE* fichier_stat = fopen("results/stats.txt", "w");
+    FILE* fichier_forces = fopen("results/forces.txt", "w");
+    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
+    FILE* fichier_particle = fopen("results/particle.txt", "w");
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
 
@@ -412,7 +412,7 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.13e \t  %3.13e \n", data.Reh_max, data.Reh_omega_max);
+            fprintf(fichier_stat, "%3.13e \t  %3.13e \n %3.6e \n", data.Reh_max, data.Reh_omega_max, data.CFL_max);
             fflush(fichier_stat);
             fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
             fflush(fichier_forces);
@@ -432,11 +432,10 @@ int main(int argc, char *argv[]){
         data.iter ++;
 
     }
-
+    fclose(fichier_stat);
     fclose(fichier_forces);
     fclose(fichier_fluxes);
     fclose(fichier_particle);
-    fclose(fichier_stat);
 
     /* Free memory */
     free(data.xg), free(data.yg), free(data.theta), free(data.dp), free(data.rp), free(data.Sp), free(data.II), free(data.J);
@@ -520,23 +519,32 @@ void diagnostic(Data* data){
     double** Reh = data->Reh;
     double** Reh_omega = data->Reh_omega;
     double h = data->h;
+    double dt = data->dt;
+    double** u = data->u_n;
+    double** v = data->v_n;
+    double** CFL_array = data->CFL_array;
     double nu = data->nu;
     double m = data->m;
     double n = data->n;
 
     data->Reh_max = 0.;
     data->Reh_omega_max = 0.;
+    data->CFL_max = 0.;
 
     int i, j;
     for (i=1; i<m-1; i++) {
         for (j = 1; j<n-1; j++) {
             Reh[i][j] = (fabs(u_n[i][j]) + fabs(v_n[i][j]))*h/nu;
             Reh_omega[i][j] = fabs(omega[i][j])*h*h/n;
+            CFL_array[i][j] = (fabs(u[i][j]) + fabs(v[i][j]))*dt/h;
             if(Reh[i][j] > data->Reh_max){
                 data->Reh_max = Reh[i][j];
             }
             if(Reh_omega[i][j] > data->Reh_omega_max){
                 data->Reh_omega_max = Reh_omega[i][j];
+            }
+            if(CFL_array[i][j] > data->CFL_max){
+                data->CFL_max = CFL_array[i][j];
             }
         }
     }
@@ -637,7 +645,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     for(int i = 0; i<m; i++){
         xV = (i-0.5)*h;
         //for(int j=startY; j<=endY; j++){
-        for(int j=0; j<n; j++){
+        for(int j=0; j<n; j++) {
             yU = (j-0.5)*h;
             f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
             g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
@@ -720,14 +728,8 @@ void get_ghosts(Data* data, double T0, double* C0)
 
     /* Along x = 0 and x = L */
     for (int j = 0; j<n; j++){
-#ifdef CAVITY
-        /* slip */
-        v_n[0][j] = v_n[1][j];
-#endif
-#ifdef CHANNEL
         /* Inflow : horizontal flow --> v_n = 0 */
         v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
-#endif
         /* Natural outflow : dV/dx =0 */
         v_n[m-1][j] = v_n[m-2][j];
 
@@ -1006,19 +1008,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
         }
     }
 
-#ifdef CAVITY
-    for (j=1; j<n-1; j++){
-        u_star[0][j] = u_n[1][j];//(4.*u_n[1][j] - u_n[2][j])/3.;
-        u_star[m-2][j] = u_n[m-3][j];//(4.*u_n[m-3][j] - u_n[m-4][j])/3.;
-    }
-#endif
-
-#ifdef CHANNEL
     /*Outflow condition */
     for (j=1; j<n-1; j++){
         u_star[m-2][j] = u_n[m-2][j] - dt*Um*(u_n[m-2][j]-u_n[m-3][j])/h;
     }
-#endif
     /*u_star[0][j] (inflow) is fixed once for all at the beginning */
 
     /* v_star  ADAMS-BASHFORTH 2 */
@@ -1035,17 +1028,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dpdy = (P[i][j+1]-P[i][j])/h;
 
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
-
-            /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
         }
     }
-
-#ifdef CAVITY
-    for (i=1; i<m-1; i++){
-        v_star[i][0] = v_n[i][1]; //(4.*v_n[i][1] - v_n[i][2])/3.;
-        v_star[i][n-2] = v_n[i][n-3]; //(4.*v_n[i][n-3] - v_n[i][n-4])/3.;
-    }
-#endif
 }
 
 
@@ -1105,7 +1089,6 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         if(ii<M-1){
             MatSetValue(A, r, r+N, -1., INSERT_VALUES);
         }
-#ifdef CHANNEL
         if(ii == 0 || jj == 0 || jj == N-1)
         {
             MatSetValue(A, r, r, 3., INSERT_VALUES);
@@ -1114,7 +1097,6 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         {
             MatSetValue(A, r, r, 2., INSERT_VALUES);
         }
-
         if(ii == M-1)
         {
             MatSetValue(A, r, r, 5., INSERT_VALUES);
@@ -1123,21 +1105,6 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         {
             MatSetValue(A, r, r, 4., INSERT_VALUES);
         }
-#endif
-#ifdef CAVITY
-        if(ii == 0 || ii== M-1 || jj == 0 || jj == N-1)
-        {
-            MatSetValue(A, r, r, 3., INSERT_VALUES);
-        }
-        if(ii == 0  && (jj==0 || jj == N-1) )
-        {
-            MatSetValue(A, r, r, 2., INSERT_VALUES);
-        }
-        if(ii == M-1 && (jj==0 || jj==N-1))
-        {
-            MatSetValue(A, r, r, 2., INSERT_VALUES);
-        }
-#endif
     }
     PetscErrorCode  ierr;
     ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
@@ -1190,13 +1157,9 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
-#ifdef CHANNEL
             /*outflow : zero pressure at outlet */
             phi[m-1][jj] = -phi[m-2][jj];
-#endif
-#ifdef CAVITY
-            phi[m-1][jj] = phi[m-2][jj];
-#endif
+
         }
     }
     else{
@@ -1238,13 +1201,8 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
-#ifdef CHANNEL
             /*outflow : zero pressure at outlet */
             phi[m-1][jj] = -phi[m-2][jj];
-#endif
-#ifdef CAVITY
-            phi[m-1][jj] = phi[m-2][jj];
-#endif
         }
     }
     VecRestoreArray(x, &my_array);
@@ -1284,50 +1242,21 @@ void update_flow(Data* data) {
     //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
 
-    for (i = 0; i < m - 1; i++) {
-        for (j = 0; j < n - 1; j++) {
+    for (j = 1; j < n - 1; j++) {
+        u_new[0][j] = u_n[0][j];
+    }
+    for (i = 1; i < m - 1; i++) {
+        for (j = 1; j < n - 2; j++) {
             u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
             v_new[i][j] = v_star[i][j] - dt * (phi[i][j + 1] - phi[i][j]) / h;
             P[i][j] += phi[i][j];
         }
+        //last value of j is n-2
+        v_new[i][n-2] = 0;
+        u_new[i][n-2] = u_star[i][n-2] - dt * (phi[i + 1][n-2] - phi[i][n-2]) / h;
+        P[i][n-2] += phi[i][n-2];
     }
 
-//#ifdef CHANNEL
-// INFLOW/OUTFLOW
-
-//    for (i = 1; i < m - 1 ; i++) {
-//        //v = 0 everywhere
-//        u_new[i][n-2] = u_star[i][n-2] - dt * (phi[i + 1][n-2] - phi[i][n-2]) / h;
-//        P[i][n-2] += phi[i][n-2];
-//    }
-//    for (j = 1; j < n - 1; j++) {
-//        u_new[0][j] = u_n[0][j]; //inflow
-//        u_new[m-2][j] = u_star[m-2][j] - dt * (phi[m-1][j] - phi[m-2][j]) / h;
-//        v_new[m-2][j] = v_star[m-2][j] - dt * (phi[m-2][j + 1] - phi[m-2][j]) / h;
-//        P[m-2][j] += phi[m-2][j];
-//    }
-//#endif
-
-//#ifdef CAVITY
-//
-//    for (i = 1; i < m - 1 ; i++) {
-//        v_new[i][0] = v_star[i][0];
-//        v_new[i][n-2] = v_star[i][n-2];
-//
-//        u_new[i][n-2] = u_star[i][n-2] - dt * (phi[i + 1][n-2] - phi[i][n-2]) / h;
-//        P[i][n-2] += phi[i][n-2];
-//    }
-//    for (j = 1; j < n-1; j++){
-//        //SLIP
-//        u_new[0][j] = u_star[0][j];
-//        u_new[m-2][j] = u_star[m-2][j];
-//
-//        v_new[m-2][j] = v_star[m-2][j] - dt * (phi[m-2][j + 1] - phi[m-2][j]) / h;
-//        P[m-2][j] += phi[m-2][j];
-//    }
-//
-//
-//#endif
 
 #ifdef TEMP
     /* TEMPERATURE AND SPECIES */
@@ -1394,8 +1323,6 @@ void update_flow(Data* data) {
 
     if (data->ramp > 0) { //data->iter > 1
         free2Darray(T_n_1, m);
-        free3Darray(C_n_1, Ns, m);
-    }
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
@@ -1482,7 +1409,7 @@ void update_Up(Data* data, int k)
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 #endif
 
-    printf("Up = %f \n", Up[k][3]);
+    PetscPrintf(PETSC_COMM_WORLD, "Up = %f \n", Up[k][3]);
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
     Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];

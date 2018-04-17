@@ -61,6 +61,8 @@ struct Data{
 
     /*Time integration */
     double CFL;
+    double CFL_max;
+    double** CFL_array;
     double r;
     double ramp;
     int Kmax;
@@ -184,14 +186,6 @@ int** make2DIntArray(int arraySizeX, int arraySizeY);
 int*** make3DIntArray(int numberOfparticles, int arraySizeX, int arraySizeY);
 void free2Darray(double** array, int dim1);
 void free3Darray(double*** array, int dim1, int dim2);
-
-
-/*  // GAUSS-SEIDEL ALGORITHM
-void old_poisson_solver(double** Ustar, double** Vstar, double **phi, double** R);
-void reset_phi(double** phi);
-double SORtol = 1e-6;
-int SORitermax = (int) 1e6;
-double alpha = 1.98;*/
 
 
 
