@@ -45,8 +45,8 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 5.*data.Dp;
-    data.h = data.Dp/40;
+    data.L = 10.*data.Dp;
+    data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
     data.eps = 2*data.h;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-2;
+    data.ratio_dtau_dt = 2e-2;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 0; //data.Tf/10.;
+    data.t_move = 1; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -415,7 +415,7 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.13e \t  %3.13e \n %3.6e \n", data.Reh_max, data.Reh_omega_max, data.CFL_max);
+            fprintf(fichier_stat, "%3.13e \t  %3.13e \t %3.6e \n", data.Reh_max, data.Reh_omega_max, data.CFL_max);
             fflush(fichier_stat);
             fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
             fflush(fichier_forces);
@@ -1341,6 +1341,7 @@ void update_flow(Data* data) {
 #endif
 
     if (data->ramp > 0 && data->iter != 1) {
+        printf("I free vectors :-) at ramp = %f and iter = %d \n", data->ramp, data->iter );
         free2Darray(u_n_1, m);
         free2Darray(v_n_1, m);
     }
