@@ -37,9 +37,11 @@ int main(int argc, char *argv[]){
     data.Omega = 1.25;
     data.R1 = 0.4;
     data.R2 = 1;
+    int N = 80; 
 
-    data.h = data.L/200.;
+    data.h = data.L/N;
     //data.eps = 0.5*data.h;
+    printf("Discretization : %d x %d", N, N); 
 
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -114,6 +116,7 @@ int main(int argc, char *argv[]){
     double t, t_start;
     int iter_start;
     data.ramp = 1;
+    data.iter = 0; 
 
     if(rank == 0){
         printf("Write every %d * dt \n", data.T_write);

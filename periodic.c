@@ -23,7 +23,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 //#define ELLIPSE
 
 
