@@ -163,6 +163,7 @@ void compute_Qr(double** Qr, double rate, double dH, int k);
 void diagnostic(Data* data);
 int integrate_penalization(Data *data, double* surf, int k);
 void get_ghosts(Data* data, double T0, double* C0);
+void get_ghosts_initial(Data* data, double T0, double* C0);
 void get_masks(Data* data);
 void get_Cs(Data* data);
 void get_Ts(Data* data);

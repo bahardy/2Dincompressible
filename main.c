@@ -12,7 +12,7 @@
 #endif
 
 //#define RECOVER
-#define MOVE
+//#define MOVE
 #define TEMP
 #define TWO_WAY
 #define RAMPING
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 15.*data.Dp;
+    data.L = 10.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -98,12 +98,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 2e-2;
+    data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -117,6 +117,7 @@ int main(int argc, char *argv[]){
         printf("dt = %f\n", data.dt);
         printf("dtau = %f\n", data.dtau);
         printf("ratio dtau/dt = %f \n", data.ratio_dtau_dt);
+        printf("smoothing : eps/h = %f \n", data.eps/data.h);
     }
 
     /* Writing */
@@ -278,34 +279,19 @@ int main(int argc, char *argv[]){
         }
     }
 
-    /** ----- BOUNDARY CONDITION -----------**/
-
-    //y_ch = (j-0.5)*data.h - data.H;
-    //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-
-    // Ghost point for u_n_1 (first time EE)
-    for (int i=0; i<m; i++) {
-#ifdef SLIP
-	// slip walls : dudn = 0
-        data.u_n_1[i][0] = data.u_n_1[i][1];
-        data.u_n_1[i][n-1] = data.u_n_1[i][n-2];
-#endif
-#ifndef SLIP
-	// no-slip walls : u = 0
-        data.u_n_1[i][0] = -0.2 *(data.u_n_1[i][3] - 5. * data.u_n_1[i][2] + 15. * data.u_n_1[i][1]);
-        data.u_n_1[i][n - 1] = -0.2 * (data.u_n_1[i][n - 4] - 5. * data.u_n_1[i][n - 3] + 15. * data.u_n_1[i][n - 2]);
-#endif
-        // Ghost point for T_n_1 (first time EE)
-        data.T_n_1[i][0] = data.T_n_1[i][1];
-        data.T_n_1[i][n-1] = data.T_n_1[i][n-2];
-    }
-
     /*Initialization of particles temperatures */
     for(int k=0; k<Np; k++){
         data.Tp[k] = data.Tp0;
     }
 
-    /*Initialization of the mask */ 
+    /** ----- BOUNDARY CONDITION -----------**/
+
+    //y_ch = (j-0.5)*data.h - data.H;
+    //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
+
+    get_ghosts_initial(&data, data.Tm0, data.C0);
+    get_ghosts(&data, data.Tm0, data.C0);
+    /*Initialization of the mask */
     get_masks(&data);
 
     /** ------------------------------- RAMPING ------------------------------- **/
@@ -329,10 +315,10 @@ int main(int argc, char *argv[]){
             compute_forces_fluxes(&data, k);
         }
 
-        get_ghosts(&data, data.Tm0, data.C0);
         get_Ustar_Vstar(&data, data.ramp);
         poisson_solver(&data, rank, nbproc);
         update_flow(&data);
+        get_ghosts(&data, data.Tm0, data.C0);
         diagnostic(&data);
 
     }
@@ -471,6 +457,8 @@ void compute_forces_fluxes(Data* data, int k)
     double** Qm = data->Qm;
 
     double** F = data->F;
+    double Fbis = 0;
+    double Fter = 0;
     double** G = data->G;
     double** M = data->Mz;
     double** QQ = data->QQ;
@@ -485,6 +473,9 @@ void compute_forces_fluxes(Data* data, int k)
     double* II = data->II;
 
     double rho_f = data->rho_f;
+    double rho_p = data->rho_p;
+    double rho_r = data->rho_r;
+
     double cf = data->cf;
 
     PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
@@ -496,14 +487,16 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k]);
 
     Fx[k] = rho_f*(Sp[k]*dudt[k] + F[k][2]);
+    Fbis = rho_p*Sp[k]*dudt[k];
+    Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
     Fy[k] = rho_f*(Sp[k]*dvdt[k] + G[k][2]);
     Tz[k] = rho_f*(Sp[k]*II[k]*domegadt[k] + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
     Qm[k][0] = PP[k][0][2];
 
 
-    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m]  \n", k+1, Fx[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m]  \n", k+1, Fy[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n ", k+1, Fx[k], Fbis, Fter);
+    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m] \n", k+1, Fy[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Phi[k][0]);
@@ -699,6 +692,70 @@ void get_ghosts(Data* data, double T0, double* C0)
     double** v_n = data->v_n;
     double** T_n = data->T_n;
     double*** C = data->C_n;
+
+    int m = data->m;
+    int n = data->n;
+    int Ns = data->Ns;
+
+    /*Ghost points to impose BC's */
+    /* Along y = -H and y = H */
+    for (int i=0; i<m; i++){
+        /* On u_n */
+#ifdef SLIP
+        /* Bottom and top Wall : slip : du/dn= 0 */
+        u_n[i][0] = u_n[i][1];
+        u_n[i][n-1] = u_n[i][n-2];
+#endif
+#ifndef SLIP
+        /* No-slip (channel) */
+        u_n[i][0] = -0.2*(u_n[i][3] - 5.*u_n[i][2] + 15.*u_n[i][1]);
+        u_n[i][n-1] = -0.2*(u_n[i][n-4] - 5.*u_n[i][n-3] + 15.*u_n[i][n-2]);
+#endif
+
+#ifdef TEMP
+        /* Walls : adiabatic: dTdn = 0, no mass flux */
+        T_n[i][0] = T_n[i][1];
+        T_n[i][n-1] = T_n[i][n-2];
+
+        for (int s=0; s<Ns; s++){
+            C[s][i][0] = C[s][i][1];
+            C[s][i][n-1] = C[s][i][n-2];
+        }
+#endif
+    }
+
+    /* Along x = 0 and x = L */
+    for (int j = 0; j<n; j++){
+        /* Inflow : horizontal flow --> v_n = 0 */
+        v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
+        /* Natural outflow : dV/dx =0 */
+        v_n[m-1][j] = v_n[m-2][j];
+
+#ifdef TEMP
+        /* On T_n and C */
+        /* Inflow : T_n uniform  */
+        T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
+
+        /* Inflow : CA = CA0; CB = CB0 */
+        C[0][0][j] = -0.2*(C[0][3][j]-5.*C[0][2][j]+15.*C[0][1][j]-16.*C0[0]);
+        C[1][0][j] = -0.2*(C[1][3][j]-5.*C[1][2][j]+15.*C[1][1][j]-16.*C0[1]);
+
+        /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
+        T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
+        for(int s=0; s<Ns; s++){
+            C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
+        }
+#endif
+
+    }
+}
+
+void get_ghosts_initial(Data* data, double T0, double* C0)
+{
+    double** u_n = data->u_n_1;
+    double** v_n = data->v_n_1;
+    double** T_n = data->T_n_1;
+    double*** C = data->C_n_1;
 
     int m = data->m;
     int n = data->n;
