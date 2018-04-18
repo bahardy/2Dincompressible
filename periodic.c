@@ -23,7 +23,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 //#define ELLIPSE
 
 
@@ -101,12 +101,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.2;  /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1;
+    data.ratio_dtau_dt = 1e-1;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -300,12 +300,6 @@ int main(int argc, char *argv[]){
     /*Initialization of the mask */
     get_masks(&data);
 
-    /** ------------------------------- RAMPING ------------------------------- **/
-
-    /* Starting from a flow without the particles (i.e. ramp = 0 everywhere) and
-     then progressively increasing ramp until ramp*chi = 1 at the position of the ellipse.
-     At the end of the loop we obtain the steady solution of the flow for a given
-     fixed position of the ellipse. */
 
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
@@ -932,8 +926,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // pressure term
             dpdx = (P[(i+1+m)%m][j]-P[i][j])/h;
 
-            //u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
-            u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU - ramp*I_U[i][j]*(u_n[i][j] - u_s[i][j])/dtau);
+            u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+            //u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU - ramp*I_U[i][j]*(u_n[i][j] - u_s[i][j])/dtau);
         }
     }
 
@@ -950,8 +944,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // Pressure term
             dpdy = (P[i][j+1]-P[i][j])/h;
 
-            //v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
-            v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV - ramp*I_V[i][j]*(v_n[i][j] - v_s[i][j])/dtau);
+            v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
+            //v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV - ramp*I_V[i][j]*(v_n[i][j] - v_s[i][j])/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
         }
@@ -1209,10 +1203,8 @@ void update_flow(Data* data) {
         }
     }
 
-    if (data->ramp > 0) { //data->iter > 1
-        free2Darray(T_n_1, m);
-        free3Darray(C_n_1, Ns, m);
-    }
+    free2Darray(T_n_1, m);
+    free3Darray(C_n_1, Ns, m);
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
@@ -1222,10 +1214,8 @@ void update_flow(Data* data) {
 
 #endif
 
-    if (data->ramp > 0) { //data->iter > 1
-        free2Darray(u_n_1, m);
-        free2Darray(v_n_1, m);
-    }
+    free2Darray(u_n_1, m);
+    free2Darray(v_n_1, m);
 
     data->u_n_1 = u_n;
     data->u_n = u_new;

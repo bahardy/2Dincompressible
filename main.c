@@ -1386,10 +1386,10 @@ void update_flow(Data* data) {
         }
     }
 
-    if (data->ramp > 0 && data->iter != 1) {
-        free2Darray(T_n_1, m);
-        free3Darray(C_n_1, Ns, m);
-    }
+
+    free2Darray(T_n_1, m);
+    free3Darray(C_n_1, Ns, m);
+
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
@@ -1399,11 +1399,8 @@ void update_flow(Data* data) {
 
 #endif
 
-    if (data->ramp > 0 && data->iter != 1) {
-        printf("I free vectors :-) at ramp = %f and iter = %d \n", data->ramp, data->iter );
-        free2Darray(u_n_1, m);
-        free2Darray(v_n_1, m);
-    }
+    free2Darray(u_n_1, m);
+    free2Darray(v_n_1, m);
 
     data->u_n_1 = u_n;
     data->u_n = u_new;
