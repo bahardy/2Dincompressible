@@ -12,10 +12,10 @@
 #endif
 
 //#define RECOVER
-//#define MOVE
-#define TEMP
+#define MOVE
+//#define TEMP
 #define TWO_WAY
-#define RAMPING
+//#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
@@ -98,12 +98,12 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.05; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-3;
+    data.ratio_dtau_dt = 1;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 1; //data.Tf/10.;
+    data.t_move = 0.25; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -926,7 +926,7 @@ void get_masks(Data* data)
                 delta = atan2(yloc, xloc); 
                 coloring[i][j] += Ip_S[k][i][j];
 
-                if((int)((delta-theta[k])/(M_PI/2.)) % 2 == 0 ){
+                if(((int)((delta-theta[k])/(M_PI/2.))) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
 #endif
@@ -1043,30 +1043,55 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
     double Um = data->u_m;
 
-    double Uij, Vij, Uij_old, Vij_old;
     double H_U, H_U_old;
     double H_V, H_V_old;
     double lapU, lapV;
     double dpdx, dpdy;
     //double Upoiseuille, y_ch;
 
+    double uL, uR, vT, vB;
+    double dudxR, dudxL, dudyT, dudyB, dvdxR, dvdxL, dvdyT, dvdyB;
 
     /* u_star ADAMS-BASHFORTH 2 */
     for (i=1; i<m-2; i++){
         for (j=1; j<n-1; j++){
-            //only interior points
-            // average vertical velocity
-            Vij = .25*(v_n[i][j]+v_n[i+1][j]+v_n[i][j-1]+v_n[i+1][j-1]); /* average of the four neighbour points */
-            Vij_old = .25*(v_n_1[i][j]+v_n_1[i+1][j]+v_n_1[i][j-1]+v_n_1[i+1][j-1]);
-            // advective terms
-            H_U =  u_n[i][j]*(u_n[i+1][j]-u_n[i-1][j])/(2.*h) + Vij*(u_n[i][j+1]-u_n[i][j-1])/(2.*h);
-            H_U_old = u_n_1[i][j]*(u_n_1[i+1][j]-u_n_1[i-1][j])/(2.*h) + Vij_old*(u_n_1[i][j+1]-u_n_1[i][j-1])/(2.*h);
-            // laplacian
+
+            // CONVECTIVE FORM OF KAJISHIMA
+            uR = .5*(u_n_1[i][j] + u_n_1[i+1][j]);
+            uL = .5*(u_n_1[i-1][j] + u_n_1[i][j]);
+            dudxR = (u_n_1[i+1][j]- u_n_1[i][j])/h;
+            dudxL = (u_n_1[i][j]- u_n_1[i-1][j])/h;
+
+            vT = .5*(v_n_1[i][j] + v_n_1[i+1][j]);
+            vB = .5*(v_n_1[i][j-1] + v_n_1[i+1][j-1]);
+            dudyT = (u_n_1[i][j+1] - u_n_1[i][j])/h;
+            dudyB = (u_n_1[i][j] - u_n_1[i][j-1])/h;
+
+            H_U_old = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+
+            uR = .5*(u_n[i][j] + u_n[i+1][j]);
+            uL = .5*(u_n[i][j] + u_n[i-1][j]);
+            dudxR = (u_n[i+1][j]- u_n[i][j])/h;
+            dudxL = (u_n[i][j]- u_n[i-1][j])/h;
+
+            vT = .5*(v_n[i][j] + v_n[i+1][j]);
+            vB = .5*(v_n[i][j-1] + v_n[i+1][j-1]);
+            dudyT = (u_n[i][j+1] - u_n[i][j])/h;
+            dudyB = (u_n[i][j] - u_n[i][j-1])/h;
+
+            H_U = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+
+            // LAPLACIAN
             lapU = (u_n[i+1][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
-            // pressure term
+
+            // PRESSURE term
             dpdx = (P[i+1][j]-P[i][j])/h;
 
-            u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+            // EXPLICIT VERSION
+            u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) - ramp*I_U[i][j]*(dt/dtau)*(u_n[i][j] - u_s[i][j]);
+
+            // IMPLICIT VERSION
+            //u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
         }
     }
 
@@ -1079,17 +1104,42 @@ void get_Ustar_Vstar(Data* data, double ramp)
     /* v_star  ADAMS-BASHFORTH 2 */
     for (i=1; i<m-1; i++){
         for (j=1; j<n-2; j++){
-            Uij = .25*(u_n[i][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i-1][j+1]); /* average of the four neighbour points */
-            Uij_old = .25*(u_n_1[i][j]+u_n_1[i-1][j]+u_n_1[i][j+1]+u_n_1[i-1][j+1]);
-            //Advective terms
-            H_V = Uij*(v_n[i+1][j]-v_n[i-1][j])/(2.*h) + v_n[i][j]*(v_n[i][j+1]-v_n[i][j-1])/(2.*h);
-            H_V_old = Uij_old*(v_n_1[i+1][j]-v_n_1[i-1][j])/(2.*h) + v_n_1[i][j]*(v_n_1[i][j+1]-v_n_1[i][j-1])/(2.*h);
-            // Laplacian
+
+            // CONVECTIVE FORM OF KAJISHIMA
+            uR = .5*(u_n_1[i][j] + u_n_1[i][j+1]);
+            uL = .5*(u_n_1[i-1][j] + u_n_1[i-1][j+1]);
+            dvdxR = (v_n_1[i+1][j]- v_n_1[i][j])/h;
+            dvdxL = (v_n_1[i][j]- v_n_1[i-1][j])/h;
+
+            vT = .5*(v_n_1[i][j] + v_n_1[i][j+1]);
+            vB = .5*(v_n_1[i][j] + v_n_1[i][j-1]);
+            dvdyT = (v_n_1[i][j+1] - v_n_1[i][j])/h;
+            dvdyB = (v_n_1[i][j] - v_n_1[i][j-1])/h;
+
+            H_V_old = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            uR = .5*(u_n[i][j] + u_n[i][j+1]);
+            uL = .5*(u_n[i-1][j] + u_n[i-1][j+1]);
+            dvdxR = (v_n[i+1][j]- v_n[i][j])/h;
+            dvdxL = (v_n[i][j]- v_n[i-1][j])/h;
+
+            vT = .5*(v_n[i][j] + v_n[i][j+1]);
+            vB = .5*(v_n[i][j] + v_n[i][j-1]);
+            dvdyT = (v_n[i][j+1] - v_n[i][j])/h;
+            dvdyB = (v_n[i][j] - v_n[i][j-1])/h;
+
+            H_V = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            // LAPLACIAN
             lapV = (v_n[i+1][j]+v_n[i-1][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
-            // Pressure term
+
+            // PRESSURE TERM
             dpdy = (P[i][j+1]-P[i][j])/h;
 
-            v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
+            // EXPLICIT VERSION
+            v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) - ramp*I_V[i][j]*(dt/dtau)*(v_n[i][j] - v_s[i][j]);
+
+            //v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
 
