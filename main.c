@@ -13,9 +13,9 @@
 
 //#define RECOVER
 #define MOVE
-//#define TEMP
+#define TEMP
 #define TWO_WAY
-//#define RAMPING
+#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = 2*data.h;
+    data.eps = data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -495,22 +495,24 @@ void compute_forces_fluxes(Data* data, int k)
     Qm[k][0] = PP[k][0][2];
 
 
-    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n ", k+1, Fx[k], Fbis, Fter);
+    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n", k+1, Fx[k], Fbis, Fter);
     PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m] \n", k+1, Fy[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
-    //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
-    //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Phi[k][0]);
+    PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
 }
 
 
-void compute_Qr(double** Qr, double rate, double dH, int k){
+void compute_Qr(double** Qr, double rate, double dH, int k)
+{
 
     Qr[k][0] = Qr[k][1];
     Qr[k][1] = Qr[k][2];
     Qr[k][2] = rate*(-dH);
 }
 
-void diagnostic(Data* data){
+void diagnostic(Data* data)
+{
     double** u_n = data->u_n;
     double** v_n = data->v_n;
     double** omega = data->omega;
@@ -1380,12 +1382,12 @@ void update_flow(Data* data) {
     double **T_n = data->T_n;
     double **T_n_1 = data->T_n_1;
     double **Ts = data->Ts;
-    double ***Cs = data->Cs;
 
     int Ns = data->Ns;
     double ***C_new = make3DDoubleArray(Ns, m, n);
     double ***C_n = data->C_n;
     double ***C_n_1 = data->C_n_1;
+    double ***Cs = data->Cs;
 
     double alpha_f = data->alpha_f;
     double *Df = data->Df;
@@ -1400,39 +1402,47 @@ void update_flow(Data* data) {
     for (i = 1; i < m - 1; i++) {
         for (j = 1; j < n - 1; j++) {
 
-            // Need to have a value for velocities at cell center
-            Uij = .5 * (u_n[i][j] + u_n[i - 1][j]); /* average of the two neighbour points along x-direction */
-            Vij = .5 * (v_n[i][j] + v_n[i - 1][j]); /* average of the two neighbour points along y-direction */
-            Uij_old = .5 * (u_n_1[i][j] + u_n_1[i - 1][j]);
-            Vij_old = .5 * (v_n_1[i][j] + v_n_1[i - 1][j]);
+            // ADVECTIVE TERMS
+            H_T_old = .5*(u_n_1[i][j]*(T_n_1[i+1][j]-T_n_1[i][j])/h + u_n_1[i-1][j]*(T_n_1[i][j]-T_n_1[i-1][j])/h)
+                    + .5*(v_n_1[i][j]*(T_n_1[i][j+1]-T_n_1[i][j])/h + v_n_1[i][j-1]*(T_n_1[i][j]-T_n_1[i][j-1])/h);
+            H_T = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
+                + .5*(v_n[i][j]*(T_n[i][j+1]-T_n[i][j])/h + v_n[i][j-1]*(T_n[i][j]-T_n[i][j-1])/h);
 
-            // Advective terms
-            H_T_old = Uij_old * (T_n_1[i + 1][j] - T_n_1[i - 1][j]) / (2. * h) +
-                      Vij_old * (T_n_1[i][j + 1] - T_n_1[i][j - 1]) / (2. * h);
-            H_T = Uij * (T_n[i + 1][j] - T_n[i - 1][j]) / (2. * h) + Vij * (T_n[i][j + 1] - T_n[i][j - 1]) / (2. * h);
-            // Laplacian
+            // DIFFUSION TERM
             lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
-            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
-                                             + alpha_f * lapT
-                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
-                          (1. + ramp * I_S[i][j] * dt / dtau);
+            // EXPLICIT VERSION
+            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+                                            + alpha_f * lapT)
+                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
+
+            // IMPLICIT VERSION
+//          T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+//                                             + alpha_f * lapT
+//                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
+//                          (1. + ramp * I_S[i][j] * dt / dtau);
 
             for (int s = 0; s < Ns; s++) {
-                // Advective terms
-                H_C_old = Uij_old * (C_n_1[s][i + 1][j] - C_n_1[s][i - 1][j]) / (2. * h) +
-                          Vij_old * (C_n_1[s][i][j + 1] - C_n_1[s][i][j - 1]) / (2. * h);
-                H_C = Uij * (C_n[s][i + 1][j] - C_n[s][i - 1][j]) / (2. * h) +
-                      Vij * (C_n[s][i][j + 1] - C_n[s][i][j - 1]) / (2. * h);
-                // Laplacian
+                // ADVECTIVE TERMS
+                H_C_old = .5*(u_n_1[i][j]*(C_n_1[s][i+1][j]-C_n_1[s][i][j])/h + u_n_1[i-1][j]*(C_n_1[s][i][j]-C_n_1[s][i-1][j])/h)
+                          + .5*(v_n_1[i][j]*(C_n_1[s][i][j+1]-C_n_1[s][i][j])/h + v_n_1[i][j-1]*(C_n_1[s][i][j]-C_n_1[s][i][j-1])/h);
+                H_C = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
+                      + .5*(v_n[i][j]*(C_n[s][i][j+1]-C_n[s][i][j])/h + v_n[i][j-1]*(C_n[s][i][j]-C_n[s][i][j-1])/h);
+
+                // DIFFUSION TERM
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 
-                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
-                                                     + Df[s] * lapC
-                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau)) /
-                                 (1. + ramp * I_S[i][j] * dt / dtau);
-            }
+                //EXPLICIT VERSION
+                C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                                                     + Df[s] * lapC)
+                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
 
+                // IMPLICIT VERSION
+//                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+//                                                     + Df[s] * lapC
+//                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
+//                                 (1. + ramp * I_S[i][j] * dt / dtau);
+            }
         }
     }
 
