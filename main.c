@@ -103,7 +103,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1;
+    data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -564,8 +564,8 @@ int integrate_penalization(Data *data, double* surf, int k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
-    double** u_n = data->u_n;
-    double** v_n = data->v_n;
+    double** u_n = data->u_star;
+    double** v_n = data->v_star;
     double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
@@ -1090,10 +1090,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dpdx = (P[i+1][j]-P[i][j])/h;
 
             // EXPLICIT VERSION
-            u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) - ramp*I_U[i][j]*(dt/dtau)*(u_n[i][j] - u_s[i][j]);
+            //u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) - ramp*I_U[i][j]*(dt/dtau)*(u_n[i][j] - u_s[i][j]);
 
             // IMPLICIT VERSION
-            //u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+            u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
         }
     }
 
@@ -1139,9 +1139,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dpdy = (P[i][j+1]-P[i][j])/h;
 
             // EXPLICIT VERSION
-            v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) - ramp*I_V[i][j]*(dt/dtau)*(v_n[i][j] - v_s[i][j]);
+            //v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) - ramp*I_V[i][j]*(dt/dtau)*(v_n[i][j] - v_s[i][j]);
 
-            //v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
+            // IMPLICIT VERSION
+            v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
 
@@ -1412,15 +1413,15 @@ void update_flow(Data* data) {
             lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
             // EXPLICIT VERSION
-            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
-                                            + alpha_f * lapT)
-                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
+//            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+//                                            + alpha_f * lapT)
+//                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
 
             // IMPLICIT VERSION
-//          T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
-//                                             + alpha_f * lapT
-//                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
-//                          (1. + ramp * I_S[i][j] * dt / dtau);
+          T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+                                             + alpha_f * lapT
+                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
+                          (1. + ramp * I_S[i][j] * dt / dtau);
 
             for (int s = 0; s < Ns; s++) {
                 // ADVECTIVE TERMS
@@ -1432,16 +1433,16 @@ void update_flow(Data* data) {
                 // DIFFUSION TERM
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 
-                //EXPLICIT VERSION
-                C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
-                                                     + Df[s] * lapC)
-                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
+//                //EXPLICIT VERSION
+//                C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+//                                                     + Df[s] * lapC)
+//                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
 
                 // IMPLICIT VERSION
-//                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
-//                                                     + Df[s] * lapC
-//                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
-//                                 (1. + ramp * I_S[i][j] * dt / dtau);
+                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                                                     + Df[s] * lapC
+                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
+                                 (1. + ramp * I_S[i][j] * dt / dtau);
             }
         }
     }
