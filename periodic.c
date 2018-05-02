@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-1;
+    data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -523,8 +523,8 @@ int integrate_penalization(Data *data, double* surf, int k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
-    double** u_n = data->u_n;
-    double** v_n = data->v_n;
+    double** u_n = data->u_star;
+    double** v_n = data->v_star;
     double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
