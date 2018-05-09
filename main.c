@@ -7,15 +7,16 @@
 #include <sys/stat.h>
 #include "main.h"
 #include "write.h"
+#include "fields_creation.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
 //#define RECOVER
-#define MOVE
-#define TEMP
+//#define MOVE
+//#define TEMP
 #define TWO_WAY
-#define RAMPING
+//#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.25; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -150,74 +151,7 @@ int main(int argc, char *argv[]){
     }
 
     /**------------------------------- Matrix Fields Creation  ------------------------------- **/
-
-    int m = data.m;
-    int n = data.n;
-    int Np = data.Np;
-    int Ns = data.Ns;
-
-    data.coloring = make2DDoubleArray(m,n);
-    data.CFL_array = make2DDoubleArray(m,n);
-    data.C_n = make3DDoubleArray(Ns,m,n);
-    data.C0 = make1DDoubleArray(Ns); // inlet concentration
-    data.C_n_1 = make3DDoubleArray(Ns,m,n);
-    data.Cs = make3DDoubleArray(Ns,m,n);
-    data.Cp = make2DDoubleArray(Np,Ns);
-    data.dudt = make1DDoubleArray(Np);
-    data.dvdt = make1DDoubleArray(Np);
-    data.domegadt = make1DDoubleArray(Np);
-    data.dTdt = make1DDoubleArray(Np);
-    data.dCdt = make2DDoubleArray(Np,Ns);
-    data.dp = make1DDoubleArray(Np);
-    data.F = make2DDoubleArray(Np,3);
-    data.Fx = make1DDoubleArray(Np);
-    data.Fy = make1DDoubleArray(Np);
-    data.G = make2DDoubleArray(Np,3);
-    data.Ip_S = make3DDoubleArray(Np,m,n);
-    data.Ip_U = make3DDoubleArray(Np,m,n);
-    data.Ip_V = make3DDoubleArray(Np,m,n);
-    data.I_S = make2DDoubleArray(m,n);
-    data.I_U = make2DDoubleArray(m,n);
-    data.I_V = make2DDoubleArray(m,n);
-    data.II = make1DDoubleArray(Np);
-    data.J = make1DDoubleArray(Np);
-    data.Mz = make2DDoubleArray(Np,3);
-    data.omega = make2DDoubleArray(m,n);
-    data.Omega_p = make2DDoubleArray(Np,4);
-    data.phi = make2DDoubleArray(m,n);
-    data.Qm = make2DDoubleArray(Np,Ns);
-    data.P = make2DDoubleArray(m,n);
-    data.PP = make3DDoubleArray(Np, Ns, 3);
-    data.Q = make1DDoubleArray(Np);
-    data.QQ = make2DDoubleArray(Np,3);
-    data.Qr = make2DDoubleArray(Np,3);
-    data.rp = make1DDoubleArray(Np);
-    data.Reh = make2DDoubleArray(m,n);
-    data.Reh_omega = make2DDoubleArray(m,n);
-    data.Sp = make1DDoubleArray(Np);
-    data.theta = make1DDoubleArray(Np);
-
-    data.T_n = make2DDoubleArray(m,n);
-    data.T_n_1 = make2DDoubleArray(m,n);
-    data.Tp = make1DDoubleArray(Np);
-    data.Ts = make2DDoubleArray(m,n);
-    data.Tz = make1DDoubleArray(Np);
-
-    data.u_n = make2DDoubleArray(m,n);
-    data.u_n_1 = make2DDoubleArray(m,n);
-    data.Up = make2DDoubleArray(Np,4);
-    data.u_s = make2DDoubleArray(m,n);
-    data.u_star = make2DDoubleArray(m,n);
-
-    data.v_n = make2DDoubleArray(m,n);
-    data.v_n_1 = make2DDoubleArray(m,n);
-    data.Vp = make2DDoubleArray(Np,4);
-    data.v_s = make2DDoubleArray(m,n);
-    data.v_star = make2DDoubleArray(m,n);
-
-    data.xg = make1DDoubleArray(Np);
-    data.yg = make1DDoubleArray(Np);
-
+    initialize_fields(&data);
 
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
@@ -236,10 +170,10 @@ int main(int argc, char *argv[]){
     data.Up[0][3] = data.Up[0][2];
 #endif
 
-    for(int k=0; k<Np; k++){
+    for(int k=0; k<data.Np; k++){
 #ifdef DISK
         data.Sp[k]=M_PI*data.rp[k]*data.rp[k];
-        data.II[k]=(data.dp[k]*data.dp[k])/8.; /* IN 2-D !! */
+        //data.II[k]=(data.dp[k]*data.dp[k])/8.; /* IN 2-D !! */
         data.J[k] =(M_PI/2.)*pow(data.rp[k],4);
 #endif
 #ifdef ELLIPSE
@@ -266,10 +200,8 @@ int main(int argc, char *argv[]){
 
     //double y_ch;
     /* VELOCITY : horizontal flow Um  */
-    for(int i=0; i<m; i++){
-        for(int j=0; j<n; j++){
-//            y_ch = (j-0.5)*data.h - data.H;
-//            data.u_n[i][j] = data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
+    for(int i=0; i<data.m; i++){
+        for(int j=0; j<data.n; j++){
             data.u_n[i][j] = data.u_m;
             data.u_n_1[i][j] = data.u_n[i][j];
             data.u_star[i][j] = data.u_n[i][j];
@@ -280,14 +212,19 @@ int main(int argc, char *argv[]){
     }
 
     /*Initialization of particles temperatures */
-    for(int k=0; k<Np; k++){
+    for(int k=0; k<data.Np; k++){
         data.Tp[k] = data.Tp0;
     }
 
-    /** ----- BOUNDARY CONDITION -----------**/
+//    /* Perturbation to induce vortex sheets */
+//    for(int j=1; j<n-1; j++){
+//        double y = (j-0.5)*data.h;
+//        data.u_n[0][j] = data.u_m*(1.+0.1*sin(2*M_PI*30*(y/data.d)));
+//        data.u_n_1[0][j] = data.u_n[0][j];
+//        data.u_star[0][j] = data.u_n[0][j];
+//    }
 
-    //y_ch = (j-0.5)*data.h - data.H;
-    //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
+    /** ----- BOUNDARY CONDITION -----------**/
 
     get_ghosts_initial(&data, data.Tm0, data.C0);
     get_ghosts(&data, data.Tm0, data.C0);
@@ -352,7 +289,7 @@ int main(int argc, char *argv[]){
         /** --- SOLVE PARTICULAR PHASE --- */
         int flag_out = 0;
         int k;
-        for (k = 0; k<Np; k++){
+        for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization(&data, &surf, k);
 #ifdef  MOVE
@@ -383,6 +320,9 @@ int main(int argc, char *argv[]){
         get_Us_Vs(&data);
 #endif
 
+        /*perturbation to trigger Von Karman vortices */
+
+
 #ifdef TEMP
         get_Ts(&data);
         get_Cs(&data);
@@ -395,6 +335,13 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
 
         update_flow(&data);
+
+//        /* Correct boundary conditions after initial perturbation */
+//        for(int j=1; j<n-1; j++){
+//            data.u_n[0][j] = data.u_m;
+//            data.u_star[0][j] = data.u_n[0][j];
+//        }
+
         get_ghosts(&data, data.Tm0, data.C0);
         get_vorticity(&data);
 
@@ -428,20 +375,7 @@ int main(int argc, char *argv[]){
     fclose(fichier_fluxes);
     fclose(fichier_particle);
 
-    /* Free memory */
-    free(data.xg), free(data.yg), free(data.theta), free(data.dp), free(data.rp), free(data.Sp), free(data.II), free(data.J);
-    free(data.dudt), free(data.dvdt), free(data.domegadt), free(data.dTdt); free2Darray(data.dCdt, Np);
-    free(data.Fx), free(data.Fy), free(data.Tz), free(data.Q), free2Darray(data.Qm, Np);
-    free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m);
-    free2Darray(data.v_n,m), free2Darray(data.v_n_1,m), free2Darray(data.v_star,m), free2Darray(data.v_s,m);
-    free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m); free2Darray(data.CFL_array, m);
-    free2Darray(data.P,m), free2Darray(data.phi, m);
-    free2Darray(data.T_n,m),  free2Darray(data.T_n_1,m), free2Darray(data.Ts, m);
-    free3Darray(data.C_n, Ns, m), free3Darray(data.C_n_1, Ns, m), free3Darray(data.Cs, Ns, m), free(data.C0);
-    free2Darray(data.Up,Np), free2Darray(data.Vp, Np), free2Darray(data.Omega_p,Np), free(data.Tp), free2Darray(data.Cp, Np);
-    free2Darray(data.F, Np), free2Darray(data.G, Np), free2Darray(data.Mz, Np), free2Darray(data.QQ, Np), free3Darray(data.PP, Np,Ns), free2Darray(data.Qr, Np);
-    free2Darray(data.I_S, m), free2Darray(data.I_U, m), free2Darray(data.I_V, m), free2Darray(data.coloring, m);
-    free3Darray(data.Ip_S, Np,m), free3Darray(data.Ip_U, Np,m), free3Darray(data.Ip_V, Np, m);
+    free_fields(&data);
 
     PetscFinalize();
     return 0;
@@ -470,7 +404,7 @@ void compute_forces_fluxes(Data* data, int k)
     double* dTdt = data->dTdt;
 
     double* Sp = data->Sp;
-    double* II = data->II;
+    double* J = data->J;
 
     double rho_f = data->rho_f;
     double rho_p = data->rho_p;
@@ -490,7 +424,7 @@ void compute_forces_fluxes(Data* data, int k)
     Fbis = rho_p*Sp[k]*dudt[k];
     Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
     Fy[k] = rho_f*(Sp[k]*dvdt[k] + G[k][2]);
-    Tz[k] = rho_f*(Sp[k]*II[k]*domegadt[k] + M[k][2]);
+    Tz[k] = rho_f*(J[k]*domegadt[k] + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
     Qm[k][0] = PP[k][0][2];
 
@@ -1516,7 +1450,7 @@ void update_Up(Data* data, int k)
     double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
     double* Sp = data->Sp;
-    double* II = data->II;
+    double* J = data->J; //m^4
     double** F = data->F;
     double** G = data->G;
     double** M = data->Mz;
@@ -1530,7 +1464,7 @@ void update_Up(Data* data, int k)
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
-    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
+    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 
     PetscPrintf(PETSC_COMM_WORLD, "Up = %f \n", Up[k][3]);
