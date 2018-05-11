@@ -24,7 +24,6 @@
 #define SLIP
 //#define GRAVITY
 //#define SMOOTHING
-//#define ELLIPSE
 
 
 int main(int argc, char *argv[]){
@@ -46,9 +45,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 5.*data.Dp;
+    data.d = 30.;
     data.H = 0.5*data.d;
-    data.L = 15.*data.Dp;
+    data.L = 30.;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -63,8 +62,6 @@ int main(int argc, char *argv[]){
 
     /* FLOW */
     data.u_m = 1.;
-    //data.u_max = 1.5*data.u_m;
-    //data.nu = 0.03926;
     data.nu = data.u_m*data.Dp/data.Rep;
     data.g = 0;
 #ifdef GRAVITY
@@ -222,14 +219,14 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 1.5*data.Dp;
+    data.xg[0] = 25;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
     data.theta[0] = 0; // M_PI/10.
 
     //impulsively started cylinder : we impose the motion
-    data.Up[0][0] = data.u_m;
+    data.Up[0][0] = -data.u_m;
     data.Up[0][1] = data.Up[0][0];
     data.Up[0][2] = data.Up[0][1];
     data.Up[0][3] = data.Up[0][2];
