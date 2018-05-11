@@ -8,6 +8,7 @@
 #include "main.h"
 #include "write.h"
 #include "fields_creation.h"
+#include "poisson.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -22,7 +23,6 @@
 #define SLIP
 //#define GRAVITY
 //#define SMOOTHING
-//#define ELLIPSE
 
 
 int main(int argc, char *argv[]){
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
     data.Dp = 1.;
     data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 10.*data.Dp;
+    data.L = 15.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.25; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -320,8 +320,6 @@ int main(int argc, char *argv[]){
         get_Us_Vs(&data);
 #endif
 
-        /*perturbation to trigger Von Karman vortices */
-
 
 #ifdef TEMP
         get_Ts(&data);
@@ -336,12 +334,6 @@ int main(int argc, char *argv[]){
 
         update_flow(&data);
 
-//        /* Correct boundary conditions after initial perturbation */
-//        for(int j=1; j<n-1; j++){
-//            data.u_n[0][j] = data.u_m;
-//            data.u_star[0][j] = data.u_n[0][j];
-//        }
-
         get_ghosts(&data, data.Tm0, data.C0);
         get_vorticity(&data);
 
@@ -350,7 +342,7 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.13e \t  %3.13e \t %3.6e \n", data.Reh_max, data.Reh_omega_max, data.CFL_max);
+            fprintf(fichier_stat, "%3.6e \t %3.13e \t  %3.13e \n",  data.CFL_max,  data.Reh_max, data.Reh_omega_max);
             fflush(fichier_stat);
             fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
             fflush(fichier_forces);
@@ -482,8 +474,6 @@ void diagnostic(Data* data)
             }
         }
     }
-
-
 }
 
 int integrate_penalization(Data *data, double* surf, int k)
@@ -1082,190 +1072,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
         }
     }
-}
-
-
-PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
-{
-    double** u_star = data->u_star;
-    double** v_star = data->v_star;
-    double** phi = data->phi;
-
-    int M = data->M;
-    int N = data->N;
-    int m = data->m;
-    int n = data->n;
-    double h = data->h;
-    double dt = data->dt;
-
-    /* Solve the linear system Ax = b for a 2-D poisson equation on a structured grid */
-    KSP sles;
-    Mat A;
-    Vec b, x;
-
-    double div_u_star;
-    int r, rowStart, rowEnd, i, j, ii, jj, its;
-    int mytag = 12;
-    int my_rowStart, my_rowEnd;
-    double*  my_array;
-    double* array = malloc(M*N*sizeof(double));
-    MPI_Status status[3];
-
-
-    /* Create the Laplacian matrix : A  */
-    MatCreate( PETSC_COMM_WORLD, &A );
-    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, M*N, M*N);
-    MatSetType(A, MATAIJ);
-    MatSeqAIJSetPreallocation(A, 5, NULL); 
-    MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL);
-    //PetscInt nz = 5;
-    //MatSeqAIJSetPreallocation(A, nz, NULL);
-    //MatSetUp(A);
-    //MatSetFromOptions(A);
-    //MatSetOption(A, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE);
-    MatGetOwnershipRange(A, &rowStart, &rowEnd);
-    PetscPrintf(PETSC_COMM_WORLD, "End row is %d \n", rowEnd);
-
-    for(r = rowStart; r<rowEnd; r++){
-        ii = r/N; jj=r%N;
-        if(ii>0){
-            MatSetValue(A, r, r-N, -1., INSERT_VALUES);
-        }
-        if(jj>0){
-            MatSetValue(A, r, r-1, -1., INSERT_VALUES);
-        }
-        MatSetValue(A, r, r, 4., INSERT_VALUES);
-        if(jj<N-1){
-            MatSetValue(A, r, r+1, -1., INSERT_VALUES);
-        }
-        if(ii<M-1){
-            MatSetValue(A, r, r+N, -1., INSERT_VALUES);
-        }
-        if(ii == 0 || jj == 0 || jj == N-1)
-        {
-            MatSetValue(A, r, r, 3., INSERT_VALUES);
-        }
-        if(ii == 0 && (jj==0 || jj == N-1) )
-        {
-            MatSetValue(A, r, r, 2., INSERT_VALUES);
-        }
-        if(ii == M-1)
-        {
-            MatSetValue(A, r, r, 5., INSERT_VALUES);
-        }
-        if(ii == M-1 && (jj==0 || jj==N-1))
-        {
-            MatSetValue(A, r, r, 4., INSERT_VALUES);
-        }
-    }
-    PetscErrorCode  ierr;
-    ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-
-
-    /* Create the right-hand-side vector : b */
-    VecCreate (PETSC_COMM_WORLD, &b );
-    VecSetSizes(b, PETSC_DECIDE, M*N);
-    VecSetFromOptions(b);
-    VecGetOwnershipRange( b, &rowStart, &rowEnd );
-    for(r = rowStart; r< rowEnd; r++){
-        ii = r/N; jj=r%N;
-        i = ii+1; j = jj+1;
-        div_u_star = (u_star[i][j]-u_star[i-1][j]+v_star[i][j]-v_star[i][j-1])/h;
-
-        VecSetValue(b, r, -(h*h/dt)*div_u_star, INSERT_VALUES);
-    }
-    VecAssemblyBegin(b);
-    VecAssemblyEnd(b);
-
-
-    /*Solve the linear system of equations */
-    VecDuplicate( b, &x );
-    KSPCreate(PETSC_COMM_WORLD, &sles );
-    KSPSetOperators(sles, A, A);
-    KSPSetFromOptions( sles );
-    PetscPrintf(PETSC_COMM_WORLD,"Assembly is done \n");
-    KSPSolve( sles, b, x );
-    KSPGetIterationNumber( sles, &its );
-    PetscPrintf( PETSC_COMM_WORLD, "Solution to Poisson eqn in %d iterations \n ", its);
-
-    /*Transfer the solution to phi[i][j] */
-    VecGetArray(x, &my_array);
-
-    if ((M*N) % nbproc == 0){
-        int length = ((M*N)/nbproc);
-        MPI_Allgather(my_array, length, MPI_DOUBLE, array, length, MPI_DOUBLE, PETSC_COMM_WORLD);
-        for (r = 0; r<M*N; r++){
-            i = r/N; j = r%N;
-            ii = i+1; jj = j+1;
-            phi[ii][jj] = array[r];
-        }
-        // update ghost points on phi
-        for(ii=0; ii<m; ii++){
-            /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
-            phi[ii][0] = phi[ii][1];
-            phi[ii][n-1] = phi[ii][n-2];
-        }
-        for(jj=0; jj<n; jj++){
-            /*inflow : continuity of pressure gradient  */
-            phi[0][jj] = phi[1][jj];
-            /*outflow : zero pressure at outlet */
-            phi[m-1][jj] = -phi[m-2][jj];
-
-        }
-    }
-    else{
-        if (myrank == 0){
-            for (r=rowStart; r<rowEnd; r++) {
-                array[r] = my_array[r];
-            }
-            for (int k = 1; k < nbproc; k++){
-                MPI_Recv(&my_rowStart, 1, MPI_INT, k, mytag+1, PETSC_COMM_WORLD, &status[1] );
-                MPI_Recv(&my_rowEnd, 1, MPI_INT, k, mytag+2, PETSC_COMM_WORLD, &status[2] );
-                int length_proc = my_rowEnd - my_rowStart;
-                MPI_Recv(my_array, length_proc, MPI_DOUBLE, k, mytag, PETSC_COMM_WORLD, &status[0] ) ;
-                int R;
-                for (r=0; r<length_proc; r++){
-                    R = r + my_rowStart;
-                    array[R] = my_array[r];
-                }
-            }
-        }
-        else{
-            MPI_Send(&rowStart, 1, MPI_INT, 0, mytag+1, PETSC_COMM_WORLD);
-            MPI_Send(&rowEnd, 1, MPI_INT, 0, mytag+2, PETSC_COMM_WORLD);
-            int length = rowEnd-rowStart;
-            MPI_Send(my_array, length, MPI_DOUBLE, 0, mytag, PETSC_COMM_WORLD);
-        }
-        MPI_Bcast(array, M*N, MPI_DOUBLE, 0, PETSC_COMM_WORLD);
-
-        for(r = 0; r< M*N; r++){
-            i = r/N; j = r%N;
-            ii = i+1; jj = j+1;
-            phi[ii][jj] = array[r];
-        }
-        // update ghost points on phi
-        for(ii=0; ii<m; ii++){
-            /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
-            phi[ii][0] = phi[ii][1];
-            phi[ii][n-1] = phi[ii][n-2];
-        }
-        for(jj=0; jj<n; jj++){
-            /*inflow : continuity of pressure gradient  */
-            phi[0][jj] = phi[1][jj];
-            /*outflow : zero pressure at outlet */
-            phi[m-1][jj] = -phi[m-2][jj];
-        }
-    }
-    VecRestoreArray(x, &my_array);
-    //free(my_array);
-    free(array);
-
-    MatDestroy( &A );
-    VecDestroy( &b ); VecDestroy( &x );
-    KSPDestroy( &sles );
-
-    return ierr;
 }
 
 

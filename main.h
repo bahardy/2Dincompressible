@@ -151,6 +151,11 @@ struct Data{
     double Omega; 
     double R1; 
     double R2;
+
+    double SORtol;
+    int SORitermax;
+    double alpha;
+
 };
 
 
