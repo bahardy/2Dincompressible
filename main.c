@@ -13,9 +13,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-//#define RECOVER
-//#define MOVE
-//#define TEMP
 #define TWO_WAY
 //#define RAMPING
 #define WRITE
@@ -162,14 +159,6 @@ int main(int argc, char *argv[]){
     data.rp[0] = .5*data.Dp;
     data.theta[0] = 0; // M_PI/10.
 
-#ifndef TWO_WAY
-    //impulsively started cylinder : we impose the motion
-    data.Up[0][0] = data.u_m;
-    data.Up[0][1] = data.Up[0][0];
-    data.Up[0][2] = data.Up[0][0];
-    data.Up[0][3] = data.Up[0][2];
-#endif
-
     for(int k=0; k<data.Np; k++){
 #ifdef DISK
         data.Sp[k]=M_PI*data.rp[k]*data.rp[k];
@@ -215,14 +204,6 @@ int main(int argc, char *argv[]){
     for(int k=0; k<data.Np; k++){
         data.Tp[k] = data.Tp0;
     }
-
-//    /* Perturbation to induce vortex sheets */
-//    for(int j=1; j<n-1; j++){
-//        double y = (j-0.5)*data.h;
-//        data.u_n[0][j] = data.u_m*(1.+0.1*sin(2*M_PI*30*(y/data.d)));
-//        data.u_n_1[0][j] = data.u_n[0][j];
-//        data.u_star[0][j] = data.u_n[0][j];
-//    }
 
     /** ----- BOUNDARY CONDITION -----------**/
 

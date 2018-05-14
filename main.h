@@ -1,6 +1,8 @@
 
 #ifndef main_h
 #define main_h
+#define TEMP
+#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */

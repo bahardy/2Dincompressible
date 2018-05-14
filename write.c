@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "write.h"
-//#define TEMP
 
 void writeData(FILE* fichier_data, Data data)
 {
