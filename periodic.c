@@ -44,9 +44,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 30.;
+    data.d = 10.;
     data.H = 0.5*data.d;
-    data.L = 30.;
+    data.L = 15.;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 25;
+    data.xg[0] = 10;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -907,22 +907,48 @@ void get_Ustar_Vstar(Data* data, double ramp)
     double H_V, H_V_old;
     double lapU, lapV;
     double dpdx, dpdy;
-    //double Upoiseuille, y_ch;
+
+    double uL, uR, vT, vB;
+    double dudxR, dudxL, dudyT, dudyB, dvdxR, dvdxL, dvdyT, dvdyB;
 
     /* u_star ADAMS-BASHFORTH 2 */
     for (i=0; i<m; i++){
         for (j=1; j<n-1; j++){
-            Vij = .25*(v_n[i][j]+v_n[(i+1+m)%m][j]+v_n[i][j-1]+v_n[(i+1+m)%m][j-1]); /* average of the four neighbour points */
-            Vij_old = .25*(v_n_1[i][j]+v_n_1[(i+1+m)%m][j]+v_n_1[i][j-1]+v_n_1[(i+1+m)%m][j-1]);
-            // advective terms
-            H_U =  u_n[i][j]*(u_n[(i+1+m)%m][j]-u_n[(i-1+m)%m][j])/(2.*h) + Vij*(u_n[i][j+1]-u_n[i][j-1])/(2.*h);
-            H_U_old = u_n_1[i][j]*(u_n_1[(i+1+m)%m][j]-u_n_1[(i-1+m)%m][j])/(2.*h) + Vij_old*(u_n_1[i][j+1]-u_n_1[i][j-1])/(2.*h);
-            // laplacian
+
+            // CONVECTIVE FORM OF KAJISHIMA
+            uR = .5*(u_n_1[i][j] + u_n_1[(i+1+m)%m][j]);
+            uL = .5*(u_n_1[(i-1+m)%m][j] + u_n_1[i][j]);
+            dudxR = (u_n_1[(i+1+m)%m][j]- u_n_1[i][j])/h;
+            dudxL = (u_n_1[i][j]- u_n_1[(i-1+m)%m][j])/h;
+
+            vT = .5*(v_n_1[i][j] + v_n_1[(i+1+m)%m][j]);
+            vB = .5*(v_n_1[i][j-1] + v_n_1[(i+1+m)%m][j-1]);
+            dudyT = (u_n_1[i][j+1] - u_n_1[i][j])/h;
+            dudyB = (u_n_1[i][j] - u_n_1[i][j-1])/h;
+
+            H_U_old = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+
+            uR = .5*(u_n[i][j] + u_n[(i+1+m)%m][j]);
+            uL = .5*(u_n[(i-1+m)%m][j] + u_n[i][j]);
+            dudxR = (u_n[(i+1+m)%m][j]- u_n[i][j])/h;
+            dudxL = (u_n[i][j]- u_n[(i-1+m)%m][j])/h;
+
+            vT = .5*(v_n[i][j] + v_n[(i+1+m)%m][j]);
+            vB = .5*(v_n[i][j-1] + v_n[(i+1+m)%m][j-1]);
+            dudyT = (u_n[i][j+1] - u_n[i][j])/h;
+            dudyB = (u_n[i][j] - u_n[i][j-1])/h;
+
+            H_U = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+
+            // LAPLACIAN
             lapU = (u_n[(i+1+m)%m][j]+u_n[(i-1+m)%m][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
-            // pressure term
+
+            // PRESSURE TERM
             dpdx = (P[(i+1+m)%m][j]-P[i][j])/h;
 
             u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+
+            //EXPLICIT VERSION
             //u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU - ramp*I_U[i][j]*(u_n[i][j] - u_s[i][j])/dtau);
         }
     }
@@ -930,17 +956,41 @@ void get_Ustar_Vstar(Data* data, double ramp)
     /* v_star  ADAMS-BASHFORTH 2 */
     for (i=0; i<m; i++){
         for (j=1; j<n-2; j++){
-            Uij = .25*(u_n[i][j]+u_n[(i-1+m)%m][j]+u_n[i][j+1]+u_n[(i-1+m)%m][j+1]); /* average of the four neighbour points */
-            Uij_old = .25*(u_n_1[i][j]+u_n_1[(i-1+m)%m][j]+u_n_1[i][j+1]+u_n_1[(i-1+m)%m][j+1]);
-            //Advective terms
-            H_V = Uij*(v_n[(i+1+m)%m][j]-v_n[(i-1+m)%m][j])/(2.*h) + v_n[i][j]*(v_n[i][j+1]-v_n[i][j-1])/(2.*h);
-            H_V_old = Uij_old*(v_n_1[(i+1+m)%m][j]-v_n_1[(i-1+m)%m][j])/(2.*h) + v_n_1[i][j]*(v_n_1[i][j+1]-v_n_1[i][j-1])/(2.*h);
-            // Laplacian
+
+            // CONVECTIVE FORM OF KAJISHIMA
+            uR = .5*(u_n_1[i][j] + u_n_1[i][j+1]);
+            uL = .5*(u_n_1[(i-1+m)%m][j] + u_n_1[(i-1+m)%m][j+1]);
+            dvdxR = (v_n_1[(i+1+m)%m][j]- v_n_1[i][j])/h;
+            dvdxL = (v_n_1[i][j]- v_n_1[(i-1+m)%m][j])/h;
+
+            vT = .5*(v_n_1[i][j] + v_n_1[i][j+1]);
+            vB = .5*(v_n_1[i][j] + v_n_1[i][j-1]);
+            dvdyT = (v_n_1[i][j+1] - v_n_1[i][j])/h;
+            dvdyB = (v_n_1[i][j] - v_n_1[i][j-1])/h;
+
+            H_V_old = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            uR = .5*(u_n[i][j] + u_n[i][j+1]);
+            uL = .5*(u_n[(i-1+m)%m][j] + u_n[(i-1+m)%m][j+1]);
+            dvdxR = (v_n[(i+1+m)%m][j]- v_n[i][j])/h;
+            dvdxL = (v_n[i][j]- v_n[(i-1+m)%m][j])/h;
+
+            vT = .5*(v_n[i][j] + v_n[i][j+1]);
+            vB = .5*(v_n[i][j] + v_n[i][j-1]);
+            dvdyT = (v_n[i][j+1] - v_n[i][j])/h;
+            dvdyB = (v_n[i][j] - v_n[i][j-1])/h;
+
+            H_V = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            // LAPLACIAN
             lapV = (v_n[(i+1+m)%m][j]+v_n[(i-1+m)%m][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
-            // Pressure term
+
+            // PRESSURE TERM
             dpdy = (P[i][j+1]-P[i][j])/h;
 
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
+
+            //EXPLICIT VERSION
             //v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV - ramp*I_V[i][j]*(v_n[i][j] - v_s[i][j])/dtau);
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
