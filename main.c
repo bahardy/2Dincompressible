@@ -41,9 +41,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 5.*data.Dp;
+    data.d = 30.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 15.*data.Dp;
+    data.L = 30.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]){
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 0.25; //data.Tf/10.;
+    data.t_move = 5; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = data.d;
+    data.xg[0] = 10*data.Dp;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
