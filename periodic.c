@@ -22,7 +22,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]){
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = data.h;
+    data.eps = 2.*data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -788,7 +788,7 @@ void get_masks(Data* data)
                 delta = atan2(yloc, xloc);
                 coloring[i][j] += Ip_S[k][i][j];
 
-                if((int)((delta-theta[k])/(M_PI/2.)) % 2 == 0 ){
+                if((int) floor(((delta-theta[k])/(M_PI/2.))) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
 #endif
