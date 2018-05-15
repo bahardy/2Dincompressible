@@ -19,7 +19,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -41,13 +41,13 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 30.*data.Dp;
+    data.d = 5.*data.Dp;
     data.H = 0.5*data.d;
-    data.L = 30.*data.Dp;
+    data.L = 10.*data.Dp;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = data.h;
+    data.eps = 2.*data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 10*data.Dp;
+    data.xg[0] = 2.5;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -734,7 +734,7 @@ void get_masks(Data* data)
     double* yg = data->yg;
     double* theta = data->theta;
     double* rp = data->rp;
-    double dist;
+    double d;
     int m = data->m;
     int n = data->n;
     double h = data->h;
@@ -800,30 +800,30 @@ void get_masks(Data* data)
 #ifdef SMOOTHING
 
                 //Smoothing S
-                dist = rp[k] - sqrt((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k]));
-                if( dist < - data->eps)
+                d = rp[k] - sqrt((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k]));
+                if( d < - data->eps)
                     Ip_S[k][i][j] = 0;
-                else if( fabs(dist) <= data->eps)
-                    Ip_S[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
-                else if( dist > data->eps)
+                else if( fabs(d) <= data->eps)
+                    Ip_S[k][i][j] = .5*(1 + d/data->eps + (1./M_PI)*sin( M_PI* d/data->eps) );
+                else if( d > data->eps)
                     Ip_S[k][i][j] = 1;
 
                 //Smoothing U
-                dist = rp[k] - sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k]));
-                if( dist < - data->eps)
+                d = rp[k] - sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k]));
+                if( d < - data->eps)
                     Ip_U[k][i][j] = 0;
-                else if( fabs(dist) <=data->eps)
-                    Ip_U[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
-                else if( dist > data->eps)
+                else if( fabs(d) <=data->eps)
+                    Ip_U[k][i][j] = .5*(1 + d/data->eps + (1./M_PI)*sin( M_PI* d/data->eps) );
+                else if( d > data->eps)
                     Ip_U[k][i][j] = 1;
 
                 //Smoothing V
-                dist = rp[k] - sqrt((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k]));
-                if( dist < - data->eps)
+                d = rp[k] - sqrt((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k]));
+                if( d < - data->eps)
                     Ip_V[k][i][j] = 0;
-                else if( fabs(dist) <= data->eps)
-                    Ip_V[k][i][j] = .5*(1 + dist/data->eps + (1./M_PI)*sin( M_PI* dist/data->eps) );
-                else if( dist > data->eps)
+                else if( fabs(d) <= data->eps)
+                    Ip_V[k][i][j] = .5*(1 + d/data->eps + (1./M_PI)*sin( M_PI* d/data->eps) );
+                else if( d > data->eps)
                     Ip_V[k][i][j] = 1;
 
 #endif
@@ -833,7 +833,7 @@ void get_masks(Data* data)
                 delta = atan2(yloc, xloc); 
                 coloring[i][j] += Ip_S[k][i][j];
 
-                if(((int)((delta-theta[k])/(M_PI/2.))) % 2 == 0 ){
+                if((int) floor((delta-theta[k])/(M_PI/2.)) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
 #endif
