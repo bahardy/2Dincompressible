@@ -10,7 +10,10 @@
 #include <petsc.h>
 #include <sys/stat.h>
 #include "main.h"
+#include "poisson.h"
 #include "write.h"
+#include "fields_creation.h"
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -44,13 +47,13 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 10.;
+    data.d = 3.;
     data.H = 0.5*data.d;
-    data.L = 15.;
-    data.h = data.Dp/30;
+    data.L = 9.;
+    data.h = data.Dp/60;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = 2.*data.h;
+    data.eps = 4.*data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -97,7 +100,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.2;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.25;  /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -105,6 +108,10 @@ int main(int argc, char *argv[]){
     data.ratio_dtau_dt = 1e-3;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
+
+    data.SORitermax = 100000;
+    data.alpha = 1.98;
+    data.SORtol = 1e-6;
 
     if(rank == 0){
         printf("Rep = %f\n", data.Rep);
@@ -148,77 +155,12 @@ int main(int argc, char *argv[]){
 
     /**------------------------------- Matrix Fields Creation  ------------------------------- **/
 
-    int m = data.m;
-    int n = data.n;
-    int Np = data.Np;
-    int Ns = data.Ns;
-
-    data.coloring = make2DDoubleArray(m,n);
-    data.C_n = make3DDoubleArray(Ns,m,n);
-    data.C0 = make1DDoubleArray(Ns); // inlet concentration
-    data.C_n_1 = make3DDoubleArray(Ns,m,n);
-    data.Cs = make3DDoubleArray(Ns,m,n);
-    data.Cp = make2DDoubleArray(Np,Ns);
-    data.dudt = make1DDoubleArray(Np);
-    data.dvdt = make1DDoubleArray(Np);
-    data.domegadt = make1DDoubleArray(Np);
-    data.dTdt = make1DDoubleArray(Np);
-    data.dCdt = make2DDoubleArray(Np,Ns);
-    data.dp = make1DDoubleArray(Np);
-    data.F = make2DDoubleArray(Np,3);
-    data.Fx = make1DDoubleArray(Np);
-    data.Fy = make1DDoubleArray(Np);
-    data.G = make2DDoubleArray(Np,3);
-    data.Ip_S = make3DDoubleArray(Np,m,n);
-    data.Ip_U = make3DDoubleArray(Np,m,n);
-    data.Ip_V = make3DDoubleArray(Np,m,n);
-    data.I_S = make2DDoubleArray(m,n);
-    data.I_U = make2DDoubleArray(m,n);
-    data.I_V = make2DDoubleArray(m,n);
-    data.II = make1DDoubleArray(Np);
-    data.J = make1DDoubleArray(Np);
-    data.Mz = make2DDoubleArray(Np,3);
-    data.omega = make2DDoubleArray(m,n);
-    data.Omega_p = make2DDoubleArray(Np,4);
-    data.phi = make2DDoubleArray(m,n);
-    data.Qm = make2DDoubleArray(Np,Ns);
-    data.P = make2DDoubleArray(m,n);
-    data.PP = make3DDoubleArray(Np, Ns, 3);
-    data.Q = make1DDoubleArray(Np);
-    data.QQ = make2DDoubleArray(Np,3);
-    data.Qr = make2DDoubleArray(Np,3);
-    data.rp = make1DDoubleArray(Np);
-    data.Reh = make2DDoubleArray(m,n);
-    data.Reh_omega = make2DDoubleArray(m,n);
-    data.Sp = make1DDoubleArray(Np);
-    data.theta = make1DDoubleArray(Np);
-
-    data.T_n = make2DDoubleArray(m,n);
-    data.T_n_1 = make2DDoubleArray(m,n);
-    data.Tp = make1DDoubleArray(Np);
-    data.Ts = make2DDoubleArray(m,n);
-    data.Tz = make1DDoubleArray(Np);
-
-    data.u_n = make2DDoubleArray(m,n);
-    data.u_n_1 = make2DDoubleArray(m,n);
-    data.Up = make2DDoubleArray(Np,4);
-    data.u_s = make2DDoubleArray(m,n);
-    data.u_star = make2DDoubleArray(m,n);
-
-    data.v_n = make2DDoubleArray(m,n);
-    data.v_n_1 = make2DDoubleArray(m,n);
-    data.Vp = make2DDoubleArray(Np,4);
-    data.v_s = make2DDoubleArray(m,n);
-    data.v_star = make2DDoubleArray(m,n);
-
-    data.xg = make1DDoubleArray(Np);
-    data.yg = make1DDoubleArray(Np);
-
+    initialize_fields(&data);
 
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 10;
+    data.xg[0] = 7;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -231,17 +173,15 @@ int main(int argc, char *argv[]){
     data.Up[0][3] = data.Up[0][2];
 
 
-    for(int k=0; k<Np; k++){
+    for(int k=0; k<data.Np; k++){
 #ifdef DISK
         data.Sp[k]=M_PI*data.rp[k]*data.rp[k];
-        data.II[k]=(data.dp[k]*data.dp[k])/8.; /* IN 2-D !! */
         data.J[k] =(M_PI/2.)*pow(data.rp[k],4);
 #endif
 #ifdef ELLIPSE
         data.a = 2*Dp;
         data.b = Dp;
         data.Sp[k]=M_PI*data.a*data.b;
-        data.II[k]=.25*(pow(data.a,2) + pow(data.b,2));
         data.J[k] =(M_PI/4.)*data.a*data.b*(pow(data.a,2) + pow(data.b,2));
 #endif
     }
@@ -257,39 +197,9 @@ int main(int argc, char *argv[]){
     FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
     FILE* fichier_particle = fopen("results/particle.txt", "w+");
 
-    /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
-
-//    //double y_ch;
-//    /* VELOCITY : horizontal flow Um  */
-//    for(int i=0; i<m; i++){
-//        for(int j=0; j<n; j++){
-//            data.u_n[i][j] = data.u_m;
-//            data.u_n_1[i][j] = data.u_n[i][j];
-//            data.u_star[i][j] = data.u_n[i][j];
-//            data.T_n[i][j] = data.Tm0;
-//            data.T_n_1[i][j] = data.T_n[i][j];
-//            /* v_n is initially at zero */
-//        }
-//    }
-
-    /** ----- BOUNDARY CONDITION -----------**/
-
-    //y_ch = (j-0.5)*data.h - data.H;
-    //data.u_max*(1.-(y_ch/data.H)*(y_ch/data.H));
-
-    // Ghost point for u_n_1 (first time EE)
-//    for (int i=0; i<m; i++) {
-//        // slip walls : dudn = 0
-//        data.u_n_1[i][0] = data.u_n_1[i][1];
-//        data.u_n_1[i][n-1] = data.u_n_1[i][n-2];
-//
-//        // Ghost point for T_n_1 (first time EE)
-//        data.T_n_1[i][0] = data.T_n_1[i][1];
-//        data.T_n_1[i][n-1] = data.T_n_1[i][n-2];
-//    }
 
     /*Initialization of particles temperatures */
-    for(int k=0; k<Np; k++){
+    for(int k=0; k<data.Np; k++){
         data.Tp[k] = data.Tp0;
     }
 
@@ -324,7 +234,7 @@ int main(int argc, char *argv[]){
         /** --- SOLVE PARTICULAR PHASE --- */
         int flag_out = 0;
         int k;
-        for (k = 0; k<Np; k++){
+        for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization(&data, &surf, k);
 #ifdef  MOVE
@@ -361,7 +271,7 @@ int main(int argc, char *argv[]){
 #endif
         get_Ustar_Vstar(&data, data.ramp);
         clock_t t_init = clock();
-        poisson_solver(&data, rank, nbproc);
+        poisson_solver_periodic(&data, rank, nbproc);
         clock_t t_final = clock();
         double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
@@ -402,19 +312,7 @@ int main(int argc, char *argv[]){
     fclose(fichier_stat);
 
     /* Free memory */
-    free(data.xg), free(data.yg), free(data.theta), free(data.dp), free(data.rp), free(data.Sp), free(data.II), free(data.J);
-    free(data.dudt), free(data.dvdt), free(data.domegadt), free(data.dTdt); free2Darray(data.dCdt, Np);
-    free(data.Fx), free(data.Fy), free(data.Tz), free(data.Q), free2Darray(data.Qm, Np);
-    free2Darray(data.u_n,m), free2Darray(data.u_n_1,m), free2Darray(data.u_star,m), free2Darray(data.u_s,m);
-    free2Darray(data.v_n,m), free2Darray(data.v_n_1,m), free2Darray(data.v_star,m), free2Darray(data.v_s,m);
-    free2Darray(data.omega, m); free2Darray(data.Reh,m); free2Darray(data.Reh_omega,m);
-    free2Darray(data.P,m), free2Darray(data.phi, m);
-    free2Darray(data.T_n,m),  free2Darray(data.T_n_1,m), free2Darray(data.Ts, m);
-    free3Darray(data.C_n, Ns, m), free3Darray(data.C_n_1, Ns, m), free3Darray(data.Cs, Ns, m), free(data.C0);
-    free2Darray(data.Up,Np), free2Darray(data.Vp, Np), free2Darray(data.Omega_p,Np), free(data.Tp), free2Darray(data.Cp, Np);
-    free2Darray(data.F, Np), free2Darray(data.G, Np), free2Darray(data.Mz, Np), free2Darray(data.QQ, Np), free3Darray(data.PP, Np,Ns), free2Darray(data.Qr, Np);
-    free2Darray(data.I_S, m), free2Darray(data.I_U, m), free2Darray(data.I_V, m), free2Darray(data.coloring, m);
-    free3Darray(data.Ip_S, Np,m), free3Darray(data.Ip_U, Np,m), free3Darray(data.Ip_V, Np, m);
+    free_fields(&data);
 
     PetscFinalize();
     return 0;
@@ -441,7 +339,7 @@ void compute_forces_fluxes(Data* data, int k)
     double* dTdt = data->dTdt;
 
     double* Sp = data->Sp;
-    double* II = data->II;
+    double* J = data->J;
 
     double rho_f = data->rho_f;
     double cf = data->cf;
@@ -456,7 +354,7 @@ void compute_forces_fluxes(Data* data, int k)
 
     Fx[k] = rho_f*(Sp[k]*dudt[k] + F[k][2]);
     Fy[k] = rho_f*(Sp[k]*dvdt[k] + G[k][2]);
-    Tz[k] = rho_f*(Sp[k]*II[k]*domegadt[k] + M[k][2]);
+    Tz[k] = rho_f*(J[k]*domegadt[k] + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
     Qm[k][0] = PP[k][0][2];
 
@@ -467,7 +365,6 @@ void compute_forces_fluxes(Data* data, int k)
     //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
 }
-
 
 void compute_Qr(double** Qr, double rate, double dH, int k){
 
@@ -902,7 +799,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
     double** P = data->P;
 
-    double Uij, Vij, Uij_old, Vij_old;
     double H_U, H_U_old;
     double H_V, H_V_old;
     double lapU, lapV;
@@ -915,18 +811,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     for (i=0; i<m; i++){
         for (j=1; j<n-1; j++){
 
-            // CONVECTIVE FORM OF KAJISHIMA
-            uR = .5*(u_n_1[i][j] + u_n_1[(i+1+m)%m][j]);
-            uL = .5*(u_n_1[(i-1+m)%m][j] + u_n_1[i][j]);
-            dudxR = (u_n_1[(i+1+m)%m][j]- u_n_1[i][j])/h;
-            dudxL = (u_n_1[i][j]- u_n_1[(i-1+m)%m][j])/h;
-
-            vT = .5*(v_n_1[i][j] + v_n_1[(i+1+m)%m][j]);
-            vB = .5*(v_n_1[i][j-1] + v_n_1[(i+1+m)%m][j-1]);
-            dudyT = (u_n_1[i][j+1] - u_n_1[i][j])/h;
-            dudyB = (u_n_1[i][j] - u_n_1[i][j-1])/h;
-
-            H_U_old = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+            H_U_old = data->H_u_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[(i+1+m)%m][j]);
             uL = .5*(u_n[(i-1+m)%m][j] + u_n[i][j]);
@@ -939,6 +824,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dudyB = (u_n[i][j] - u_n[i][j-1])/h;
 
             H_U = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+
+            if (data->iter == 1){
+                H_U_old = H_U;
+            }
 
             // LAPLACIAN
             lapU = (u_n[(i+1+m)%m][j]+u_n[(i-1+m)%m][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
@@ -957,18 +846,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     for (i=0; i<m; i++){
         for (j=1; j<n-2; j++){
 
-            // CONVECTIVE FORM OF KAJISHIMA
-            uR = .5*(u_n_1[i][j] + u_n_1[i][j+1]);
-            uL = .5*(u_n_1[(i-1+m)%m][j] + u_n_1[(i-1+m)%m][j+1]);
-            dvdxR = (v_n_1[(i+1+m)%m][j]- v_n_1[i][j])/h;
-            dvdxL = (v_n_1[i][j]- v_n_1[(i-1+m)%m][j])/h;
-
-            vT = .5*(v_n_1[i][j] + v_n_1[i][j+1]);
-            vB = .5*(v_n_1[i][j] + v_n_1[i][j-1]);
-            dvdyT = (v_n_1[i][j+1] - v_n_1[i][j])/h;
-            dvdyB = (v_n_1[i][j] - v_n_1[i][j-1])/h;
-
-            H_V_old = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+            H_V_old = data->H_v_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i][j+1]);
             uL = .5*(u_n[(i-1+m)%m][j] + u_n[(i-1+m)%m][j+1]);
@@ -981,6 +859,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dvdyB = (v_n[i][j] - v_n[i][j-1])/h;
 
             H_V = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            if (data->iter == 1){
+                H_V_old = H_V;
+            }
 
             // LAPLACIAN
             lapV = (v_n[(i+1+m)%m][j]+v_n[(i-1+m)%m][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
@@ -998,160 +880,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     }
 
 }
-
-
-PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
-{
-    double** u_star = data->u_star;
-    double** v_star = data->v_star;
-    double** phi = data->phi;
-
-    int M = data->M;
-    int N = data->N;
-    int m = data->m;
-    int n = data->n;
-    double h = data->h;
-    double dt = data->dt;
-
-    /* Solve the linear system Ax = b for a 2-D poisson equation on a structured grid */
-    KSP sles;
-    Mat A;
-    Vec b, x;
-
-    double div_u_star;
-    int r, rowStart, rowEnd, i, j, ii, jj, its;
-    int mytag = 12;
-    int my_rowStart, my_rowEnd;
-    double*  my_array;
-    double* array = malloc(M*N*sizeof(double));
-    MPI_Status status[3];
-
-
-    /* Create the Laplacian matrix : A  */
-    MatCreate( PETSC_COMM_WORLD, &A );
-    MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, M*N, M*N);
-    MatSetType(A, MATAIJ);
-    MatSeqAIJSetPreallocation(A, 5, NULL);
-    MatMPIAIJSetPreallocation(A, 5, NULL, 5, NULL);
-    MatGetOwnershipRange(A, &rowStart, &rowEnd);
-    PetscPrintf(PETSC_COMM_WORLD, "End row is %d \n", rowEnd);
-
-    for(r = rowStart; r<rowEnd; r++){
-        ii = r/N; jj=r%N;
-
-        MatSetValue(A, r, (r-N + M*N)%(M*N), -1., INSERT_VALUES);
-        if(jj>0){
-            MatSetValue(A, r, r-1, -1., INSERT_VALUES);
-        }
-        MatSetValue(A, r, r, 4., INSERT_VALUES);
-        if(jj<N-1){
-            MatSetValue(A, r, r+1, -1., INSERT_VALUES);
-        }
-        MatSetValue(A, r, (r+N + M*N)%(M*N), -1., INSERT_VALUES);
-        if(jj == 0 || jj == N-1){
-            MatSetValue(A, r, r, 3., INSERT_VALUES);
-        }
-
-
-    }
-    PetscErrorCode  ierr;
-    ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-
-
-    /* Create the right-hand-side vector : b */
-    VecCreate (PETSC_COMM_WORLD, &b );
-    VecSetSizes(b, PETSC_DECIDE, M*N);
-    VecSetFromOptions(b);
-    VecGetOwnershipRange( b, &rowStart, &rowEnd );
-    for(r = rowStart; r< rowEnd; r++){
-        ii = r/N; jj=r%N;
-        i = ii; // periodic case
-        j = jj+1;
-        div_u_star = (u_star[i][j]-u_star[(i-1+m)%m][j]+v_star[i][j]-v_star[i][j-1])/h;
-
-        VecSetValue(b, r, -(h*h/dt)*div_u_star, INSERT_VALUES);
-    }
-    VecAssemblyBegin(b);
-    VecAssemblyEnd(b);
-
-
-    /*Solve the linear system of equations */
-    VecDuplicate( b, &x );
-    KSPCreate(PETSC_COMM_WORLD, &sles );
-    KSPSetOperators(sles, A, A);
-    KSPSetFromOptions( sles );
-    PetscPrintf(PETSC_COMM_WORLD,"Assembly is done \n");
-    KSPSolve( sles, b, x );
-    KSPGetIterationNumber( sles, &its );
-    PetscPrintf( PETSC_COMM_WORLD, "Solution to Poisson eqn in %d iterations \n ", its);
-
-    /*Transfer the solution to phi[i][j] */
-    VecGetArray(x, &my_array);
-
-    if ((M*N) % nbproc == 0){
-        int length = ((M*N)/nbproc);
-        MPI_Allgather(my_array, length, MPI_DOUBLE, array, length, MPI_DOUBLE, PETSC_COMM_WORLD);
-        for (r = 0; r<M*N; r++){
-            i = r/N;
-            jj = r%N; j = jj+1;
-            phi[i][j] = array[r];
-        }
-        // update ghost points on phi
-        for(i=0; i<m; i++){
-            /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
-            phi[i][0] = phi[i][1];
-            phi[i][n-1] = phi[i][n-2];
-        }
-    }
-    else{
-        if (myrank == 0){
-            for (r=rowStart; r<rowEnd; r++) {
-                array[r] = my_array[r];
-            }
-            for (int k = 1; k < nbproc; k++){
-                MPI_Recv(&my_rowStart, 1, MPI_INT, k, mytag+1, PETSC_COMM_WORLD, &status[1] );
-                MPI_Recv(&my_rowEnd, 1, MPI_INT, k, mytag+2, PETSC_COMM_WORLD, &status[2] );
-                int length_proc = my_rowEnd - my_rowStart;
-                MPI_Recv(my_array, length_proc, MPI_DOUBLE, k, mytag, PETSC_COMM_WORLD, &status[0] ) ;
-                int R;
-                for (r=0; r<length_proc; r++){
-                    R = r + my_rowStart;
-                    array[R] = my_array[r];
-                }
-            }
-        }
-        else{
-            MPI_Send(&rowStart, 1, MPI_INT, 0, mytag+1, PETSC_COMM_WORLD);
-            MPI_Send(&rowEnd, 1, MPI_INT, 0, mytag+2, PETSC_COMM_WORLD);
-            int length = rowEnd-rowStart;
-            MPI_Send(my_array, length, MPI_DOUBLE, 0, mytag, PETSC_COMM_WORLD);
-        }
-        MPI_Bcast(array, M*N, MPI_DOUBLE, 0, PETSC_COMM_WORLD);
-
-        for(r = 0; r < M*N; r++){
-            i = r/N; j = r%N;
-            jj = j+1;
-            phi[i][jj] = array[r];
-        }
-        // update ghost points on phi
-        for(i=0; i<m; i++){
-            /* cancel gradients : dp/dn=0 --> dphi/dn = 0*/
-            phi[i][0] = phi[i][1];
-            phi[i][n-1] = phi[i][n-2];
-        }
-    }
-    VecRestoreArray(x, &my_array);
-    //free(my_array);
-    free(array);
-
-    MatDestroy( &A );
-    VecDestroy( &b ); VecDestroy( &x );
-    KSPDestroy( &sles );
-
-    return ierr;
-}
-
 
 void update_flow(Data* data) {
 
@@ -1316,7 +1044,7 @@ void update_Up(Data* data, int k)
     double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
     double* Sp = data->Sp;
-    double* II = data->II;
+    double* J = data->J;
     double** F = data->F;
     double** G = data->G;
     double** M = data->Mz;
@@ -1331,7 +1059,7 @@ void update_Up(Data* data, int k)
     Up[k][3] = Up[k][2] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
-    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*II[k]*Sp[k]*(rho_r - 1.));
+    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 
     printf("Up = %f \n", Up[k][3]);

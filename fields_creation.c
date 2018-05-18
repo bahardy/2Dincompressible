@@ -35,7 +35,6 @@ void initialize_fields(Data* data)
     data->I_S = make2DDoubleArray(m,n);
     data->I_U = make2DDoubleArray(m,n);
     data->I_V = make2DDoubleArray(m,n);
-    data->II = make1DDoubleArray(Np);
     data->J = make1DDoubleArray(Np);
     data->Mz = make2DDoubleArray(Np,3);
     data->omega = make2DDoubleArray(m,n);
@@ -52,6 +51,9 @@ void initialize_fields(Data* data)
     data->Reh_omega = make2DDoubleArray(m,n);
     data->Sp = make1DDoubleArray(Np);
     data->theta = make1DDoubleArray(Np);
+
+    data->H_u_n_1 = make2DDoubleArray(m,n);
+    data->H_v_n_1 = make2DDoubleArray(m,n);
 
     data->T_n = make2DDoubleArray(m,n);
     data->T_n_1 = make2DDoubleArray(m,n);
@@ -82,10 +84,11 @@ void free_fields(Data* data)
     int Ns = data->Ns;
 
     /* Free memory */
-    free(data->xg), free(data->yg), free(data->theta), free(data->dp), free(data->rp), free(data->Sp), free(data->II), free(data->J);
+    free(data->xg), free(data->yg), free(data->theta), free(data->dp), free(data->rp), free(data->Sp), free(data->J);
     free(data->dudt), free(data->dvdt), free(data->domegadt), free(data->dTdt); free2Darray(data->dCdt, Np);
     free(data->Fx), free(data->Fy), free(data->Tz), free(data->Q), free2Darray(data->Qm, Np);
     free2Darray(data->u_n,m), free2Darray(data->u_n_1,m), free2Darray(data->u_star,m), free2Darray(data->u_s,m);
+    free2Darray(data->H_u_n_1, m) , free2Darray(data->H_v_n_1, m); free2Darray(data->H_T_n_1, m), free3Darray(data->H_Y_n_1, Ns, m);
     free2Darray(data->v_n,m), free2Darray(data->v_n_1,m), free2Darray(data->v_star,m), free2Darray(data->v_s,m);
     free2Darray(data->omega, m); free2Darray(data->Reh,m); free2Darray(data->Reh_omega,m); free2Darray(data->CFL_array, m);
     free2Darray(data->P,m), free2Darray(data->phi, m);
@@ -96,3 +99,4 @@ void free_fields(Data* data)
     free2Darray(data->I_S, m), free2Darray(data->I_U, m), free2Darray(data->I_V, m), free2Darray(data->coloring, m);
     free3Darray(data->Ip_S, Np,m), free3Darray(data->Ip_U, Np,m), free3Darray(data->Ip_V, Np, m);
 }
+

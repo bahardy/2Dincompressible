@@ -13,13 +13,12 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
 #define SLIP
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -41,9 +40,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 5.*data.Dp;
+    data.d = 3.;
     data.H = 0.5*data.d;
-    data.L = 10.*data.Dp;
+    data.L = 9.;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -72,7 +71,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 100.;
+    data.rho_p = 1000.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -101,7 +100,7 @@ int main(int argc, char *argv[]){
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
 
-    data.ratio_dtau_dt = 1e-3;
+    data.ratio_dtau_dt = 1e-4;
     data.dt = fmin(dt_CFL, dt_diff);
     data.dtau = data.ratio_dtau_dt*data.dt;
 
@@ -153,7 +152,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 2.5;
+    data.xg[0] = 3;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -251,13 +250,10 @@ int main(int argc, char *argv[]){
 #endif
 
 
-    /** -------------------------------TIME STEPPING FROM BEGINNING ------------------------------- **/
-    iter_start = 1;
-    t_start = 0.;
 
     /** -------------------------------TIME STEPPING ------------------------------- **/
-    data.iter = iter_start;
-    t = t_start;
+    data.iter = 1;
+    t = 0;
 
     // we feed reactants at the inlet
     data.C0[0] = data.CA0;
@@ -277,9 +273,7 @@ int main(int argc, char *argv[]){
             /* Velocity - Forces */
             if(t > data.t_move){
                 update_Xp(&data, k);
-#ifdef TWO_WAY
                 update_Up(&data, k);
-#endif
             }
 #endif
 #ifdef  TEMP
@@ -323,13 +317,13 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.6e \t %3.13e \t  %3.13e \n",  data.CFL_max,  data.Reh_max, data.Reh_omega_max);
+            fprintf(fichier_stat, "%3.6e \t %3.6e \t  %3.6e \n",  data.CFL_max,  data.Reh_max, data.Reh_omega_max);
             fflush(fichier_stat);
-            fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
+            fprintf(fichier_forces, "%3.6e \t  %3.6e  \t %3.6e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
             fflush(fichier_forces);
-            fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Qm[0][0]);
+            fprintf(fichier_fluxes, "%3.6e \t  %3.6e \n", data.Q[0], data.Qm[0][0]);
             fflush(fichier_fluxes);
-            fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \t %3.13e  \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0],
+            fprintf(fichier_particle, "%3.6e \t  %3.6e \t %3.6e \t %3.6e \t %3.6e  \t %3.6e \t %3.6e \n", data.xg[0], data.yg[0], data.theta[0],
                     data.Up[0][3], data.Vp[0][3], data.Omega_p[0][3], data.Tp[0]);
             fflush(fichier_particle);
 
@@ -963,18 +957,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     for (i=1; i<m-2; i++){
         for (j=1; j<n-1; j++){
 
-            // CONVECTIVE FORM OF KAJISHIMA
-            uR = .5*(u_n_1[i][j] + u_n_1[i+1][j]);
-            uL = .5*(u_n_1[i-1][j] + u_n_1[i][j]);
-            dudxR = (u_n_1[i+1][j]- u_n_1[i][j])/h;
-            dudxL = (u_n_1[i][j]- u_n_1[i-1][j])/h;
-
-            vT = .5*(v_n_1[i][j] + v_n_1[i+1][j]);
-            vB = .5*(v_n_1[i][j-1] + v_n_1[i+1][j-1]);
-            dudyT = (u_n_1[i][j+1] - u_n_1[i][j])/h;
-            dudyB = (u_n_1[i][j] - u_n_1[i][j-1])/h;
-
-            H_U_old = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
+            H_U_old = data->H_u_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i+1][j]);
             uL = .5*(u_n[i][j] + u_n[i-1][j]);
@@ -988,6 +971,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
             H_U = .5*(uR*dudxR + uL*dudxL) + .5*(vT*dudyT + vB*dudyB);
 
+            if (data->iter == 1){
+                H_U_old = H_U;
+            }
+
             // LAPLACIAN
             lapU = (u_n[i+1][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
 
@@ -999,6 +986,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
             // IMPLICIT VERSION
             u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+
+            data->H_u_n_1[i][j] = H_U;
         }
     }
 
@@ -1012,18 +1001,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
     for (i=1; i<m-1; i++){
         for (j=1; j<n-2; j++){
 
-            // CONVECTIVE FORM OF KAJISHIMA
-            uR = .5*(u_n_1[i][j] + u_n_1[i][j+1]);
-            uL = .5*(u_n_1[i-1][j] + u_n_1[i-1][j+1]);
-            dvdxR = (v_n_1[i+1][j]- v_n_1[i][j])/h;
-            dvdxL = (v_n_1[i][j]- v_n_1[i-1][j])/h;
-
-            vT = .5*(v_n_1[i][j] + v_n_1[i][j+1]);
-            vB = .5*(v_n_1[i][j] + v_n_1[i][j-1]);
-            dvdyT = (v_n_1[i][j+1] - v_n_1[i][j])/h;
-            dvdyB = (v_n_1[i][j] - v_n_1[i][j-1])/h;
-
-            H_V_old = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+            H_V_old = data->H_v_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i][j+1]);
             uL = .5*(u_n[i-1][j] + u_n[i-1][j+1]);
@@ -1036,6 +1014,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             dvdyB = (v_n[i][j] - v_n[i][j-1])/h;
 
             H_V = .5*(uR*dvdxR + uL*dvdxL) + .5*(vT*dvdyT + vB*dvdyB);
+
+            if (data->iter == 1){
+                H_V_old = H_V;
+            }
 
             // LAPLACIAN
             lapV = (v_n[i+1][j]+v_n[i-1][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
@@ -1051,6 +1033,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
 
+            data->H_v_n_1[i][j] = H_V;
         }
     }
 }
@@ -1062,7 +1045,6 @@ void update_flow(Data* data) {
     int n = data->n;
     double dt = data->dt;
     double h = data->h;
-    //double H = data->H;
 
     double **u_new = make2DDoubleArray(m, n);
     double **v_new = make2DDoubleArray(m, n);

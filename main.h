@@ -1,8 +1,8 @@
 
 #ifndef main_h
 #define main_h
-//#define TEMP
-#define MOVE
+#define TEMP
+//#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -98,7 +98,6 @@ struct Data{
     double* Fx;
     double* Fy;
     double** G;
-    double* II;
     double* J;
     double*** Ip_S;
     double*** Ip_U;
@@ -142,6 +141,11 @@ struct Data{
     double** Vp;
     double** v_s;
     double** v_star;
+
+    double** H_u_n_1;
+    double** H_v_n_1;
+    double** H_T_n_1;
+    double*** H_Y_n_1;
 
     double** omega;
 
