@@ -40,9 +40,9 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 3.;
+    data.d = 30.;
     data.H = 0.5*data.d;
-    data.L = 9.;
+    data.L = 30.;
     data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]){
 
     /* PHYSICAL PARAMETERS */
     data.rho_f = 1.;
-    data.rho_p = 1000.;
+    data.rho_p = 100.;
     data.rho_r = data.rho_p/data.rho_f;
     data.cp = 1000.;
     data.cf = 1000.;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -125,17 +125,16 @@ int main(int argc, char *argv[]){
     }
     else{
         data.T_write = 1; /* number of time steps between two writings */
-        data.N_write = 50; /* number of times we write in files */
+        data.N_write = 3; /* number of times we write in files */
     }
 
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
-    data.t_move = 5; //data.Tf/10.;
+    data.t_move = 0.5; //data.Tf/10.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
-    double t, t_start;
-    int iter_start;
+    double t;
     data.ramp = 1;
     data.iter = 0;
     double surf = 0.;
@@ -152,7 +151,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 3;
+    data.xg[0] = 15;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -208,6 +207,7 @@ int main(int argc, char *argv[]){
 
     get_ghosts_initial(&data, data.Tm0, data.C0);
     get_ghosts(&data, data.Tm0, data.C0);
+
     /*Initialization of the mask */
     get_masks(&data);
 
@@ -278,8 +278,11 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
-            update_Tp(&data, k);
-            update_Cp(&data, k);
+//            if(t > data.t_move)
+//            {
+//                update_Tp(&data, k);
+//                update_Cp(&data, k);
+//            }
 #endif
             compute_forces_fluxes(&data, k);
         }
@@ -1038,7 +1041,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     }
 }
 
-
 void update_flow(Data* data) {
 
     int m = data->m;
@@ -1099,7 +1101,6 @@ void update_flow(Data* data) {
     double ramp = data->ramp;
     double dtau = data->dtau;
 
-    double Uij, Uij_old, Vij, Vij_old;
     double H_T, H_T_old, lapT;
     double H_C, H_C_old, lapC;
 
@@ -1121,12 +1122,12 @@ void update_flow(Data* data) {
 //                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
 
             // IMPLICIT VERSION
-          T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
                                              + alpha_f * lapT
                                              + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
                           (1. + ramp * I_S[i][j] * dt / dtau);
 
-            for (int s = 0; s < Ns; s++) {
+            for (int s = 0; s < Ns-1; s++) {
                 // ADVECTIVE TERMS
                 H_C_old = .5*(u_n_1[i][j]*(C_n_1[s][i+1][j]-C_n_1[s][i][j])/h + u_n_1[i-1][j]*(C_n_1[s][i][j]-C_n_1[s][i-1][j])/h)
                           + .5*(v_n_1[i][j]*(C_n_1[s][i][j+1]-C_n_1[s][i][j])/h + v_n_1[i][j-1]*(C_n_1[s][i][j]-C_n_1[s][i][j-1])/h);
@@ -1147,6 +1148,7 @@ void update_flow(Data* data) {
                                                      + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
                                  (1. + ramp * I_S[i][j] * dt / dtau);
             }
+            C_new[Ns-1][i][j] = 1 - C_new[0][i][j];
         }
     }
 
@@ -1242,7 +1244,6 @@ void update_Up(Data* data, int k)
     Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];
 }
 
-
 void update_Tp(Data* data, int k)
 {
 
@@ -1261,7 +1262,7 @@ void update_Tp(Data* data, int k)
     double dt = data->dt;
     double dH = data->dH;
 
-    compute_Qr(Qr, PP[0][k][2], dH, k);
+    //compute_Qr(Qr, PP[0][k][2], dH, k);
 
     dTdt[k] = (23.*QQ[k][2]-16.*QQ[k][1]+5.*QQ[k][0])/(12.*Sp[k]*(rho_r*cr - 1.)) + (23.*Qr[k][2]-16.*Qr[k][1]+5.*Qr[k][0])/(12.*Sp[k]*(rho_p*cp - rho_f*cf));
     Tp[k] += dt*dTdt[k];
