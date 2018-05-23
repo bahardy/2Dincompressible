@@ -541,7 +541,9 @@ int integrate_penalization(Data *data, double* surf, int k)
 
     double h2;
     h2 = h*h;
-    double yU, xV, f, g;
+    double yU, xV, f, g, q, *qm;
+    qm = make1DDoubleArray(Ns);
+
 
     //for(int i=startX; i<=endX; i++){//
     for(int i = 0; i<m; i++){
@@ -552,8 +554,7 @@ int integrate_penalization(Data *data, double* surf, int k)
             f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
             g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
 #ifdef TEMP
-            double q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
-            double* qm = make1DDoubleArray(Ns);
+            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
             for(int s=0; s<Ns; s++){
                 qm[s] = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
             }
@@ -585,6 +586,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     for(int s=0; s<Ns; s++){
         PP[k][s][2] = -Qmint[s]*h2/dtau;
     }
+    free(Qmint);
 #endif
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
@@ -1137,8 +1139,8 @@ void update_flow(Data* data) {
                 // DIFFUSION TERM
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 
-//                //EXPLICIT VERSION
-//                C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+//              //EXPLICIT VERSION
+//              C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
 //                                                     + Df[s] * lapC)
 //                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
 
@@ -1155,7 +1157,6 @@ void update_flow(Data* data) {
 
     free2Darray(T_n_1, m);
     free3Darray(C_n_1, Ns, m);
-
 
     data->T_n_1 = T_n;
     data->T_n = T_new;
@@ -1295,13 +1296,13 @@ double** make2DDoubleArray(int arraySizeX, int arraySizeY) {
     return theArray;
 }
 
-double*** make3DDoubleArray(int numberOfparticles, int arraySizeX, int arraySizeY) {
+double*** make3DDoubleArray(int arraySizeZ, int arraySizeX, int arraySizeY) {
     double*** theArray;
-    theArray = (double***) malloc(numberOfparticles*sizeof(double**));
-    for (int k = 0; k < numberOfparticles; k++) {
+    theArray = (double***) malloc(arraySizeZ*sizeof(double**));
+    for (int k = 0; k < arraySizeZ; k++) {
         theArray[k] = (double**) malloc(arraySizeX*sizeof(double*));
     }
-    for (int k=0; k < numberOfparticles; k++) {
+    for (int k=0; k < arraySizeZ; k++) {
         for (int ix=0; ix < arraySizeX; ix++) {
             theArray[k][ix] = calloc((size_t) arraySizeY, sizeof(double));
         }
@@ -1344,6 +1345,8 @@ void free3Darray(double*** array, int dim1, int dim2) {
         for (int j = 0; j < dim2; j++) {
             free(array[i][j]);
         }
+    }
+    for (int i = 0; i < dim1; i++) {
         free(array[i]);
     }
     free(array);
