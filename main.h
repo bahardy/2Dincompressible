@@ -181,7 +181,6 @@ void get_Ts(Data* data);
 void get_Us_Vs(Data* data);
 void get_Ustar_Vstar(Data* data, double ramp);
 void get_vorticity(Data* data);
-PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc);
 void update_flow(Data* data);
 void update_Xp(Data* data, int k);
 void update_Up(Data* data, int k);
