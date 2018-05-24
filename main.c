@@ -586,8 +586,9 @@ int integrate_penalization(Data *data, double* surf, int k)
     for(int s=0; s<Ns; s++){
         PP[k][s][2] = -Qmint[s]*h2/dtau;
     }
-    free(Qmint);
 #endif
+    free(Qmint);
+    free(qm);
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
 }
