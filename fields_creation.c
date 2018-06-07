@@ -28,6 +28,7 @@ void initialize_fields(Data* data)
     data->F = make2DDoubleArray(Np,3);
     data->Fx = make1DDoubleArray(Np);
     data->Fy = make1DDoubleArray(Np);
+    data->Tz = make1DDoubleArray(Np);
     data->G = make2DDoubleArray(Np,3);
     data->Ip_S = make3DDoubleArray(Np,m,n);
     data->Ip_U = make3DDoubleArray(Np,m,n);
@@ -54,12 +55,13 @@ void initialize_fields(Data* data)
 
     data->H_u_n_1 = make2DDoubleArray(m,n);
     data->H_v_n_1 = make2DDoubleArray(m,n);
+    data->H_T_n_1 = make2DDoubleArray(m,n);
+    data->H_C_n_1 = make3DDoubleArray(Ns, m, n);
 
     data->T_n = make2DDoubleArray(m,n);
     data->T_n_1 = make2DDoubleArray(m,n);
     data->Tp = make1DDoubleArray(Np);
     data->Ts = make2DDoubleArray(m,n);
-    data->Tz = make1DDoubleArray(Np);
 
     data->u_n = make2DDoubleArray(m,n);
     data->u_n_1 = make2DDoubleArray(m,n);
