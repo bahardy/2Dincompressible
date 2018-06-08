@@ -1,8 +1,8 @@
 
 #ifndef main_h
 #define main_h
-#define TEMP
-//#define MOVE
+//#define TEMP
+#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -70,7 +70,6 @@ struct Data{
     int Kmax;
     int nKmax;
     double t_move;
-    double t_transfer;
     double dt;
     double dtau;
     double ratio_dtau_dt;
@@ -146,7 +145,7 @@ struct Data{
     double** H_u_n_1;
     double** H_v_n_1;
     double** H_T_n_1;
-    double*** H_C_n_1;
+    double*** H_Y_n_1;
 
     double** omega;
 
@@ -183,7 +182,6 @@ void get_Us_Vs(Data* data);
 void get_Ustar_Vstar(Data* data, double ramp);
 void get_vorticity(Data* data);
 void update_flow(Data* data);
-void update_scalars(Data* data);
 void update_Xp(Data* data, int k);
 void update_Up(Data* data, int k);
 void update_Tp(Data* data,int k);

@@ -24,7 +24,6 @@
 #define WRITE
 #define DISK
 #define SLIP
-#define EXPLICIT
 //#define GRAVITY
 //#define SMOOTHING
 
@@ -48,13 +47,13 @@ int main(int argc, char *argv[]){
 
     /* DIMENSIONS */
     data.Dp = 1.;
-    data.d = 3.;
+    data.d = 30.;
     data.H = 0.5*data.d;
-    data.L = 9.;
-    data.h = data.Dp/60;
+    data.L = 30.;
+    data.h = data.Dp/30;
     data.eps = 0;
 #ifdef SMOOTHING
-    data.eps = 4.*data.h;
+    data.eps = 2.*data.h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data.Pr = 0.7;
@@ -101,7 +100,7 @@ int main(int argc, char *argv[]){
 
 
     /* TIME INTEGRATION */
-    data.CFL = 0.25;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data.CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
     data.r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data.CFL*data.h/data.u_m;
     double dt_diff = data.r*data.h*data.h/data.nu;
@@ -140,7 +139,6 @@ int main(int argc, char *argv[]){
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
     data.t_move = 0; //data.Tf/10.;
-    data.t_transfer = 0;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -162,7 +160,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 7;
+    data.xg[0] = 25;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -250,11 +248,8 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
-            if(t > data.t_transfer)
-            {
-                update_Tp(&data, k);
-                update_Cp(&data, k);
-            }
+            update_Tp(&data, k);
+            update_Cp(&data, k);
 #endif
             compute_forces_fluxes(&data, k);
         }
@@ -816,6 +811,8 @@ void get_Ustar_Vstar(Data* data, double ramp)
     for (i=0; i<m; i++){
         for (j=1; j<n-1; j++){
 
+            H_U_old = data->H_u_n_1[i][j];
+
             uR = .5*(u_n[i][j] + u_n[(i+1+m)%m][j]);
             uL = .5*(u_n[(i-1+m)%m][j] + u_n[i][j]);
             dudxR = (u_n[(i+1+m)%m][j]- u_n[i][j])/h;
@@ -831,9 +828,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
             if (data->iter == 1){
                 H_U_old = H_U;
             }
-            else{
-                H_U_old = data->H_u_n_1[i][j];
-            }
 
             // LAPLACIAN
             lapU = (u_n[(i+1+m)%m][j]+u_n[(i-1+m)%m][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
@@ -841,22 +835,18 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // PRESSURE TERM
             dpdx = (P[(i+1+m)%m][j]-P[i][j])/h;
 
-#ifdef EXPLICIT
+            //u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
+
             //EXPLICIT VERSION
-            //u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU - ramp*I_U[i][j]*(u_n[i][j] - u_s[i][j])/dtau);
-
-#else
-            //IMPLICIT VERSION
-            u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
-#endif
-
-            data->H_u_n_1[i][j] = H_U;
+            u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU - ramp*I_U[i][j]*(u_n[i][j] - u_s[i][j])/dtau);
         }
     }
 
     /* v_star  ADAMS-BASHFORTH 2 */
     for (i=0; i<m; i++){
         for (j=1; j<n-2; j++){
+
+            H_V_old = data->H_v_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i][j+1]);
             uL = .5*(u_n[(i-1+m)%m][j] + u_n[(i-1+m)%m][j+1]);
@@ -873,10 +863,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
             if (data->iter == 1){
                 H_V_old = H_V;
             }
-            else
-            {
-                H_V_old = data->H_v_n_1[i][j];
-            }
 
             // LAPLACIAN
             lapV = (v_n[(i+1+m)%m][j]+v_n[(i-1+m)%m][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
@@ -884,17 +870,12 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // PRESSURE TERM
             dpdy = (P[i][j+1]-P[i][j])/h;
 
+            //v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
 
-#ifdef EXPLICIT
             //EXPLICIT VERSION
             v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV - ramp*I_V[i][j]*(v_n[i][j] - v_s[i][j])/dtau);
-#else
-            //IMPLICIT VERSION
-            v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
-#endif
-            /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
 
-            data->H_v_n_1[i][j] = H_V;
+            /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
         }
     }
 
