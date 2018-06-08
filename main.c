@@ -14,6 +14,7 @@
 #endif
 
 //#define RAMPING
+//#define EXPLICIT
 #define WRITE
 #define DISK
 #define SLIP
@@ -131,6 +132,7 @@ int main(int argc, char *argv[]){
     double Tf = data.N_write*data.T_write*data.dt;
     data.Tf = Tf;
     data.t_move = 0.5; //data.Tf/10.;
+    data.t_transfer = 3.;
     data.nKmax = 2;
     data.Kmax = 50; /* number of ramping steps */
 
@@ -185,7 +187,6 @@ int main(int argc, char *argv[]){
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
 
-    //double y_ch;
     /* VELOCITY : horizontal flow Um  */
     for(int i=0; i<data.m; i++){
         for(int j=0; j<data.n; j++){
@@ -205,7 +206,6 @@ int main(int argc, char *argv[]){
 
     /** ----- BOUNDARY CONDITION -----------**/
 
-    get_ghosts_initial(&data, data.Tm0, data.C0);
     get_ghosts(&data, data.Tm0, data.C0);
 
     /*Initialization of the mask */
@@ -249,8 +249,6 @@ int main(int argc, char *argv[]){
     }
 #endif
 
-
-
     /** -------------------------------TIME STEPPING ------------------------------- **/
     data.iter = 1;
     t = 0;
@@ -263,7 +261,7 @@ int main(int argc, char *argv[]){
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
 
-        /** --- SOLVE PARTICULAR PHASE --- */
+        /** --- SOLVE SOLID PHASE --- */
         int flag_out = 0;
         int k;
         for (k = 0; k<data.Np; k++){
@@ -278,11 +276,11 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
-//            if(t > data.t_move)
-//            {
-//                update_Tp(&data, k);
-//                update_Cp(&data, k);
-//            }
+            if(t > data.t_transfer)
+            {
+                update_Tp(&data, k);
+                update_Cp(&data, k);
+            }
 #endif
             compute_forces_fluxes(&data, k);
         }
@@ -304,6 +302,7 @@ int main(int argc, char *argv[]){
         get_Cs(&data);
 #endif
         get_Ustar_Vstar(&data, data.ramp);
+
         clock_t t_init = clock();
         poisson_solver(&data, rank, nbproc);
         clock_t t_final = clock();
@@ -587,7 +586,7 @@ int integrate_penalization(Data *data, double* surf, int k)
         PP[k][s][2] = -Qmint[s]*h2/dtau;
     }
 #endif
-    free(Qmint); 
+    free(Qmint);
     free(qm);
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
@@ -599,70 +598,6 @@ void get_ghosts(Data* data, double T0, double* C0)
     double** v_n = data->v_n;
     double** T_n = data->T_n;
     double*** C = data->C_n;
-
-    int m = data->m;
-    int n = data->n;
-    int Ns = data->Ns;
-
-    /*Ghost points to impose BC's */
-    /* Along y = -H and y = H */
-    for (int i=0; i<m; i++){
-        /* On u_n */
-#ifdef SLIP
-        /* Bottom and top Wall : slip : du/dn= 0 */
-        u_n[i][0] = u_n[i][1];
-        u_n[i][n-1] = u_n[i][n-2];
-#endif
-#ifndef SLIP
-        /* No-slip (channel) */
-        u_n[i][0] = -0.2*(u_n[i][3] - 5.*u_n[i][2] + 15.*u_n[i][1]);
-        u_n[i][n-1] = -0.2*(u_n[i][n-4] - 5.*u_n[i][n-3] + 15.*u_n[i][n-2]);
-#endif
-
-#ifdef TEMP
-        /* Walls : adiabatic: dTdn = 0, no mass flux */
-        T_n[i][0] = T_n[i][1];
-        T_n[i][n-1] = T_n[i][n-2];
-
-        for (int s=0; s<Ns; s++){
-            C[s][i][0] = C[s][i][1];
-            C[s][i][n-1] = C[s][i][n-2];
-        }
-#endif
-    }
-
-    /* Along x = 0 and x = L */
-    for (int j = 0; j<n; j++){
-        /* Inflow : horizontal flow --> v_n = 0 */
-        v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
-        /* Natural outflow : dV/dx =0 */
-        v_n[m-1][j] = v_n[m-2][j];
-
-#ifdef TEMP
-        /* On T_n and C */
-        /* Inflow : T_n uniform  */
-        T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
-
-        /* Inflow : CA = CA0; CB = CB0 */
-        C[0][0][j] = -0.2*(C[0][3][j]-5.*C[0][2][j]+15.*C[0][1][j]-16.*C0[0]);
-        C[1][0][j] = -0.2*(C[1][3][j]-5.*C[1][2][j]+15.*C[1][1][j]-16.*C0[1]);
-
-        /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
-        T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
-        for(int s=0; s<Ns; s++){
-            C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
-        }
-#endif
-
-    }
-}
-
-void get_ghosts_initial(Data* data, double T0, double* C0)
-{
-    double** u_n = data->u_n_1;
-    double** v_n = data->v_n_1;
-    double** T_n = data->T_n_1;
-    double*** C = data->C_n_1;
 
     int m = data->m;
     int n = data->n;
@@ -930,19 +865,16 @@ void get_Ustar_Vstar(Data* data, double ramp)
     int m = data->m;
     int n = data->n;
     double h = data->h;
-    //double H = data->H;
     double nu = data->nu;
 
     double** I_U = data->I_U;
     double** I_V = data->I_V;
 
     double** u_n = data->u_n;
-    double** u_n_1 = data->u_n_1;
     double** u_star = data->u_star;
     double** u_s = data->u_s;
 
     double** v_n = data->v_n;
-    double** v_n_1 = data->v_n_1;
     double** v_star = data->v_star;
     double** v_s = data->v_s;
 
@@ -954,7 +886,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     double H_V, H_V_old;
     double lapU, lapV;
     double dpdx, dpdy;
-    //double Upoiseuille, y_ch;
 
     double uL, uR, vT, vB;
     double dudxR, dudxL, dudyT, dudyB, dvdxR, dvdxL, dvdyT, dvdyB;
@@ -962,8 +893,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     /* u_star ADAMS-BASHFORTH 2 */
     for (i=1; i<m-2; i++){
         for (j=1; j<n-1; j++){
-
-            H_U_old = data->H_u_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i+1][j]);
             uL = .5*(u_n[i][j] + u_n[i-1][j]);
@@ -980,6 +909,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             if (data->iter == 1){
                 H_U_old = H_U;
             }
+            else
+            {
+                H_U_old = data->H_u_n_1[i][j];
+            }
 
             // LAPLACIAN
             lapU = (u_n[i+1][j]+u_n[i-1][j]+u_n[i][j+1]+u_n[i][j-1]-4.*u_n[i][j])/(h*h);
@@ -987,12 +920,13 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // PRESSURE term
             dpdx = (P[i+1][j]-P[i][j])/h;
 
+#ifdef EXPLICIT
             // EXPLICIT VERSION
-            //u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) - ramp*I_U[i][j]*(dt/dtau)*(u_n[i][j] - u_s[i][j]);
-
+            u_star[i][j] = u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) - ramp*I_U[i][j]*(dt/dtau)*(u_n[i][j] - u_s[i][j]);
+#else
             // IMPLICIT VERSION
             u_star[i][j] = (u_n[i][j] + dt*(-1.5*H_U + 0.5*H_U_old - dpdx + nu*lapU) + (dt/dtau)*ramp*I_U[i][j]*u_s[i][j])/(1.+ramp*I_U[i][j]*dt/dtau);
-
+#endif
             data->H_u_n_1[i][j] = H_U;
         }
     }
@@ -1006,8 +940,6 @@ void get_Ustar_Vstar(Data* data, double ramp)
     /* v_star  ADAMS-BASHFORTH 2 */
     for (i=1; i<m-1; i++){
         for (j=1; j<n-2; j++){
-
-            H_V_old = data->H_v_n_1[i][j];
 
             uR = .5*(u_n[i][j] + u_n[i][j+1]);
             uL = .5*(u_n[i-1][j] + u_n[i-1][j+1]);
@@ -1024,6 +956,10 @@ void get_Ustar_Vstar(Data* data, double ramp)
             if (data->iter == 1){
                 H_V_old = H_V;
             }
+            else
+            {
+                H_V_old = data->H_v_n_1[i][j];
+            }
 
             // LAPLACIAN
             lapV = (v_n[i+1][j]+v_n[i-1][j]+v_n[i][j+1]+v_n[i][j-1]-4.*v_n[i][j])/(h*h);
@@ -1031,12 +967,13 @@ void get_Ustar_Vstar(Data* data, double ramp)
             // PRESSURE TERM
             dpdy = (P[i][j+1]-P[i][j])/h;
 
+#ifdef EXPLICIT
             // EXPLICIT VERSION
-            //v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) - ramp*I_V[i][j]*(dt/dtau)*(v_n[i][j] - v_s[i][j]);
-
+            v_star[i][j] = v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) - ramp*I_V[i][j]*(dt/dtau)*(v_n[i][j] - v_s[i][j]);
+#else
             // IMPLICIT VERSION
             v_star[i][j] = (v_n[i][j] + dt*(-1.5*H_V + 0.5*H_V_old - dpdy + nu*lapV) + (dt/dtau)*ramp*I_V[i][j]*v_s[i][j])/(1.+ramp*I_V[i][j]*dt/dtau);
-
+#endif
             /* the value of v_star on the boundaries (j=0, j=n-2) is set to zero at allocation */
 
             data->H_v_n_1[i][j] = H_V;
@@ -1072,99 +1009,15 @@ void update_flow(Data* data) {
         u_new[0][j] = u_n[0][j];
     }
     for (i = 1; i < m - 1; i++) {
-        for (j = 1; j < n - 2; j++) {
+        for (j = 1; j < n - 1; j++) {
             u_new[i][j] = u_star[i][j] - dt * (phi[i + 1][j] - phi[i][j]) / h;
             v_new[i][j] = v_star[i][j] - dt * (phi[i][j + 1] - phi[i][j]) / h;
             P[i][j] += phi[i][j];
         }
-        //last value of j is n-2
-        v_new[i][n-2] = 0;
-        u_new[i][n-2] = u_star[i][n-2] - dt * (phi[i + 1][n-2] - phi[i][n-2]) / h;
-        P[i][n-2] += phi[i][n-2];
     }
-
 
 #ifdef TEMP
-    /* TEMPERATURE AND SPECIES */
-
-    double **T_new = make2DDoubleArray(m, n);
-    double **T_n = data->T_n;
-    double **T_n_1 = data->T_n_1;
-    double **Ts = data->Ts;
-
-    int Ns = data->Ns;
-    double ***C_new = make3DDoubleArray(Ns, m, n);
-    double ***C_n = data->C_n;
-    double ***C_n_1 = data->C_n_1;
-    double ***Cs = data->Cs;
-
-    double alpha_f = data->alpha_f;
-    double *Df = data->Df;
-    double **I_S = data->I_S;
-    double ramp = data->ramp;
-    double dtau = data->dtau;
-
-    double H_T, H_T_old, lapT;
-    double H_C, H_C_old, lapC;
-
-    for (i = 1; i < m - 1; i++) {
-        for (j = 1; j < n - 1; j++) {
-
-            // ADVECTIVE TERMS
-            H_T_old = .5*(u_n_1[i][j]*(T_n_1[i+1][j]-T_n_1[i][j])/h + u_n_1[i-1][j]*(T_n_1[i][j]-T_n_1[i-1][j])/h)
-                    + .5*(v_n_1[i][j]*(T_n_1[i][j+1]-T_n_1[i][j])/h + v_n_1[i][j-1]*(T_n_1[i][j]-T_n_1[i][j-1])/h);
-            H_T = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
-                + .5*(v_n[i][j]*(T_n[i][j+1]-T_n[i][j])/h + v_n[i][j-1]*(T_n[i][j]-T_n[i][j-1])/h);
-
-            // DIFFUSION TERM
-            lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
-
-            // EXPLICIT VERSION
-//            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
-//                                            + alpha_f * lapT)
-//                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
-
-            // IMPLICIT VERSION
-            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
-                                             + alpha_f * lapT
-                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
-                          (1. + ramp * I_S[i][j] * dt / dtau);
-
-            for (int s = 0; s < Ns-1; s++) {
-                // ADVECTIVE TERMS
-                H_C_old = .5*(u_n_1[i][j]*(C_n_1[s][i+1][j]-C_n_1[s][i][j])/h + u_n_1[i-1][j]*(C_n_1[s][i][j]-C_n_1[s][i-1][j])/h)
-                          + .5*(v_n_1[i][j]*(C_n_1[s][i][j+1]-C_n_1[s][i][j])/h + v_n_1[i][j-1]*(C_n_1[s][i][j]-C_n_1[s][i][j-1])/h);
-                H_C = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
-                      + .5*(v_n[i][j]*(C_n[s][i][j+1]-C_n[s][i][j])/h + v_n[i][j-1]*(C_n[s][i][j]-C_n[s][i][j-1])/h);
-
-                // DIFFUSION TERM
-                lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
-
-//              //EXPLICIT VERSION
-//              C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
-//                                                     + Df[s] * lapC)
-//                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
-
-                // IMPLICIT VERSION
-                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
-                                                     + Df[s] * lapC
-                                                     + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
-                                 (1. + ramp * I_S[i][j] * dt / dtau);
-            }
-            C_new[Ns-1][i][j] = 1 - C_new[0][i][j];
-        }
-    }
-
-
-    free2Darray(T_n_1, m);
-    free3Darray(C_n_1, Ns, m);
-
-    data->T_n_1 = T_n;
-    data->T_n = T_new;
-
-    data->C_n_1 = C_n;
-    data->C_n = C_new;
-
+    update_scalars(data);
 #endif
 
     free2Darray(u_n_1, m);
@@ -1178,6 +1031,119 @@ void update_flow(Data* data) {
 
 }
 
+void update_scalars(Data* data)
+{
+    /* TEMPERATURE AND SPECIES */
+
+    int m = data->m;
+    int n = data->n;
+    double h = data->h;
+    int i,j;
+
+    double **T_new = make2DDoubleArray(m, n);
+    double **T_n = data->T_n;
+    double **T_n_1 = data->T_n_1;
+    double **Ts = data->Ts;
+
+    double **u_n = data->u_n;
+    double **v_n = data->v_n;
+
+    int Ns = data->Ns;
+    double ***C_new = make3DDoubleArray(Ns, m, n);
+    double ***C_n = data->C_n;
+    double ***C_n_1 = data->C_n_1;
+    double ***Cs = data->Cs;
+
+    double alpha_f = data->alpha_f;
+    double *Df = data->Df;
+    double **I_S = data->I_S;
+    double ramp = data->ramp;
+    double dtau = data->dtau;
+    double dt = data->dt;
+
+    double H_T, H_T_old, lapT;
+    double H_C, H_C_old, lapC;
+
+    /** TEMPERATURE **/
+
+    for (i = 1; i < m - 1; i++) {
+        for (j = 1; j < n - 1; j++) {
+
+            // ADVECTIVE TERMS
+            H_T = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
+                  + .5*(v_n[i][j]*(T_n[i][j+1]-T_n[i][j])/h + v_n[i][j-1]*(T_n[i][j]-T_n[i][j-1])/h);
+
+            if(data->iter == 1)
+            {
+                H_T_old = H_T;
+            }
+            else{
+                H_T_old = data->H_T_n_1[i][j];
+            }
+
+            // DIFFUSION TERM
+            lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
+
+#ifdef EXPLICIT
+            // EXPLICIT VERSION
+            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+                                            + alpha_f * lapT)
+                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
+#else
+            // IMPLICIT VERSION
+            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+                                             + alpha_f * lapT
+                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
+                          (1. + ramp * I_S[i][j] * dt / dtau);
+#endif
+            data->H_T_n_1[i][j] = H_T;
+
+            /** SPECIES **/
+
+            for (int s = 0; s < Ns-1; s++) {
+                // ADVECTIVE TERMS
+                H_C = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
+                      + .5*(v_n[i][j]*(C_n[s][i][j+1]-C_n[s][i][j])/h + v_n[i][j-1]*(C_n[s][i][j]-C_n[s][i][j-1])/h);
+
+                if(data->iter == 1)
+                {
+                    H_C_old = H_C;
+                }
+                else{
+                    H_C_old = data->H_C_n_1[s][i][j];
+                }
+
+                // DIFFUSION TERM
+                lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
+#ifdef EXPLICIT
+              //EXPLICIT VERSION
+              C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                                                     + Df[s] * lapC)
+                                              - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
+#else
+                // IMPLICIT VERSION
+                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                                                       + Df[s] * lapC
+                                                       + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
+                                 (1. + ramp * I_S[i][j] * dt / dtau);
+
+#endif
+                data->H_C_n_1[s][i][j] = H_C;
+            }
+
+            C_new[Ns-1][i][j] = 1 - C_new[0][i][j];
+        }
+    }
+
+    free2Darray(T_n_1, m);
+    free3Darray(C_n_1, Ns, m);
+
+    data->T_n_1 = T_n;
+    data->T_n = T_new;
+
+    data->C_n_1 = C_n;
+    data->C_n = C_new;
+}
 
 void get_vorticity(Data* data){
     int m = data->m;
