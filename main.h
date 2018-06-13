@@ -170,10 +170,8 @@ struct Data{
 /*--------------------------------------------------------*/
 
 /* FUNCTIONS TO SOLVE THE FLOW */
-void compute_forces_fluxes(Data *data,  int k);
 void compute_Qr(double** Qr, double rate, double dH, int k);
 void diagnostic(Data* data);
-int integrate_penalization(Data *data, double* surf, int k);
 void get_ghosts(Data* data, double T0, double* C0);
 void get_ghosts_initial(Data* data, double T0, double* C0);
 void get_masks(Data* data);
