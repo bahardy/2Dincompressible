@@ -106,20 +106,17 @@ int integrate_penalization(Data *data, double* surf, int k)
             g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
 #ifdef TEMP
             q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
+            Qint += q;
             for(int s=0; s<Ns; s++){
-                qm[s] = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
+                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
+                Qmint[s] += qm;
             }
 #endif
             sint += Ip_S[k][i][j]*h*h;
+
             Fint += f; /* units : m/s */
             Gint += g; /* units : m/s */
             Mint += ((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s */
-#ifdef TEMP
-            Qint += q; /*units : K */
-            for(int s=0; s<Ns; s++){
-                Qmint[s] += qm[s]; /*units : mol/m.s */
-            }
-#endif
         }
     }
     Fint *= h2/dtau; /* units : m^3/s; */
