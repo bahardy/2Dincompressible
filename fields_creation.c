@@ -30,6 +30,9 @@ void initialize_fields(Data* data)
     data->Fy = make1DDoubleArray(Np);
     data->Tz = make1DDoubleArray(Np);
     data->G = make2DDoubleArray(Np,3);
+    data->chi_S = make3DDoubleArray(Np,m,n);
+    data->chi_U = make3DDoubleArray(Np,m,n);
+    data->chi_V = make3DDoubleArray(Np,m,n);
     data->Ip_S = make3DDoubleArray(Np,m,n);
     data->Ip_U = make3DDoubleArray(Np,m,n);
     data->Ip_V = make3DDoubleArray(Np,m,n);
@@ -100,5 +103,6 @@ void free_fields(Data* data)
     free2Darray(data->F, Np), free2Darray(data->G, Np), free2Darray(data->Mz, Np), free2Darray(data->QQ, Np), free3Darray(data->PP, Np,Ns), free2Darray(data->Qr, Np);
     free2Darray(data->I_S, m), free2Darray(data->I_U, m), free2Darray(data->I_V, m), free2Darray(data->coloring, m);
     free3Darray(data->Ip_S, Np,m), free3Darray(data->Ip_U, Np,m), free3Darray(data->Ip_V, Np, m);
+    free3Darray(data->chi_S, Np, m), free3Darray(data->chi_U, Np, m), free3Darray(data->chi_V, Np, m);
 }
 
