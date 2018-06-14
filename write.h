@@ -9,9 +9,14 @@
 
 
 void writeFields(Data* data, int it);
-void writeMask(Data* data); 
+void writeFields_periodic(Data* data, int i);
+void writeMask(Data* data);
 void write2Darray(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);
+void writeStatistics(Data* data, FILE* file);
+void writeParticle(Data* data, FILE* file);
+void writeForces(Data* data, FILE* file);
+void writeFluxes(Data* data, FILE* file);
 
 
 #endif //INC_WRITE_H
