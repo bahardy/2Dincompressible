@@ -468,3 +468,71 @@ PetscErrorCode poisson_solver_periodic(Data* data, int myrank, int nbproc)
 
     return ierr;
 }
+
+void poisson_residual(Data* data)
+{
+    double h = data->h;
+    double** u_star = data->u_star;
+    double** v_star = data->v_star;
+    double** phi = data->phi;
+    double dt = data->dt;
+    double d = data->d;
+    double L = data->L;
+    double u_m = data->u_m;
+
+    int n = data->n;
+    int m = data->m;
+    double** res = make2DDoubleArray(m,n);
+    double e = 0;
+    double sum = 0.;
+
+    for (int i=1; i<m-1; i++){
+        for (int j=1; j<n-1; j++){
+            res[i][j] = (phi[i+1][j]+phi[i-1][j]+phi[i][j+1]+phi[i][j-1]-4.*phi[i][j])/(h*h)
+                      -(u_star[i][j]-u_star[i-1][j]+v_star[i][j]-v_star[i][j-1])/(h*dt);
+
+            sum += res[i][j]*res[i][j];
+
+        }
+    }
+
+    e = (h*dt*d/u_m)*sqrt(sum/(L*d));
+
+    PetscPrintf(PETSC_COMM_WORLD, "Relative residual e = %1e6 \n", e);
+    free2Darray(res, m);
+
+}
+
+void poisson_residual_periodic(Data* data)
+{
+    double h = data->h;
+    double** u_star = data->u_star;
+    double** v_star = data->v_star;
+    double** phi = data->phi;
+    double dt = data->dt;
+    double d = data->d;
+    double L = data->L;
+    double u_m = data->u_m;
+
+    int n = data->n;
+    int m = data->m;
+    double** res = make2DDoubleArray(m,n);
+    double e = 0;
+    double sum = 0.;
+
+    for (int i=0; i<m; i++){
+        for (int j=1; j<n-1; j++){
+            res[i][j] = (phi[(i+1+m)%m][j]+phi[(i-1+m)%m][j]+phi[i][j+1]+phi[i][j-1]-4.*phi[i][j])/(h*h)
+                        -(1./dt)*(u_star[i][j]-u_star[(i-1+m)%m][j]+v_star[i][j]-v_star[i][j-1])/(h);
+
+            sum += res[i][j]*res[i][j];
+
+        }
+    }
+
+    //e = (dt*d/u_m)*sqrt(sum*h*h/(L*d));
+    e = sqrt(sum*h*h/(L*d));
+    PetscPrintf(PETSC_COMM_WORLD, "Relative residual e = %1e6 \n", e);
+    free2Darray(res, m);
+
+}
