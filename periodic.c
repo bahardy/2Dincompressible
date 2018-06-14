@@ -25,7 +25,7 @@
 #define WRITE
 #define DISK
 #define SLIP
-#define EXPLICIT
+//#define EXPLICIT
 //#define GRAVITY
 //#define SMOOTHING
 
@@ -46,115 +46,7 @@ int main(int argc, char *argv[]){
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
-
-    /* DIMENSIONS */
-    data.Dp = 1.;
-    data.d = 30.;
-    data.H = 0.5*data.d;
-    data.L = 30.;
-    data.h = data.Dp/30;
-    data.eps = 0;
-#ifdef SMOOTHING
-    data.eps = 2.*data.h;
-#endif
-    /* NON-DIMENSIONAL NUMBERS */
-    data.Pr = 0.7;
-    data.Le = 1; /* Lewis number, ratio between Sc and Prandtl */
-    data.Sc = data.Le*data.Pr;
-    data.Rep = 40.;
-    data.Fr = sqrt(1e3);
-
-    /* FLOW */
-    data.u_m = 1.;
-    data.nu = data.u_m*data.Dp/data.Rep;
-    data.g = 0;
-#ifdef GRAVITY
-    data.g = 9.81;
-#endif
-    /* ENERGY */
-    data.alpha_f = data.nu/data.Pr;
-    data.Tm0 = 1; // cup-mixing temperature at the inlet
-    data.Tp0 = 0.5; // initial particle temperature
-
-    /* PHYSICAL PARAMETERS */
-    data.rho_f = 1.;
-    data.rho_p = 1000.;
-    data.rho_r = data.rho_p/data.rho_f;
-    data.cp = 1000.;
-    data.cf = 1000.;
-    data.cr = data.cp/data.cf;
-
-    /* SPECIES */
-    data.Ns = 2;
-    data.Np = 1;
-    data.Df = make1DDoubleArray(data.Ns);
-    data.Df[0] = data.nu/data.Sc;
-    data.Df[1] = data.nu/data.Sc;
-    data.dH = 0;
-    data.CA0 = 1.;
-    data.CB0 = 0.;
-
-    /* GRID */
-    data.N = (int) (data.d/data.h);
-    data.M = (int) (data.L/data.h);
-    data.n = data.N + 2; /*for ghost points */
-    data.m = data.M; /*for ghost points */
-
-
-    /* TIME INTEGRATION */
-    data.CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
-    data.r = .25; /* Fourier condition on diffusive term */
-    double dt_CFL = data.CFL*data.h/data.u_m;
-    double dt_diff = data.r*data.h*data.h/data.nu;
-
-    data.ratio_dtau_dt = 1;
-    data.dt = fmin(dt_CFL, dt_diff);
-    data.dtau = data.ratio_dtau_dt*data.dt;
-
-    data.SORitermax = 100000;
-    data.alpha = 1.98;
-    data.SORtol = 1e-6;
-
-    if(rank == 0){
-        printf("Rep = %f\n", data.Rep);
-        printf("ratio L/d = %f \n", data.L/data.d);
-        printf("Um = %f\n", data.u_m);
-        printf("dt_CFL = %f\n", dt_CFL);
-        printf("dt_diff = %f\n", dt_diff);
-        printf("CFL condition set to %f h/Umax \n", data.CFL);
-        printf("dt = %f\n", data.dt);
-        printf("dtau = %f\n", data.dtau);
-        printf("ratio dtau/dt = %f \n", data.ratio_dtau_dt);
-    }
-
-    /* Writing */
-
-    if (argc >= 3) {
-        sscanf(argv[1], "%d", &(data.T_write));
-        sscanf(argv[2], "%d", &(data.N_write));
-    }
-    else{
-        data.T_write = 1; /* number of time steps between two writings */
-        data.N_write = 50; /* number of times we write in files */
-    }
-
-    double Tf = data.N_write*data.T_write*data.dt;
-    data.Tf = Tf;
-    data.t_move = 0; //data.Tf/10.;
-    data.t_transfer = 0;
-    data.nKmax = 2;
-    data.Kmax = 50; /* number of ramping steps */
-
-    double t, t_start;
-    int iter_start;
-    data.ramp = 1;
-    double surf = 0.;
-
-    if(rank == 0){
-        printf("Write every %d * dt \n", data.T_write);
-        printf("Write %d times \n", data.N_write);
-        printf("Final time : %f \n \n", data.Tf);
-    }
+    set_up(&data, argc, argv, rank);
 
     /**------------------------------- Matrix Fields Creation  ------------------------------- **/
 
@@ -163,7 +55,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 25;
+    data.xg[0] = 8;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -175,6 +67,14 @@ int main(int argc, char *argv[]){
     data.Up[0][2] = data.Up[0][1];
     data.Up[0][3] = data.Up[0][2];
 
+    /*Initialization of particles temperatures */
+    for(int k=0; k<data.Np; k++){
+        data.Tp[k] = data.Tp0;
+    }
+
+    /* We feed reactants at the inlet */
+    data.C0[0] = data.CA0;
+    data.C0[1] = data.CB0;
 
     for(int k=0; k<data.Np; k++){
 #ifdef DISK
@@ -187,6 +87,7 @@ int main(int argc, char *argv[]){
         data.Sp[k]=M_PI*data.a*data.b;
         data.J[k] =(M_PI/4.)*data.a*data.b*(pow(data.a,2) + pow(data.b,2));
 #endif
+
     }
 
     /** -------- Some files creation and data writing-------- **/
@@ -200,35 +101,25 @@ int main(int argc, char *argv[]){
     FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
     FILE* fichier_particle = fopen("results/particle.txt", "w+");
 
-
-    /*Initialization of particles temperatures */
-    for(int k=0; k<data.Np; k++){
-        data.Tp[k] = data.Tp0;
-    }
-
     /*Initialization of the mask */
     get_masks(&data);
-
 
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
-        writeFields(&data, 0);
+        writeFields_periodic(&data, 0);
     }
 #endif
 
 
-    /** -------------------------------TIME STEPPING FROM BEGINNING ------------------------------- **/
-    iter_start = 1;
-    t_start = 0.;
+    int iter_start = 1;
+    double t_start = 0.;
 
     /** -------------------------------TIME STEPPING ------------------------------- **/
     data.iter = iter_start;
-    t = t_start;
+    double t = t_start;
+    double surf = 0;
 
-    // we feed reactants at the inlet
-    data.C0[0] = data.CA0;
-    data.C0[1] = data.CB0;
 
     while(t < data.Tf){
 
@@ -253,8 +144,8 @@ int main(int argc, char *argv[]){
             /*Temperature - Species - Fluxes */
             if(t > data.t_transfer)
             {
-            update_Tp(&data, k);
-            update_Cp(&data, k);
+                update_Tp(&data, k);
+                update_Cp(&data, k);
             }
 #endif
             compute_forces_fluxes(&data, k);
@@ -281,6 +172,7 @@ int main(int argc, char *argv[]){
         clock_t t_final = clock();
         double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
+        poisson_residual_periodic(&data);
 
         update_flow(&data);
         get_ghosts(&data, data.Tm0, data.C0);
@@ -322,6 +214,123 @@ int main(int argc, char *argv[]){
 
     PetscFinalize();
     return 0;
+}
+
+
+void set_up(Data* data, int argc, char *argv[], int rank)
+{
+    /* DIMENSIONS */
+    data->Dp = 1.;
+    data->d = 3.;
+    data->H = 0.5*data->d;
+    data->L = 9.;
+    data->h = data->Dp/30;
+    data->eps = 0;
+#ifdef SMOOTHING
+    data->eps = 4*data->h;
+#endif
+    /* NON-DIMENSIONAL NUMBERS */
+    data->Pr = 0.7;
+    data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
+    data->Sc = data->Le*data->Pr;
+    data->Rep = 40.;
+    data->Fr = sqrt(1e3);
+
+    /* FLOW */
+    data->u_m = 1.;
+    data->nu = data->u_m*data->Dp/data->Rep;
+    data->g = 0;
+#ifdef GRAVITY
+    data->g = 9.81;
+#endif
+    /* ENERGY */
+    data->alpha_f = data->nu/data->Pr;
+    data->Tm0 = 1; // cup-mixing temperature at the inlet
+    data->Tp0 = 0.5; // initial particle temperature
+
+    /* PHYSICAL PARAMETERS */
+    data->rho_f = 1.;
+    data->rho_p = 100.;
+    data->rho_r = data->rho_p/data->rho_f;
+    data->cp = 1000.;
+    data->cf = 1000.;
+    data->cr = data->cp/data->cf;
+
+    /* SPECIES */
+    data->Ns = 2;
+    data->Np = 1;
+    data->Df = make1DDoubleArray(data->Ns);
+    data->Df[0] = data->nu/data->Sc;
+    data->Df[1] = data->nu/data->Sc;
+    data->dH = 0;
+    data->CA0 = 1.;
+    data->CB0 = 0.;
+
+    /* GRID */
+    data->N = (int) (data->d/data->h);
+    data->M = (int) (data->L/data->h);
+    data->n = data->N + 2; /*for ghost points */
+    data->m = data->M; /*for ghost points */
+
+
+    /* TIME INTEGRATION */
+    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->r = .25; /* Fourier condition on diffusive term */
+    double dt_CFL = data->CFL*data->h/data->u_m;
+    double dt_diff = data->r*data->h*data->h/data->nu;
+
+#ifdef EXPLICIT
+    data->ratio_dtau_dt = 1;
+#endif
+#ifndef EXPLICIT
+    data->ratio_dtau_dt = 1e-3;
+#endif
+
+    data->dt = fmin(dt_CFL, dt_diff);
+    data->dtau = data->ratio_dtau_dt*data->dt;
+
+    data->SORitermax = 100000;
+    data->alpha = 1.98;
+    data->SORtol = 1e-6;
+
+    if(rank == 0){
+        printf("Rep = %f\n", data->Rep);
+        printf("ratio L/d = %f \n", data->L/data->d);
+        printf("Um = %f\n", data->u_m);
+        printf("dt_CFL = %f\n", dt_CFL);
+        printf("dt_diff = %f\n", dt_diff);
+        printf("CFL condition set to %f h/Umax \n", data->CFL);
+        printf("dt = %f\n", data->dt);
+        printf("dtau = %f\n", data->dtau);
+        printf("ratio dtau/dt = %f \n", data->ratio_dtau_dt);
+    }
+
+    /* Writing */
+
+    if (argc >= 3) {
+        sscanf(argv[1], "%d", &(data->T_write));
+        sscanf(argv[2], "%d", &(data->N_write));
+    }
+    else{
+        data->T_write = 1; /* number of time steps between two writings */
+        data->N_write = 50; /* number of times we write in files */
+    }
+
+    double Tf = data->N_write*data->T_write*data->dt;
+    data->Tf = Tf;
+    data->t_move = 0; //data->Tf/10.;
+    data->t_transfer = 0;
+    data->nKmax = 2;
+    data->Kmax = 50; /* number of ramping steps */
+
+    data->ramp = 1;
+
+    if(rank == 0){
+        printf("Write every %d * dt \n", data->T_write);
+        printf("Write %d times \n", data->N_write);
+        printf("Final time : %f \n \n", data->Tf);
+    }
+
 }
 
 void compute_Qr(double** Qr, double rate, double dH, int k){
@@ -398,9 +407,14 @@ void get_ghosts(Data* data, double T0, double* C0)
 
 void get_masks(Data* data)
 {
+    double*** chi_S = data->chi_S;
+    double*** chi_U = data->chi_U;
+    double*** chi_V = data->chi_V;
+
     double** I_S = data->I_S;
     double** I_U = data->I_U;
     double** I_V = data->I_V;
+
     double*** Ip_S = data->Ip_S;
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
@@ -430,6 +444,7 @@ void get_masks(Data* data)
             I_S[i][j] = 0; /*Reset the masks */
             I_U[i][j] = 0;
             I_V[i][j] = 0;
+
             coloring[i][j] = 0;
 
             /*Go over all the particles */
@@ -463,8 +478,11 @@ void get_masks(Data* data)
 
 		coloring[i][j] +=Ip_S[k][i][j];
 #endif
-#ifdef DISK
 
+#ifdef DISK
+                chi_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                chi_U[k][i][j]=((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                chi_V[k][i][j]=((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
 
 #ifndef SMOOTHING
                 Ip_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= rp[k]*rp[k]);
@@ -528,7 +546,7 @@ void get_Cs(Data* data)
 {
     double*** Cs = data-> Cs;
     double** Cp = data->Cp;
-    double*** Ip_S = data->Ip_S;
+    double*** chi_S = data->chi_S;
     int m = data->m;
     int n = data->n;
     int Np = data->Np;
@@ -537,17 +555,18 @@ void get_Cs(Data* data)
         for(int j=0; j<n; j++){
             Cs[1][i][j] = 0.;
             for(int k=0; k<Np; k++){
-                Cs[1][i][j] += Ip_S[k][i][j]*Cp[k][1];
+                Cs[1][i][j] += chi_S[k][i][j]*Cp[k][1];
             }
         }
     }
 
 }
+
 void get_Ts(Data* data)
 {
     double** Ts = data-> Ts;
     double* Tp = data->Tp;
-    double*** Ip_S = data->Ip_S;
+    double*** chi_S = data->chi_S;
     int m = data->m;
     int n = data->n;
     int Np = data->Np;
@@ -556,7 +575,7 @@ void get_Ts(Data* data)
         for(int j=0; j<n; j++){
             Ts[i][j] = 0.;
             for(int k = 0; k<Np; k++){
-                Ts[i][j]+= Ip_S[k][i][j]*Tp[k];
+                Ts[i][j]+= chi_S[k][i][j]*Tp[k];
 
             }
         }
@@ -573,8 +592,8 @@ void get_Us_Vs(Data* data){
     double* xg = data->xg;
     double* yg = data->yg;
 
-    double*** Ip_U = data->Ip_U;
-    double*** Ip_V = data->Ip_V;
+    double*** chi_U = data->chi_U;
+    double*** chi_V = data->chi_V;
 
     int m = data->m;
     int n = data->n;
@@ -584,17 +603,18 @@ void get_Us_Vs(Data* data){
     double xV, yU;
     for(int i=0; i<m; i++){
         xV = (i+0.5)*h;
-        for(int j=1; j<n-1; j++){
+        for(int j=0; j<n; j++){
             yU = (j-0.5)*h;
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= Ip_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k]));
-                v_s[i][j]+= Ip_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k]));
+                u_s[i][j]+= chi_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k]));
+                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k]));
             }
         }
     }
 }
+
 
 
 void get_Ustar_Vstar(Data* data, double ramp)

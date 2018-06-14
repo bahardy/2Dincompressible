@@ -1,8 +1,8 @@
 
 #ifndef main_h
 #define main_h
-#define TEMP
-//#define MOVE
+//#define TEMP
+#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -100,6 +100,9 @@ struct Data{
     double* Fy;
     double** G;
     double* J;
+    double*** chi_S;
+    double*** chi_U;
+    double*** chi_V;
     double*** Ip_S;
     double*** Ip_U;
     double*** Ip_V;
@@ -173,7 +176,6 @@ struct Data{
 void compute_Qr(double** Qr, double rate, double dH, int k);
 void diagnostic(Data* data);
 void get_ghosts(Data* data, double T0, double* C0);
-void get_ghosts_initial(Data* data, double T0, double* C0);
 void get_masks(Data* data);
 void get_Cs(Data* data);
 void get_Ts(Data* data);
@@ -186,6 +188,7 @@ void update_Xp(Data* data, int k);
 void update_Up(Data* data, int k);
 void update_Tp(Data* data,int k);
 void update_Cp(Data* data, int k);
+void set_up(Data* data, int argc, char *argv[], int rank);
 
 /* SOME HELPFUL FUNCTIONS */
 //void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);

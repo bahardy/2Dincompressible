@@ -22,7 +22,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -311,6 +311,7 @@ int main(int argc, char *argv[]){
         clock_t t_final = clock();
         double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
         PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
+        poisson_residual(&data);
 
         update_flow(&data);
 
@@ -322,15 +323,10 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.6e \t %3.6e \t  %3.6e \n",  data.CFL_max,  data.Reh_max, data.Reh_omega_max);
-            fflush(fichier_stat);
-            fprintf(fichier_forces, "%3.6e \t  %3.6e  \t %3.6e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
-            fflush(fichier_forces);
-            fprintf(fichier_fluxes, "%3.6e \t  %3.6e \n", data.Q[0], data.Qm[0][0]);
-            fflush(fichier_fluxes);
-            fprintf(fichier_particle, "%3.6e \t  %3.6e \t %3.6e \t %3.6e \t %3.6e  \t %3.6e \t %3.6e \n", data.xg[0], data.yg[0], data.theta[0],
-                    data.Up[0][3], data.Vp[0][3], data.Omega_p[0][3], data.Tp[0]);
-            fflush(fichier_particle);
+            writeStatistics(&data, fichier_stat);
+            writeForces(&data, fichier_stat);
+            writeParticle(&data, fichier_particle);
+            writeFluxes(&data, fichier_fluxes);
 
             if(data.iter % data.T_write == 0){
                 writeFields(&data, data.iter);
@@ -466,12 +462,17 @@ void get_ghosts(Data* data, double T0, double* C0)
 
 void get_masks(Data* data)
 {
+    double*** chi_S = data->chi_S;
+    double*** chi_U = data->chi_U;
+    double*** chi_V = data->chi_V;
+
     double** I_S = data->I_S;
     double** I_U = data->I_U;
     double** I_V = data->I_V;
     double*** Ip_S = data->Ip_S;
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
+
     double** coloring = data->coloring;
     double* xg = data->xg;
     double* yg = data->yg;
@@ -532,7 +533,9 @@ void get_masks(Data* data)
 		coloring[i][j] +=Ip_S[k][i][j];
 #endif
 #ifdef DISK
-
+                chi_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                chi_U[k][i][j]=((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                chi_V[k][i][j]=((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
 
 #ifndef SMOOTHING
                 Ip_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= rp[k]*rp[k]);
@@ -555,7 +558,7 @@ void get_masks(Data* data)
                 d = rp[k] - sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k]));
                 if( d < - data->eps)
                     Ip_U[k][i][j] = 0;
-                else if( fabs(d) <=data->eps)
+                else if( fabs(d) <= data->eps)
                     Ip_U[k][i][j] = .5*(1 + d/data->eps + (1./M_PI)*sin( M_PI* d/data->eps) );
                 else if( d > data->eps)
                     Ip_U[k][i][j] = 1;
@@ -596,7 +599,7 @@ void get_Cs(Data* data)
 {
     double*** Cs = data-> Cs;
     double** Cp = data->Cp;
-    double*** Ip_S = data->Ip_S;
+    double*** chi_S = data->chi_S;
     int m = data->m;
     int n = data->n;
     int Np = data->Np;
@@ -605,17 +608,18 @@ void get_Cs(Data* data)
         for(int j=0; j<n; j++){
             Cs[1][i][j] = 0.;
             for(int k=0; k<Np; k++){
-                Cs[1][i][j] += Ip_S[k][i][j]*Cp[k][1];
+                Cs[1][i][j] += chi_S[k][i][j]*Cp[k][1];
             }
         }
     }
 
 }
+
 void get_Ts(Data* data)
 {
     double** Ts = data-> Ts;
     double* Tp = data->Tp;
-    double*** Ip_S = data->Ip_S;
+    double*** chi_S = data->chi_S;
     int m = data->m;
     int n = data->n;
     int Np = data->Np;
@@ -624,7 +628,7 @@ void get_Ts(Data* data)
         for(int j=0; j<n; j++){
             Ts[i][j] = 0.;
             for(int k = 0; k<Np; k++){
-                Ts[i][j]+= Ip_S[k][i][j]*Tp[k];
+                Ts[i][j]+= chi_S[k][i][j]*Tp[k];
 
             }
         }
@@ -641,8 +645,8 @@ void get_Us_Vs(Data* data){
     double* xg = data->xg;
     double* yg = data->yg;
 
-    double*** Ip_U = data->Ip_U;
-    double*** Ip_V = data->Ip_V;
+    double*** chi_U = data->chi_U;
+    double*** chi_V = data->chi_V;
 
     int m = data->m;
     int n = data->n;
@@ -657,8 +661,8 @@ void get_Us_Vs(Data* data){
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= Ip_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k]));
-                v_s[i][j]+= Ip_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k]));
+                u_s[i][j]+= chi_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k]));
+                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k]));
             }
         }
     }
