@@ -156,7 +156,7 @@ int main(int argc, char *argv[]){
 
     // we feed reactants at the inlet
     data.C0[0] = data.CA0;
-    data.C0[1] = data.CB0;
+    //data.C0[1] = data.CB0;
 
     while(t < data.Tf){
 
@@ -198,7 +198,7 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef TEMP
         get_Ts(&data);
-        get_Cs(&data);
+        //get_Cs(&data);
 #endif
         get_Ustar_Vstar(&data, data.ramp);
 

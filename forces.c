@@ -92,8 +92,7 @@ int integrate_penalization(Data *data, double* surf, int k)
 
     double h2;
     h2 = h*h;
-    double yU, xV, f, g, q, *qm;
-    qm = make1DDoubleArray(Ns);
+    double yU, xV, f, g, q, qm;
 
 
     //for(int i=startX; i<=endX; i++){//
@@ -136,7 +135,6 @@ int integrate_penalization(Data *data, double* surf, int k)
     }
 #endif
     free(Qmint);
-    free(qm);
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
 }
