@@ -25,9 +25,9 @@
 #define WRITE
 #define DISK
 #define SLIP
-//#define EXPLICIT
+#define EXPLICIT
 //#define GRAVITY
-//#define SMOOTHING
+#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]){
             fflush(fichier_particle);
 
             if(data.iter % data.T_write == 0){
-                writeFields(&data, data.iter);
+                writeFields_periodic(&data, data.iter);
             }
         }
 #endif
@@ -227,7 +227,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
-    data->eps = 4*data->h;
+    data->eps = 2*data->h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
@@ -274,7 +274,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1;  /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
