@@ -180,24 +180,15 @@ void writeFields_periodic(Data* data, int it)
     int n = data->n;
 
     FILE* fichier_U = NULL;
-    FILE* fichier_Us = NULL;
     FILE* fichier_V = NULL;
     FILE* fichier_T = NULL;
     FILE* fichier_YA = NULL;
     FILE* fichier_YB = NULL;
     FILE* fichier_Mask = NULL;
-    FILE* fichier_Chi = NULL;
     FILE* fichier_Vtx = NULL;
 
     char buffer[10];
     sprintf(buffer, "%d", it);
-
-    char fileChi[30];
-    strcpy(fileChi, "results/Chi");
-    strcat(fileChi, "-");
-    strcat(fileChi, buffer);
-    strcat(fileChi, ".txt");
-    fichier_Chi = fopen(fileChi, "w");
 
     char fileMask[30];
     strcpy(fileMask, "results/Mask");
@@ -212,13 +203,6 @@ void writeFields_periodic(Data* data, int it)
     strcat(fileU, buffer);
     strcat(fileU, ".txt");
     fichier_U = fopen(fileU, "w");
-
-    char fileUs[30];
-    strcpy(fileUs, "results/Us");
-    strcat(fileUs, "-");
-    strcat(fileUs, buffer);
-    strcat(fileUs, ".txt");
-    fichier_Us = fopen(fileUs, "w");
 
     char fileV[30];
     strcpy(fileV, "results/V");
@@ -256,23 +240,19 @@ void writeFields_periodic(Data* data, int it)
     strcat(fileYB, ".txt");
     fichier_YB = fopen(fileYB, "w");
 #endif
-    //write2Darray(fichier_Chi, data->chi_S[0], 1, m-1, 1, n-1);
     write2Darray(fichier_Mask, data->coloring, 0, m, 1, n-1);
     write2Darray(fichier_U, data->u_n, 0, m, 1, n-1);
-    //write2Darray(fichier_Us, data->u_s, 0,m,1,n-1);
     write2Darray(fichier_V, data->v_n, 0, m, 0, n-1);
     write2Darray(fichier_Vtx, data->omega, 0, m, 1, n-1);
 #ifdef TEMP
-    write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
-    write2Darray(fichier_YA, data->C_n[0],1,m-1,1,n-1);
-    write2Darray(fichier_YB, data->C_n[1],1,m-1,1,n-1);
+    write2Darray(fichier_T, data->T_n,0,m,1,n-1);
+    write2Darray(fichier_YA, data->C_n[0],0,m,1,n-1);
+    write2Darray(fichier_YB, data->C_n[1],0,m,1,n-1);
 #endif
 
     //CLOSE FILES
-    fclose(fichier_Chi);
     fclose(fichier_Mask);
     fclose(fichier_U);
-    fclose(fichier_Us);
     fclose(fichier_V);
     fclose(fichier_Vtx);
     //fclose(fichier_P);
