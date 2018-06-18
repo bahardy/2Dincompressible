@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 15;
+    data.xg[0] = 25;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
