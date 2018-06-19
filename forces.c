@@ -193,3 +193,141 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
 }
+
+void get_tau(Data* data)
+{
+    int m = data->m;
+    int n = data->n;
+    int i, j;
+    double nu = data->nu;
+    double dx = data->h;
+    double dy = data->h;
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
+    double** tau_xx = data->tau_xx;
+    double** tau_yy = data->tau_yy;
+    double** tau_xy = data->tau_xy;
+
+    double dudx, dudy, dvdy, dvdx;
+
+    /** Diagonal components **/
+    for(i = 1; i<m-1; i++) {
+        for(j=1; j<n-1; j++){
+            dudx = (u_n[i][j] - u_n[i-1][j])/dx;
+            dvdy = (v_n[i][j] - v_n[i][j-1])/dy;
+            tau_xx[i][j] = 2*nu*dudx;
+            tau_yy[i][j] = 2*nu*dvdy;
+        }
+    }
+    /** Off-diagonal components **/
+    for(i=0; i<m-1; i++){
+        for(j=0; i<n-1; i++) {
+            dudy = (u_n[i][j+1] - u_n[i][j])/dy;
+            dvdx = (v_n[i+1][j] - v_n[i][j])/dx;
+            tau_xy[i][j] = nu*(dudy + dvdx);
+        }
+    }
+}
+
+void get_tau_periodic(Data* data)
+{
+    int m = data->m;
+    int n = data->n;
+    int i, j;
+    double nu = data->nu;
+    double dx = data->h;
+    double dy = data->h;
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
+    double** tau_xx = data->tau_xx;
+    double** tau_yy = data->tau_yy;
+    double** tau_xy = data->tau_xy;
+
+    double dudx, dudy, dvdy, dvdx;
+
+    /** Diagonal components **/
+    for(i = 0; i<m; i++) {
+        for(j=1; j<n-1; j++){
+            dudx = (u_n[i][j] - u_n[(i-1+m)%m][j])/dx;
+            dvdy = (v_n[i][j] - v_n[i][j-1])/dy;
+            tau_xx[i][j] = 2*nu*dudx;
+            tau_yy[i][j] = 2*nu*dvdy;
+        }
+    }
+    /** Off-diagonal components **/
+    for(i=0; i<m; i++){
+        for(j=0; i<n-1; i++) {
+            dudy = (u_n[i][j+1] - u_n[i][j])/dy;
+            dvdx = (v_n[(i+1+m)%m][j] - v_n[i][j])/dx;
+            tau_xy[i][j] = nu*(dudy + dvdx);
+        }
+    }
+}
+
+void compute_forces_NOCA(Data* data, FILE* file, int I1, int I2, int J1, int J2)
+{
+    int i, j;
+    double ILx, ITx, IRx, IBx;
+    double ILy, ITy, IRy, IBy;
+    ILx = 0, ITx = 0, IRx = 0, IBx = 0;
+    ILy = 0, ITy = 0, IRy = 0, IBy = 0;
+
+    double IU, IV;
+    IU = 0, IV = 0;
+
+    double h = data->h;
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
+    double** chi_U = data->I_U;
+    double** chi_V = data->I_V;
+    double** P = data->P;
+    double** tau_xx = data->tau_xx;
+    double** tau_xy = data->tau_xy;
+    double** tau_yy = data->tau_xy;
+    double I_cs_u = 0;
+    double I_cs_v = 0;
+    double u_av, v_av;
+
+    for(j = J1; j<J2; j++)
+    {
+        ILx += (u_n[I1][j]*u_n[I1][j] + .5*(P[I1][j] + P[I1+1][j]) - .5*(tau_xx[I1][j] + tau_xx[I1+1][j]))*h;
+        v_av = .25*(v_n[I1][j] + v_n[I1+1][j] + v_n[I1][j-1] + v_n[I1+1][j-1]);
+        ILy += (u_n[I1][j]*v_av - .5*(tau_xy[I1][j] + tau_xy[I1][j-1]))*h;
+
+        IRx += (-u_n[I2][j]*u_n[I2][j] - .5*(P[I2][j] + P[I2+1][j]) + .5*(tau_xx[I2][j] + tau_xx[I2+1][j]))*h;
+        v_av = .25*(v_n[I2][j] + v_n[I2+1][j] + v_n[I2][j-1] + v_n[I2+1][j-1]);
+        IRy += (-u_n[I2][j]*v_av + .5*(tau_xy[I2][j] + tau_xy[I2][j-1]))*h;
+
+    }
+
+    for(i = I1; i<I2; i++)
+    {
+        u_av = .25*(u_n[i][J2] + u_n[i][J2+1] + u_n[i-1][J2] + u_n[i-1][J2+1]);
+        ITx += (-v_n[i][J2]*u_av + .5*(tau_xy[i][J2] + tau_xy[i-1][J2]) )*h;
+        ITy += (-v_n[i][J2]*v_n[i][J2] - .5*(P[i][J2]+P[i][J2+1]) + .5*(tau_yy[i][J2] + tau_yy[i][J2+1]))*h;
+
+        u_av = .25*(u_n[i][J1] + u_n[i][J1+1] + u_n[i-1][J1] + u_n[i-1][J1+1]);
+        IBx += (v_n[i][J1]*u_av - .5*(tau_xy[i][J1] + tau_xy[i-1][J1]) )*h;
+        IBy += (v_n[i][J1]*v_n[i][J1] + .5*(P[i][J1]+P[i][J1+1]) - .5*(tau_yy[i][J1] + tau_yy[i][J1+1]))*h;
+    }
+
+    I_cs_u = ILx + ITx + IRx + IBx;
+    I_cs_v = ILy + ITy + IRy + IBy;
+
+
+    for(i=I1; i<I2; i++) {
+        for (j = J1 + 1; j < J2; j++) {
+            IU += chi_U[i][j] * u_n[i][j] * h * h;
+        }
+    }
+
+    for (i = I1+1; i<I2; i++) {
+        for(j = J1; j <J2; j++) {
+            IV += chi_V[i][j] * v_n[i][j] * h * h;
+        }
+    }
+
+    fprintf(file, "%3.10e \t %3.10e \t %3.10e \t %3.10e \n", IU, I_cs_u, IV, I_cs_v);
+    fflush(file);
+
+}

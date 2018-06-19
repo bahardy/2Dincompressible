@@ -186,6 +186,8 @@ void writeFields_periodic(Data* data, int it)
     FILE* fichier_YB = NULL;
     FILE* fichier_Mask = NULL;
     FILE* fichier_Vtx = NULL;
+    FILE* fichier_P = NULL;
+
 
     char buffer[10];
     sprintf(buffer, "%d", it);
@@ -210,6 +212,13 @@ void writeFields_periodic(Data* data, int it)
     strcat(fileV, buffer);
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
+
+    char fileP[30];
+    strcpy(fileP, "results/P");
+    strcat(fileP, "-");
+    strcat(fileP, buffer);
+    strcat(fileP, ".txt");
+    fichier_P = fopen(fileP, "w");
 
     char fileVtx[30];
     strcpy(fileVtx, "results/Vtx");
@@ -243,6 +252,7 @@ void writeFields_periodic(Data* data, int it)
     write2Darray(fichier_Mask, data->coloring, 0, m, 1, n-1);
     write2Darray(fichier_U, data->u_n, 0, m, 1, n-1);
     write2Darray(fichier_V, data->v_n, 0, m, 0, n-1);
+    write2Darray(fichier_P, data->P, 0, m, 1, n-1);
     write2Darray(fichier_Vtx, data->omega, 0, m, 1, n-1);
 #ifdef TEMP
     write2Darray(fichier_T, data->T_n,0,m,1,n-1);
@@ -255,7 +265,7 @@ void writeFields_periodic(Data* data, int it)
     fclose(fichier_U);
     fclose(fichier_V);
     fclose(fichier_Vtx);
-    //fclose(fichier_P);
+    fclose(fichier_P);
 #ifdef TEMP
     fclose(fichier_T);
     fclose(fichier_YA);

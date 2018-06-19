@@ -100,6 +100,7 @@ int main(int argc, char *argv[]){
     FILE* fichier_forces = fopen("results/forces.txt", "w+");
     FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
     FILE* fichier_particle = fopen("results/particle.txt", "w+");
+    FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
     /*Initialization of the mask */
     get_masks(&data);
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]){
         update_flow(&data);
         get_ghosts(&data, data.Tm0, data.C0);
         get_vorticity(&data);
+        get_tau_periodic(&data);
 
         diagnostic(&data);
 
@@ -208,6 +210,7 @@ int main(int argc, char *argv[]){
     fclose(fichier_fluxes);
     fclose(fichier_particle);
     fclose(fichier_stat);
+    fclose(fichier_forces_NOCA);
 
     /* Free memory */
     free_fields(&data);

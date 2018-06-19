@@ -78,6 +78,10 @@ void initialize_fields(Data* data)
     data->v_s = make2DDoubleArray(m,n);
     data->v_star = make2DDoubleArray(m,n);
 
+    data->tau_xx = make2DDoubleArray(m,n);
+    data->tau_yy = make2DDoubleArray(m,n);
+    data->tau_xy = make2DDoubleArray(m,n);
+
     data->xg = make1DDoubleArray(Np);
     data->yg = make1DDoubleArray(Np);
 }
@@ -104,5 +108,6 @@ void free_fields(Data* data)
     free2Darray(data->I_S, m), free2Darray(data->I_U, m), free2Darray(data->I_V, m), free2Darray(data->coloring, m);
     free3Darray(data->Ip_S, Np,m), free3Darray(data->Ip_U, Np,m), free3Darray(data->Ip_V, Np, m);
     free3Darray(data->chi_S, Np, m), free3Darray(data->chi_U, Np, m), free3Darray(data->chi_V, Np, m);
+    free2Darray(data->tau_xx, m), free2Darray(data->tau_yy, m),free2Darray(data->tau_xy, m);
 }
 

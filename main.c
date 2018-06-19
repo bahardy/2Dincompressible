@@ -22,7 +22,7 @@
 #define DISK
 #define SLIP
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 
 
 int main(int argc, char *argv[]){
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 15;
+    data.xg[0] = 3;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -86,6 +86,7 @@ int main(int argc, char *argv[]){
     FILE* fichier_forces = fopen("results/forces.txt", "w");
     FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
     FILE* fichier_particle = fopen("results/particle.txt", "w");
+    FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
 
@@ -213,6 +214,9 @@ int main(int argc, char *argv[]){
 
         get_ghosts(&data, data.Tm0, data.C0);
         get_vorticity(&data);
+        get_tau(&data);
+
+        compute_forces_NOCA(&data, fichier_forces_NOCA, 1, data.m-2, 1, data.n-2);
 
         diagnostic(&data);
 
@@ -220,7 +224,7 @@ int main(int argc, char *argv[]){
 #ifdef WRITE
         if(rank == 0){
             writeStatistics(&data, fichier_stat);
-            writeForces(&data, fichier_stat);
+            writeForces(&data, fichier_forces);
             writeParticle(&data, fichier_particle);
             writeFluxes(&data, fichier_fluxes);
 
@@ -238,6 +242,7 @@ int main(int argc, char *argv[]){
     fclose(fichier_forces);
     fclose(fichier_fluxes);
     fclose(fichier_particle);
+    fclose(fichier_forces_NOCA);
 
     free_fields(&data);
 
@@ -249,9 +254,9 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1.;
-    data->d = 30.;
+    data->d = 3.;
     data->H = 0.5*data->d;
-    data->L = 30.;
+    data->L = 9.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -308,12 +313,17 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
 
-    data->ratio_dtau_dt = 1e-4;
+#ifdef EXPLICIT
+    data->ratio_dtau_dt = 1;
+#endif
+#ifndef EXPLICIT
+    data->ratio_dtau_dt = 1e-3;
+#endif
     data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 

@@ -1,8 +1,8 @@
 
 #ifndef main_h
 #define main_h
-#define TEMP
-#define MOVE
+//#define TEMP
+//#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -158,6 +158,7 @@ struct Data{
     double* yg;
     double* dp;
 
+    double **tau_xx, **tau_xy, **tau_yy;
     double Omega; 
     double R1; 
     double R2;
