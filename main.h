@@ -2,7 +2,7 @@
 #ifndef main_h
 #define main_h
 //#define TEMP
-//#define MOVE
+#define MOVE
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+
 #include <string.h>
 #include <math.h>
 #include <petsc.h>

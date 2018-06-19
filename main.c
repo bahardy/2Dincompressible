@@ -313,7 +313,7 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -353,7 +353,7 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 
     double Tf = data->N_write*data->T_write*data->dt;
     data->Tf = Tf;
-    data->t_move = 0.5; //data->Tf/10.;
+    data->t_move = 1; //data->Tf/10.;
     data->t_transfer = 3.;
     data->nKmax = 2;
     data->Kmax = 50; /* number of ramping steps */

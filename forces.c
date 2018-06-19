@@ -317,13 +317,13 @@ void compute_forces_NOCA(Data* data, FILE* file, int I1, int I2, int J1, int J2)
 
     for(i=I1; i<I2; i++) {
         for (j = J1 + 1; j < J2; j++) {
-            IU += chi_U[i][j] * u_n[i][j] * h * h;
+            IU += (1-chi_U[i][j]) * u_n[i][j] * h * h;
         }
     }
 
     for (i = I1+1; i<I2; i++) {
         for(j = J1; j <J2; j++) {
-            IV += chi_V[i][j] * v_n[i][j] * h * h;
+            IV += (1-chi_V[i][j])* v_n[i][j] * h * h;
         }
     }
 
