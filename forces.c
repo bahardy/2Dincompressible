@@ -72,10 +72,10 @@ int integrate_penalization(Data *data, double* surf, int k)
     int endY = (int) ceil((yg[k]+rp[k])/h);
     PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);
 
-    if(startY <= 1||endY >= n-1){
-        PetscPrintf(PETSC_COMM_WORLD,"Wall collision! \n");
-        return 1;
-    }
+//    if(startY <= 1||endY >= n-1){
+//        PetscPrintf(PETSC_COMM_WORLD,"Wall collision! \n");
+//        return 1;
+//    }
 
     if(endX >= m-1){
         PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
