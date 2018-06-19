@@ -1,7 +1,7 @@
 
 #ifndef main_h
 #define main_h
-#define TEMP
+//#define TEMP
 #define MOVE
 
 /*--------------------------------------------------------*/
