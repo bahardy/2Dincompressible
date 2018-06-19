@@ -95,11 +95,20 @@ struct Data{
     double* domegadt;
     double* dTdt;
     double** dCdt;
+
     double** F;
+    double** G;
+    double** Mz;
+
     double* Fx;
     double* Fy;
-    double** G;
+    double* Tz;
+
+    double** Fx_coll;
+    double** Fy_coll;
+
     double* J;
+
     double*** chi_S;
     double*** chi_U;
     double*** chi_V;
@@ -109,7 +118,7 @@ struct Data{
     double** I_S;
     double** I_U;
     double** I_V;
-    double** Mz;
+
 
     double** P;
     double** phi;
@@ -132,7 +141,6 @@ struct Data{
     double* Tp;
     double** Ts;
 
-    double* Tz;
 
     double** u_n;
     double** u_n_1;

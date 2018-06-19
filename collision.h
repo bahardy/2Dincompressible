@@ -5,6 +5,6 @@
 #ifndef INC_2DINCOMP_COLLISION_H
 #define INC_2DINCOMP_COLLISION_H
 
-
+void collision(Data* data);
 
 #endif //INC_2DINCOMP_COLLISION_H

@@ -11,6 +11,7 @@
 #include "fields_creation.h"
 #include "poisson.h"
 #include "forces.h"
+#include "collision.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -55,7 +56,7 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 15;
+    data.xg[0] = 3;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]){
     /* VELOCITY : horizontal flow Um  */
     for(int i=0; i<data.m; i++){
         for(int j=0; j<data.n; j++){
-            data.u_n[i][j] = data.u_m;
+            data.u_n[i][j] = 0;//data.u_m;
             data.u_n_1[i][j] = data.u_n[i][j];
             data.u_star[i][j] = data.u_n[i][j];
             data.T_n[i][j] = data.Tm0;
@@ -104,6 +105,17 @@ int main(int argc, char *argv[]){
     /*Initialization of particles temperatures */
     for(int k=0; k<data.Np; k++){
         data.Tp[k] = data.Tp0;
+    }
+
+    for(int k=0; k<data.Np; k++){
+        data.Up[k][2] = 0.5*data.u_m;
+        data.Up[k][1] = data.Up[k][2];
+        data.Up[k][0] = data.Up[k][2];
+
+        data.Vp[k][2] = data.u_m;
+        data.Vp[k][1] = data.Vp[k][2];
+        data.Vp[k][0] = data.Vp[k][2];
+
     }
 
     /** ----- BOUNDARY CONDITION -----------**/
@@ -165,6 +177,8 @@ int main(int argc, char *argv[]){
         /** --- SOLVE SOLID PHASE --- */
         int flag_out = 0;
         int k;
+
+        collision(&data);
         for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization(&data, &surf, k);
@@ -220,7 +234,7 @@ int main(int argc, char *argv[]){
 #ifdef WRITE
         if(rank == 0){
             writeStatistics(&data, fichier_stat);
-            writeForces(&data, fichier_stat);
+            writeForces(&data, fichier_forces);
             writeParticle(&data, fichier_particle);
             writeFluxes(&data, fichier_fluxes);
 
@@ -249,9 +263,9 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1.;
-    data->d = 30.;
+    data->d = 4.;
     data->H = 0.5*data->d;
-    data->L = 30.;
+    data->L = 8.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -313,7 +327,7 @@ void set_up(Data* data, int argc, char* argv[], int rank)
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
 
-    data->ratio_dtau_dt = 1e-4;
+    data->ratio_dtau_dt = 1e-3;
     data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
@@ -343,7 +357,7 @@ void set_up(Data* data, int argc, char* argv[], int rank)
 
     double Tf = data->N_write*data->T_write*data->dt;
     data->Tf = Tf;
-    data->t_move = 0.5; //data->Tf/10.;
+    data->t_move = 0; //data->Tf/10.;
     data->t_transfer = 3.;
     data->nKmax = 2;
     data->Kmax = 50; /* number of ramping steps */
@@ -1007,6 +1021,8 @@ void update_Up(Data* data, int k)
     double* dvdt = data->dvdt;
     double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
+    double rho_f = data->rho_f;
+    double rho_p = data->rho_p;
     double* Sp = data->Sp;
     double* J = data->J; //m^4
     double** F = data->F;
@@ -1016,11 +1032,15 @@ void update_Up(Data* data, int k)
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
+    double** Fx_coll = data->Fx_coll;
+    double** Fy_coll = data->Fy_coll;
+
     double dt = data->dt;
 
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - g;
+
+    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
+    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
