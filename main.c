@@ -179,7 +179,9 @@ int main(int argc, char *argv[]){
         int flag_out = 0;
         int k;
 
+        /** Check for collisions **/
         collision(&data);
+
         for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization(&data, &surf, k);
