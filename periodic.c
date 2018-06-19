@@ -14,13 +14,13 @@
 #include "write.h"
 #include "fields_creation.h"
 #include "forces.h"
+#include "collision.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-
-//#define TWO_WAY
+#define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
@@ -55,17 +55,23 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 8;
+    data.xg[0] = 6;
     data.yg[0] = data.H;
     data.dp[0] = data.Dp;
     data.rp[0] = .5*data.Dp;
     data.theta[0] = 0; // M_PI/10.
 
     //impulsively started cylinder : we impose the motion
-    data.Up[0][0] = -data.u_m;
-    data.Up[0][1] = data.Up[0][0];
-    data.Up[0][2] = data.Up[0][1];
-    data.Up[0][3] = data.Up[0][2];
+    for(int k=0; k<data.Np; k++){
+        data.Up[k][2] = -0.5*data.u_m;
+        data.Up[k][1] = data.Up[k][2];
+        data.Up[k][0] = data.Up[k][2];
+
+        data.Vp[k][2] = data.u_m;
+        data.Vp[k][1] = data.Vp[k][2];
+        data.Vp[k][0] = data.Vp[k][2];
+
+    }
 
     /*Initialization of particles temperatures */
     for(int k=0; k<data.Np; k++){
@@ -129,6 +135,10 @@ int main(int argc, char *argv[]){
         /** --- SOLVE PARTICULAR PHASE --- */
         int flag_out = 0;
         int k;
+
+        /** Check for collisions **/
+        collision(&data);
+
         for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization(&data, &surf, k);
@@ -224,9 +234,9 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1.;
-    data->d = 3.;
+    data->d = 4.;
     data->H = 0.5*data->d;
-    data->L = 9.;
+    data->L = 8.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -903,8 +913,10 @@ void update_Up(Data* data, int k)
     double* dvdt = data->dvdt;
     double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
+    double rho_f = data->rho_f;
+    double rho_p = data->rho_p;
     double* Sp = data->Sp;
-    double* J = data->J;
+    double* J = data->J; //m^4
     double** F = data->F;
     double** G = data->G;
     double** M = data->Mz;
@@ -912,17 +924,19 @@ void update_Up(Data* data, int k)
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
+    double** Fx_coll = data->Fx_coll;
+    double** Fy_coll = data->Fy_coll;
+
     double dt = data->dt;
 
 
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) - g;
+    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.));
+    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 
-    printf("Up = %f \n", Up[k][3]);
     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
     Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];
