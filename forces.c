@@ -77,10 +77,10 @@ int integrate_penalization(Data *data, double* surf, int k)
 //        return 1;
 //    }
 
-    if(endX >= m-1){
-        PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
-        return 1;
-    }
+//    if(endX >= m-1){
+//        PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
+//        return 1;
+//    }
 
     double Fint, Gint, Mint, Qint, *Qmint, sint;
     Fint = 0.;
@@ -99,7 +99,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     for(int i = 0; i<m; i++){
         xV = (i-0.5)*h;
         //for(int j=startY; j<=endY; j++){
-        for(int j=0; j<n; j++) {
+        for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
             f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
             g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
@@ -135,6 +135,138 @@ int integrate_penalization(Data *data, double* surf, int k)
     }
 #endif
     free(Qmint);
+    PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
+    return 0;
+}
+
+int integrate_penalization_periodic(Data *data, double* surf, int k)
+{
+    // Integral terms
+    double** F = data->F;
+    double** G = data->G;
+    double** M = data->Mz;
+    double** QQ = data-> QQ;
+    double*** PP = data-> PP;
+
+    double*** Ip_U = data->Ip_U;
+    double*** Ip_V = data->Ip_V;
+    double*** Ip_S = data->Ip_S;
+    double** u_n = data->u_star;
+    double** v_n = data->v_star;
+    double*** C_n = data->C_n;
+    double** T_n = data->T_n;
+    double** u_s = data->u_s;
+    double** v_s = data->v_s;
+    double** Ts = data->Ts;
+    double*** Cs = data->Cs;
+    double* xg = data->xg;
+    double* yg = data->yg;
+    double* rp = data->rp;
+    double* d = make1DDoubleArray(3);
+    double dx_min;
+
+    int Ns = data->Ns;
+    int m = data->m;
+    int n = data->n;
+    double L = data->L;
+    double h = data->h;
+    double dtau = data->dtau;
+
+
+    /* Force along x-direction */
+    F[k][0] = F[k][1]; /* n-2*/
+    F[k][1] = F[k][2]; /* n-1*/
+
+    /* Force along y-direction */
+    G[k][0] = G[k][1];
+    G[k][1] = G[k][2];
+
+    /* Moment along z-direction */
+    M[k][0] = M[k][1];
+    M[k][1] = M[k][2];
+
+#ifdef TEMP
+    /* Particle heat balance  */
+    QQ[k][0] = QQ[k][1]; /* n-2*/
+    QQ[k][1] = QQ[k][2]; /* n-1*/
+    //QQ[k][2] = 0.; /* n*/
+
+    for(int s=0; s<Ns; s++){
+        PP[k][s][0] = PP[k][s][1];
+        PP[k][s][1] = PP[k][s][2];
+        //  PP[k][s][2] = 0.;
+    }
+#endif
+/*
+    int startX = (int) floor((xg[k] - rp[k]) / h);
+    PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
+    int endX = (int) ceil((xg[k]+rp[k])/h);
+    PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
+
+    int startY = (int) floor((yg[k]-rp[k])/h);
+    PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
+    int endY = (int) ceil((yg[k]+rp[k])/h);
+    PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);*/
+
+    double Fint, Gint, Mint, Qint, *Qmint, sint;
+    Fint = 0.;
+    Gint = 0.;
+    Mint = 0.;
+    Qint = 0.;
+    Qmint = make1DDoubleArray(Ns);
+    sint = 0.;
+
+    double h2;
+    h2 = h*h;
+    double yU, xV, f, g, q, qm;
+    double xG = fmod(xg[k], L);
+    int index;
+
+    for(int i = 0; i<m; i++){
+        xV = (i+0.5)*h;
+        d[0] = xV - (xG-L);
+        d[1] = xV - xG;
+        d[2] = xV - (xG+L);
+        index = min_abs(d,3);
+        dx_min = d[index];
+
+        for(int j=1; j<n-1; j++) {
+            yU = (j-0.5)*h;
+            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
+            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
+#ifdef TEMP
+            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
+            Qint += q;
+            for(int s=0; s<Ns; s++){
+                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
+                Qmint[s] += qm;
+            }
+#endif
+            sint += Ip_S[k][i][j]*h*h;
+
+            Fint += f; /* units : m/s */
+            Gint += g; /* units : m/s */
+            Mint += dx_min*g-(yU-yg[k])*f;/* units: m^2/s */
+        }
+    }
+    Fint *= h2/dtau; /* units : m^3/s; */
+    Gint *= h2/dtau;
+    Mint *= h2/dtau;
+    Qint *= h2/dtau; /* units : K*m^2/s */
+
+    F[k][2] = -Fint;
+    G[k][2] = -Gint;
+    M[k][2] = -Mint;
+    QQ[k][2] = -Qint;
+    *surf = sint;
+
+#ifdef TEMP
+    for(int s=0; s<Ns; s++){
+        PP[k][s][2] = -Qmint[s]*h2/dtau;
+    }
+#endif
+    free(Qmint);
+    free(d);
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
 }
@@ -330,4 +462,16 @@ void compute_forces_NOCA(Data* data, FILE* file, int I1, int I2, int J1, int J2)
     fprintf(file, "%3.10e \t %3.10e \t %3.10e \t %3.10e \n", IU, I_cs_u, IV, I_cs_v);
     fflush(file);
 
+}
+
+int min_abs(double* array, int arraySize){
+    double min = INFINITY;
+    int index = -1;
+    for(int i = 0; i < arraySize; i++) {
+        if (fabs(array[i]) < min) {
+            min = fabs(array[i]);
+            index = i;
+        }
+    }
+    return index;
 }

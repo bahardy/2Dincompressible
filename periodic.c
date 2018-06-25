@@ -32,6 +32,10 @@
 
 int main(int argc, char *argv[]){
 
+    double test = fmod(0.3-9.1, 9.0);
+    printf("test = %f ", test);
+    fflush(stdout);
+
     PetscInitialize(&argc, &argv, 0, 0);
     int rank, nbproc;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank );
@@ -55,24 +59,29 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 6;
+    data.xg[0] = 7;
+    data.xg[1] = 4;
     data.yg[0] = data.H;
+    data.yg[1] = data.H;
     data.dp[0] = data.Dp;
+    data.dp[1] = data.Dp;
     data.rp[0] = .5*data.Dp;
-    data.theta[0] = 0; // M_PI/10.
+    data.rp[1] = .5*data.Dp;
+    data.theta[0] = 0;
+    data.theta[1] = 0;
 
     //impulsively started cylinder : we impose the motion
-    for(int k=0; k<data.Np; k++){
-        data.Up[k][2] = -0.5*data.u_m;
+    for(int k=0; k<data.Np - 1; k++){
+        data.Up[k][2] = data.u_m;
         data.Up[k][1] = data.Up[k][2];
         data.Up[k][0] = data.Up[k][2];
 
-        data.Vp[k][2] = data.u_m;
+        data.Vp[k][2] = 0; //data.u_m;
         data.Vp[k][1] = data.Vp[k][2];
         data.Vp[k][0] = data.Vp[k][2];
 
     }
-
+#ifdef TEMP
     /*Initialization of particles temperatures */
     for(int k=0; k<data.Np; k++){
         data.Tp[k] = data.Tp0;
@@ -81,6 +90,7 @@ int main(int argc, char *argv[]){
     /* We feed reactants at the inlet */
     data.C0[0] = data.CA0;
     data.C0[1] = data.CB0;
+#endif
 
     for(int k=0; k<data.Np; k++){
 #ifdef DISK
@@ -139,9 +149,9 @@ int main(int argc, char *argv[]){
         /** Check for collisions **/
         collision(&data);
 
-        for (k = 0; k<data.Np; k++){
+        for (k = 0; k<data.Np -1; k++){
             /* Integrate penalization term */
-            flag_out += integrate_penalization(&data, &surf, k);
+            flag_out += integrate_penalization_periodic(&data, &surf, k);
 #ifdef  MOVE
             /* Velocity - Forces */
             if(t > data.t_move){
@@ -271,7 +281,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 2;
-    data->Np = 1;
+    data->Np = 2;
     data->Df = make1DDoubleArray(data->Ns);
     data->Df[0] = data->nu/data->Sc;
     data->Df[1] = data->nu/data->Sc;
@@ -287,7 +297,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -440,10 +450,13 @@ void get_masks(Data* data)
     int m = data->m;
     int n = data->n;
     double h = data->h;
+    double L = data->L;
     int Np = data->Np;
-
+    int b1, b2, b3;
+    double d1, d2, d3;
     double xU, xV, yU, yV, yS, xS;
     double xloc, yloc, delta;
+
 
     for(int i=0; i<m; i++){
         xU = (i+1)*h;
@@ -462,6 +475,7 @@ void get_masks(Data* data)
 
             /*Go over all the particles */
             for(int k=0; k<Np; k++){
+                double xG = fmod(xg[k], L);
 
 #ifdef ELLIPSE
                 double x;
@@ -493,20 +507,46 @@ void get_masks(Data* data)
 #endif
 
 #ifdef DISK
-                chi_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                chi_U[k][i][j]=((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                chi_V[k][i][j]=((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b1 = ((xS-xG)*(xS-xG)+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xS-(xG-L))*(xS-(xG-L))+(yS-yg[k])*(yS-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                chi_S[k][i][j]= (b1 || b2 || b3);
+
+                b1 = ((xU-xG)*(xU-xG)+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xU-(xG-L))*(xU-(xG-L))+(yU-yg[k])*(yU-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+
+                chi_U[k][i][j]= (b1 || b2 || b3);
+
+                b1 = ((xV-xG)*(xV-xG)+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xV-(xG-L))*(xV-(xG-L))+(yV-yg[k])*(yV-yg[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+
+                chi_V[k][i][j]= (b1 || b2 || b3);
 
 #ifndef SMOOTHING
-                Ip_S[k][i][j]=((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k])<= rp[k]*rp[k]);
-                Ip_U[k][i][j]=((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k])<= rp[k]*rp[k]);
-                Ip_V[k][i][j]=((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k])<= rp[k]*rp[k]);
+                b1 = ((xS-xG)*(xS-xG)+(yS-yg[k])*(yS-yg[k])<= rp[k]*rp[k]);
+                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-yg[k])*(yS-yg[k])<= rp[k]*rp[k]);
+                Ip_S[k][i][j]= b1 || b2;
+
+                b1 = ((xU-xG)*(xU-xG)+(yU-yg[k])*(yU-yg[k])<= rp[k]*rp[k]);
+                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-yg[k])*(yU-yg[k])<= rp[k]*rp[k]);
+                Ip_U[k][i][j]= b1 || b2;
+
+                b1 = ((xV-xG)*(xV-xG)+(yV-yg[k])*(yV-yg[k])<= rp[k]*rp[k]);
+                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-yg[k])*(yV-yg[k])<= rp[k]*rp[k]);
+                Ip_V[k][i][j]= b1 || b2;
+
 #endif
 
 #ifdef SMOOTHING
 
                 //Smoothing S
-                dist = rp[k] - sqrt((xS-xg[k])*(xS-xg[k])+(yS-yg[k])*(yS-yg[k]));
+                d1 = sqrt((xS-xG)*(xS-xG)+(yS-yg[k])*(yS-yg[k]));
+                d2 = sqrt((xS-(xG+L))*(xS-(xG+L))+(yS-yg[k])*(yS-yg[k]));
+                d3 = sqrt((xS-(xG-L))*(xS-(xG-L))+(yS-yg[k])*(yS-yg[k]));
+                dist =  rp[k] - fmin(d1, fmin(d2,d3));
+
                 if( dist < - data->eps)
                     Ip_S[k][i][j] = 0;
                 else if( fabs(dist) <= data->eps)
@@ -515,7 +555,11 @@ void get_masks(Data* data)
                     Ip_S[k][i][j] = 1;
 
                 //Smoothing U
-                dist = rp[k] - sqrt((xU-xg[k])*(xU-xg[k])+(yU-yg[k])*(yU-yg[k]));
+                d1 = sqrt((xU-xG)*(xU-xG)+(yU-yg[k])*(yU-yg[k]));
+                d2 = sqrt((xU-(xG+L))*(xU-(xG+L))+(yU-yg[k])*(yU-yg[k]));
+                d3 = sqrt((xU-(xG-L))*(xU-(xG-L))+(yU-yg[k])*(yU-yg[k]));
+                dist =  rp[k] - fmin(d1, fmin(d2,d3));
+
                 if( dist < - data->eps)
                     Ip_U[k][i][j] = 0;
                 else if( fabs(dist) <=data->eps)
@@ -523,8 +567,13 @@ void get_masks(Data* data)
                 else if( dist > data->eps)
                     Ip_U[k][i][j] = 1;
 
+
                 //Smoothing V
-                dist = rp[k] - sqrt((xV-xg[k])*(xV-xg[k])+(yV-yg[k])*(yV-yg[k]));
+                d1 = sqrt((xV-xG)*(xV-xG)+(yV-yg[k])*(yV-yg[k]));
+                d2 = sqrt((xV-(xG+L))*(xV-(xG+L))+(yV-yg[k])*(yV-yg[k]));
+                d3 = sqrt((xV-(xG-L))*(xV-(xG-L))+(yV-yg[k])*(yV-yg[k]));
+                dist =  rp[k] - fmin(d1, fmin(d2,d3));
+
                 if( dist < - data->eps)
                     Ip_V[k][i][j] = 0;
                 else if( fabs(dist) <= data->eps)
@@ -549,7 +598,10 @@ void get_masks(Data* data)
             }
 
             if(I_S[i][j] > 1 || I_U[i][j] > 1 || I_V[i][j] > 1 ){
-                PetscPrintf(PETSC_COMM_WORLD, "Erreur : collision de particules \n");
+                PetscPrintf(PETSC_COMM_WORLD, "Collision de particules \n");
+                I_S[i][j] = fmin(I_S[i][j], 1);
+                I_U[i][j] = fmin(I_U[i][j], 1);
+                I_V[i][j] = fmin(I_V[i][j], 1);
             }
         }
     }
@@ -610,6 +662,7 @@ void get_Us_Vs(Data* data){
 
     int m = data->m;
     int n = data->n;
+    double L = data->L;
     int Np = data->Np;
     double h = data->h;
 
@@ -621,14 +674,12 @@ void get_Us_Vs(Data* data){
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= chi_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k]));
-                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k]));
+                u_s[i][j]+= chi_U[k][i][j]*( Up[k][3] - Omega_p[k][3]*(yU-yg[k]) );
+                v_s[i][j]+= chi_V[k][i][j]*( Vp[k][3] + Omega_p[k][3]*fmod(xV-xg[k],L) );
             }
         }
     }
 }
-
-
 
 void get_Ustar_Vstar(Data* data, double ramp)
 {
@@ -773,7 +824,6 @@ void update_flow(Data* data) {
     double **phi = data->phi;
 
     int i, j;
-    //double y_ch, u_poiseuille;
     /* Set boundary for u_new, v_new */
 
     for (i = 0; i < m; i++) {
@@ -896,7 +946,6 @@ void update_Xp(Data* data, int k)
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
-
     double dt = data->dt;
 
     xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
@@ -980,6 +1029,7 @@ void update_Cp(Data* data, int k)
     Cp[k][1] += dt*dCdt[k][1];
 }
 
+
 double* make1DDoubleArray(int arraySize) {
     double* theArray = (double*) calloc((size_t) arraySize, sizeof(double));
     return theArray;
@@ -1047,3 +1097,4 @@ void free3Darray(double*** array, int dim1, int dim2) {
     }
     free(array);
 }
+

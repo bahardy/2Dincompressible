@@ -29,13 +29,14 @@ void collision(Data* data)
     double rho_f = data->rho_f;
     double g = 1./pow(data->Fr,2.);
     double S = data->Sp[0];
+    double L = data->L;
 
     double c11 = S*(rho_s - rho_f)*g;
     double c12 = c11;
-    double ep = 1e-6;
-    double Ep = 1e-8;
-    double ew = 1e-6;
-    double Ew = 1e-8;
+    double ep = 1e-8;
+    double Ep = 1e-10;
+    double ew = 1e-8;
+    double Ew = 1e-10;
 
     for(int k = 0; k<Np; k++){
         Fx_coll[k][0] = Fx_coll[k][1], Fx_coll[k][1] = Fx_coll[k][2], Fx_coll[k][2] = 0;
@@ -44,14 +45,14 @@ void collision(Data* data)
 
 
     for(k1=0; k1<Np; k1++) {
-        x1 = xg[k1];
+        x1 = fmod(xg[k1],L);
         y1 = yg[k1];
         R1 = rp[k1];
         for(k2=k1+1; k2<Np; k2++) {
-            x2 = xg[k2];
+            x2 = fmod(xg[k2],L);
             y2 = yg[k2];
             R2 = rp[k2];
-            d12 = sqrt((x1-x2)*(x1-x2) + (y1-x2)*(y1-x2));
+            d12 = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
             if (d12 > (R1 + R2) && d12 <= (R1 + R2 + z))
             {
                 Fx_coll[k1][2] += (c12/ep)*pow((d12 - (R1 + R2 + z))/z , 2.)*(x1 - x2)/d12;
