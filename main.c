@@ -82,11 +82,36 @@ int main(int argc, char *argv[]){
     FILE* fichier_data = fopen("results/data.txt", "w");
     writeData(fichier_data, data);
     fclose(fichier_data);
-
+    FILE** fichier_particles = malloc(sizeof(FILE*)*data.Np);
+    FILE** fichier_forces = malloc(sizeof(FILE*)*data.Np);
+    FILE** fichier_fluxes = malloc(sizeof(FILE*)*data.Np);
     FILE* fichier_stat = fopen("results/stats.txt", "w");
-    FILE* fichier_forces = fopen("results/forces.txt", "w");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w");
-    FILE* fichier_particle = fopen("results/particle.txt", "w");
+    for(int k = 0; k<data.Np; k++)
+    {
+        char K[10];
+        sprintf(K, "%d", k);
+
+        char fileParticle[30];
+        strcpy(fileParticle, "results/particle");
+        strcat(fileParticle, "-");
+        strcat(fileParticle, K);
+        strcat(fileParticle, ".txt");
+        fichier_particles[k] = fopen(fileParticle, "w+");
+
+        char fileForces[30];
+        strcpy(fileForces, "results/forces");
+        strcat(fileForces, "-");
+        strcat(fileForces, K);
+        strcat(fileForces, ".txt");
+        fichier_forces[k] = fopen(fileForces, "w+");
+
+        char fileFluxes[30];
+        strcpy(fileFluxes, "results/fluxes");
+        strcat(fileFluxes, "-");
+        strcat(fileFluxes, K);
+        strcat(fileFluxes, ".txt");
+        fichier_fluxes[k] = fopen(fileForces, "w+");
+    }
     FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
     /** ------------------------------- INITIALIZATION of the domain ------------------------------- **/
@@ -240,10 +265,11 @@ int main(int argc, char *argv[]){
 #ifdef WRITE
         if(rank == 0){
             writeStatistics(&data, fichier_stat);
-            writeForces(&data, fichier_forces);
-            writeParticle(&data, fichier_particle);
-            writeFluxes(&data, fichier_fluxes);
-
+            for (int k = 0; k< data.Np; k++) {
+                writeForces(&data, fichier_forces, k);
+                writeParticle(&data, fichier_particles, k);
+                writeFluxes(&data, fichier_fluxes, k);
+            }
             if(data.iter % data.T_write == 0){
                 writeFields(&data, data.iter);
             }
@@ -254,10 +280,17 @@ int main(int argc, char *argv[]){
         data.iter ++;
 
     }
+    for (int k = 0; k< data.Np; k++)
+    {
+        fclose(fichier_forces[k]);
+        fclose(fichier_fluxes[k]);
+        fclose(fichier_particles[k]);
+    }
+    free(fichier_forces);
+    free(fichier_fluxes);
+    free(fichier_particles);
+
     fclose(fichier_stat);
-    fclose(fichier_forces);
-    fclose(fichier_fluxes);
-    fclose(fichier_particle);
     fclose(fichier_forces_NOCA);
 
     free_fields(&data);

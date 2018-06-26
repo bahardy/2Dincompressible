@@ -174,8 +174,7 @@ void writeFields(Data* data, int it) {
 
 }
 
-void writeFields_periodic(Data* data, int it)
-{
+void writeFields_periodic(Data* data, int it) {
     int m = data->m;
     int n = data->n;
 
@@ -274,7 +273,6 @@ void writeFields_periodic(Data* data, int it)
 
 }
 
-
 void write2Darray(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd) {
     if (file != NULL){
         for (int i = iStart; i<iEnd; i++){
@@ -297,21 +295,21 @@ void writeStatistics(Data* data, FILE* file)
     fprintf(file, "%3.6e \t  %3.6e \t  %3.6e \n", data->CFL_max, data->Reh_max, data->Reh_omega_max);
     fflush(file);
 }
-void writeParticle(Data* data, FILE* file)
+void writeParticle(Data* data, FILE** file_array, int k)
 {
-    fprintf(file, "%3.6e \t  %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \n",
-            data->xg[0], data->yg[0], data->theta[0], data->Up[0][3], data->Vp[0][3], data->Omega_p[0][3], data->Tp[0]);
-    fflush(file);
+    fprintf(file_array[k], "%3.6e \t  %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \n",
+            data->xg[k], data->yg[k], data->theta[k], data->Up[k][3], data->Vp[k][3], data->Omega_p[k][3], data->Tp[k]);
+    fflush(file_array[k]);
 }
 
-void writeForces(Data* data, FILE* file)
+void writeForces(Data* data, FILE** file_array, int k)
 {
-    fprintf(file, "%3.6e \t  %3.6e \t  %3.6e \n", data->Fx[0], data->Fy[0], data->Tz[0]);
-    fflush(file);
+    fprintf(file_array[k], "%3.6e \t  %3.6e \t  %3.6e \n", data->Fx[k], data->Fy[k], data->Tz[k]);
+    fflush(file_array[k]);
 }
 
-void writeFluxes(Data* data, FILE* file)
+void writeFluxes(Data* data, FILE** file_array, int k)
 {
-    fprintf(file, "%3.6e \t  %3.6e \n", data->Q[0], data->Qm[0][0]);
-    fflush(file);
+    fprintf(file_array[k], "%3.6e \t  %3.6e \n", data->Q[k], data->Qm[k][0]);
+    fflush(file_array[k]);
 }

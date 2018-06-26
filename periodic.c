@@ -26,15 +26,11 @@
 #define DISK
 #define SLIP
 #define EXPLICIT
-//#define GRAVITY
+#define GRAVITY
 #define SMOOTHING
 
 
 int main(int argc, char *argv[]){
-
-    double test = fmod(0.3-9.1, 9.0);
-    printf("test = %f ", test);
-    fflush(stdout);
 
     PetscInitialize(&argc, &argv, 0, 0);
     int rank, nbproc;
@@ -59,10 +55,10 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 7;
-    data.xg[1] = 4;
-    data.yg[0] = data.H;
-    data.yg[1] = data.H;
+    data.xg[0] = 6;
+    data.xg[1] = 4.5;
+    data.yg[0] = data.H+0.001;
+    data.yg[1] = data.H-0.001;
     data.dp[0] = data.Dp;
     data.dp[1] = data.Dp;
     data.rp[0] = .5*data.Dp;
@@ -71,8 +67,8 @@ int main(int argc, char *argv[]){
     data.theta[1] = 0;
 
     //impulsively started cylinder : we impose the motion
-    for(int k=0; k<data.Np - 1; k++){
-        data.Up[k][2] = data.u_m;
+    for(int k=0; k<data.Np; k++){
+        data.Up[k][2] = 0*data.u_m;
         data.Up[k][1] = data.Up[k][2];
         data.Up[k][0] = data.Up[k][2];
 
@@ -111,11 +107,38 @@ int main(int argc, char *argv[]){
     FILE* fichier_data = fopen("results/data.txt", "w");
     writeData(fichier_data, data);
     fclose(fichier_data);
+    FILE** fichier_particles = malloc(sizeof(FILE*)*data.Np);
+    FILE** fichier_forces = malloc(sizeof(FILE*)*data.Np);
+    FILE** fichier_fluxes = malloc(sizeof(FILE*)*data.Np);
+
+    for(int k = 0; k<data.Np; k++)
+    {
+        char K[10];
+        sprintf(K, "%d", k);
+
+        char fileParticle[30];
+        strcpy(fileParticle, "results/particle");
+        strcat(fileParticle, "-");
+        strcat(fileParticle, K);
+        strcat(fileParticle, ".txt");
+        fichier_particles[k] = fopen(fileParticle, "w+");
+
+        char fileForces[30];
+        strcpy(fileForces, "results/forces");
+        strcat(fileForces, "-");
+        strcat(fileForces, K);
+        strcat(fileForces, ".txt");
+        fichier_forces[k] = fopen(fileForces, "w+");
+
+        char fileFluxes[30];
+        strcpy(fileFluxes, "results/fluxes");
+        strcat(fileFluxes, "-");
+        strcat(fileFluxes, K);
+        strcat(fileFluxes, ".txt");
+        fichier_fluxes[k] = fopen(fileForces, "w+");
+    }
 
     FILE* fichier_stat = fopen("results/stats.txt", "w+");
-    FILE* fichier_forces = fopen("results/forces.txt", "w+");
-    FILE* fichier_fluxes = fopen("results/fluxes.txt", "w+");
-    FILE* fichier_particle = fopen("results/particle.txt", "w+");
     FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
     /*Initialization of the mask */
@@ -149,7 +172,7 @@ int main(int argc, char *argv[]){
         /** Check for collisions **/
         collision(&data);
 
-        for (k = 0; k<data.Np -1; k++){
+        for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
             flag_out += integrate_penalization_periodic(&data, &surf, k);
 #ifdef  MOVE
@@ -205,15 +228,14 @@ int main(int argc, char *argv[]){
 
 #ifdef WRITE
         if(rank == 0){
-            fprintf(fichier_stat, "%3.13e \t  %3.13e \n", data.Reh_max, data.Reh_omega_max);
+            fprintf(fichier_stat, "%3.13e \t  %3.13e \t  %3.13e \n", data.CFL_max, data.Reh_max, data.Reh_omega_max);
             fflush(fichier_stat);
-            fprintf(fichier_forces, "%3.13e \t  %3.13e  \t %3.13e \n", data.Fx[0],  data.Fy[0], data.Tz[0]);
-            fflush(fichier_forces);
-            fprintf(fichier_fluxes, "%3.13e \t  %3.13e \n", data.Q[0], data.Qm[0][0]);
-            fflush(fichier_fluxes);
-            fprintf(fichier_particle, "%3.13e \t  %3.13e \t %3.13e \t %3.13e \t %3.13e  \t %3.13e \t %3.13e \n", data.xg[0], data.yg[0], data.theta[0],
-                    data.Up[0][3], data.Vp[0][3], data.Omega_p[0][3], data.Tp[0]);
-            fflush(fichier_particle);
+
+            for (int k = 0; k< data.Np; k++) {
+                writeForces(&data, fichier_forces, k);
+                writeParticle(&data, fichier_particles, k);
+                writeFluxes(&data, fichier_fluxes, k);
+            }
 
             if(data.iter % data.T_write == 0){
                 writeFields_periodic(&data, data.iter);
@@ -225,12 +247,19 @@ int main(int argc, char *argv[]){
         data.iter ++;
 
     }
+    for (int k = 0; k< data.Np; k++)
+    {
+        fclose(fichier_forces[k]);
+        fclose(fichier_fluxes[k]);
+        fclose(fichier_particles[k]);
+    }
+    free(fichier_forces);
+    free(fichier_fluxes);
+    free(fichier_particles);
 
-    fclose(fichier_forces);
-    fclose(fichier_fluxes);
-    fclose(fichier_particle);
     fclose(fichier_stat);
     fclose(fichier_forces_NOCA);
+
 
     /* Free memory */
     free_fields(&data);
@@ -243,7 +272,7 @@ int main(int argc, char *argv[]){
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Dp = 1.;
+    data->Dp = 1;
     data->d = 4.;
     data->H = 0.5*data->d;
     data->L = 8.;
@@ -261,10 +290,10 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->nu = 0.01; //data->u_m*data->Dp/data->Rep;
     data->g = 0;
 #ifdef GRAVITY
-    data->g = 9.81;
+    data->g = 1;//9.81;
 #endif
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
@@ -273,7 +302,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 100.;
+    data->rho_p = 10;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -297,7 +326,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.025;  /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -369,6 +398,8 @@ void diagnostic(Data* data){
     double** omega = data->omega;
     double** Reh = data->Reh;
     double** Reh_omega = data->Reh_omega;
+    double** CFL_array = data->CFL_array;
+    double dt = data->dt;
     double h = data->h;
     double nu = data->nu;
     double m = data->m;
@@ -376,12 +407,17 @@ void diagnostic(Data* data){
 
     data->Reh_max = 0.;
     data->Reh_omega_max = 0.;
+    data->CFL_max =0.;
 
     int i, j;
     for (i=0; i<m; i++) {
         for (j = 1; j<n-1; j++) {
+            CFL_array[i][j] = (fabs(u_n[i][j]) + fabs(v_n[i][j]))*dt/h;
             Reh[i][j] = (fabs(u_n[i][j]) + fabs(v_n[i][j]))*h/nu;
             Reh_omega[i][j] = fabs(omega[i][j])*h*h/n;
+            if(CFL_array[i][j] > data->CFL_max){
+                data->CFL_max = CFL_array[i][j];
+            }
             if(Reh[i][j] > data->Reh_max){
                 data->Reh_max = Reh[i][j];
             }
