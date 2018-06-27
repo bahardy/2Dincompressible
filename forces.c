@@ -139,7 +139,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     return 0;
 }
 
-int integrate_penalization_periodic(Data *data, double* surf, int k)
+void integrate_penalization_periodic(Data *data, double* surf, int k)
 {
     // Integral terms
     double** F = data->F;
@@ -197,16 +197,6 @@ int integrate_penalization_periodic(Data *data, double* surf, int k)
         //  PP[k][s][2] = 0.;
     }
 #endif
-/*
-    int startX = (int) floor((xg[k] - rp[k]) / h);
-    PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
-    int endX = (int) ceil((xg[k]+rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
-
-    int startY = (int) floor((yg[k]-rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
-    int endY = (int) ceil((yg[k]+rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);*/
 
     double Fint, Gint, Mint, Qint, *Qmint, sint;
     Fint = 0.;
@@ -268,7 +258,6 @@ int integrate_penalization_periodic(Data *data, double* surf, int k)
     free(Qmint);
     free(d);
     PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
-    return 0;
 }
 
 void compute_forces_fluxes(Data* data, int k)
