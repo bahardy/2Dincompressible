@@ -26,7 +26,7 @@
 #define DISK
 #define SLIP
 #define EXPLICIT
-#define GRAVITY
+//#define GRAVITY
 #define SMOOTHING
 
 
@@ -66,9 +66,12 @@ int main(int argc, char *argv[]){
     data.theta[0] = 0;
     data.theta[1] = 0;
 
+    data.Up[0][2] = -data.u_m;
+    data.Up[1][2] = data.u_m;
+
     //impulsively started cylinder : we impose the motion
     for(int k=0; k<data.Np; k++){
-        data.Up[k][2] = 0*data.u_m;
+        //data.Up[k][2] = 0*data.u_m;
         data.Up[k][1] = data.Up[k][2];
         data.Up[k][0] = data.Up[k][2];
 
@@ -77,6 +80,8 @@ int main(int argc, char *argv[]){
         data.Vp[k][0] = data.Vp[k][2];
 
     }
+
+
 #ifdef TEMP
     /*Initialization of particles temperatures */
     for(int k=0; k<data.Np; k++){
@@ -166,7 +171,6 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
 
         /** --- SOLVE PARTICULAR PHASE --- */
-        int flag_out = 0;
         int k;
 
         /** Check for collisions **/
@@ -174,7 +178,7 @@ int main(int argc, char *argv[]){
 
         for (k = 0; k<data.Np; k++){
             /* Integrate penalization term */
-            flag_out += integrate_penalization_periodic(&data, &surf, k);
+            integrate_penalization_periodic(&data, &surf, k);
 #ifdef  MOVE
             /* Velocity - Forces */
             if(t > data.t_move){
@@ -193,9 +197,6 @@ int main(int argc, char *argv[]){
             }
 #endif
             compute_forces_fluxes(&data, k);
-        }
-        if (flag_out > 0){
-            break;
         }
 
         /** --- SOLVE FLUID PHASE --- */
@@ -290,7 +291,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = 0.01; //data->u_m*data->Dp/data->Rep;
+    data->nu = data->u_m*data->Dp/data->Rep;
     data->g = 0;
 #ifdef GRAVITY
     data->g = 1;//9.81;
@@ -326,7 +327,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.025;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;

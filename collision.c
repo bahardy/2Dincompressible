@@ -16,7 +16,7 @@ void collision(Data* data)
 
     int k1, k2;
     double x1, y1, R1, x2, y2, R2;
-    double z = data->eps;
+    double z = data->h;
     double d12, d_wall;
     double d = data->d;
     double* xg = data->xg;
@@ -33,7 +33,7 @@ void collision(Data* data)
 
     double c11 = S*(rho_s - rho_f)*g;
     double c12 = c11;
-    double ep = 1e-8;
+    double ep = 1e-6;
     double Ep = 1e-10;
     double ew = 1e-8;
     double Ew = 1e-10;
