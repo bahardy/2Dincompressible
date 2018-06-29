@@ -56,18 +56,19 @@ int main(int argc, char *argv[]){
 
     /* Particles position */
     data.xg[0] = 6;
-    data.xg[1] = 4.5;
     data.yg[0] = data.H+0.001;
-    data.yg[1] = data.H-0.001;
     data.dp[0] = data.Dp;
-    data.dp[1] = data.Dp;
     data.rp[0] = .5*data.Dp;
-    data.rp[1] = .5*data.Dp;
     data.theta[0] = 0;
-    data.theta[1] = 0;
+
+//    data.xg[1] = 4.5;
+//    data.yg[1] = data.H-0.001;
+//    data.dp[1] = data.Dp;
+//    data.rp[1] = .5*data.Dp;
+//    data.theta[1] = 0;
 
     data.Up[0][2] = -data.u_m;
-    data.Up[1][2] = data.u_m;
+ //   data.Up[1][2] = data.u_m;
 
     //impulsively started cylinder : we impose the motion
     for(int k=0; k<data.Np; k++){
@@ -291,7 +292,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->nu = 0.01;//data->u_m*data->Dp/data->Rep;
     data->g = 0;
 #ifdef GRAVITY
     data->g = 1;//9.81;
@@ -303,7 +304,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 10;
+    data->rho_p = 2;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -311,7 +312,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 2;
-    data->Np = 2;
+    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     data->Df[0] = data->nu/data->Sc;
     data->Df[1] = data->nu/data->Sc;
