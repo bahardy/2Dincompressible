@@ -25,7 +25,7 @@
 #define WRITE
 #define DISK
 #define SLIP
-#define EXPLICIT
+//#define EXPLICIT
 //#define GRAVITY
 #define SMOOTHING
 
@@ -55,19 +55,20 @@ int main(int argc, char *argv[]){
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 6;
-    data.xg[1] = 4.5;
-    data.yg[0] = data.H+0.001;
-    data.yg[1] = data.H-0.001;
+    data.xg[0] = 8;
+    //data.xg[1] = 4.5;
+    data.yg[0] = data.H;
+    //data.yg[1] = data.H-0.001;
     data.dp[0] = data.Dp;
-    data.dp[1] = data.Dp;
+    //data.dp[1] = data.Dp;
     data.rp[0] = .5*data.Dp;
-    data.rp[1] = .5*data.Dp;
+    //data.rp[1] = .5*data.Dp;
     data.theta[0] = 0;
-    data.theta[1] = 0;
+    //data.theta[1] = 0;
 
-    data.Up[0][2] = -data.u_m;
-    data.Up[1][2] = data.u_m;
+    data.Up[0][3] = -data.u_m;
+    data.Up[0][2] = data.Up[0][3];
+    //data.Up[1][2] = data.u_m;
 
     //impulsively started cylinder : we impose the motion
     for(int k=0; k<data.Np; k++){
@@ -140,7 +141,7 @@ int main(int argc, char *argv[]){
         strcat(fileFluxes, "-");
         strcat(fileFluxes, K);
         strcat(fileFluxes, ".txt");
-        fichier_fluxes[k] = fopen(fileForces, "w+");
+        fichier_fluxes[k] = fopen(fileFluxes, "w+");
     }
 
     FILE* fichier_stat = fopen("results/stats.txt", "w+");
@@ -170,57 +171,94 @@ int main(int argc, char *argv[]){
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
 
-        /** --- SOLVE PARTICULAR PHASE --- */
-        int k;
-
+        /** --- SOLVE SOLID PHASE --- */
+        int i,j,k;
+        int m = data.m;
+        int n = data.n;
+        int Np = data.Np;
         /** Check for collisions **/
         collision(&data);
 
-        for (k = 0; k<data.Np; k++){
-            /* Integrate penalization term */
-            integrate_penalization_periodic(&data, &surf, k);
-#ifdef  MOVE
-            /* Velocity - Forces */
-            if(t > data.t_move){
-                update_Xp(&data, k);
-#ifdef TWO_WAY
-                update_Up(&data, k);
-#endif
-            }
-#endif
-#ifdef  TEMP
-            /*Temperature - Species - Fluxes */
-            if(t > data.t_transfer)
+        double** u_k = make2DDoubleArray(m,n);
+        double** v_k = make2DDoubleArray(m,n);
+        double** p_k = make2DDoubleArray(m,n);
+        double* Up_k = make1DDoubleArray(Np);
+        double* Vp_k = make1DDoubleArray(Np);
+        double* Omega_p_k = make1DDoubleArray(Np);
+        double* Xp_k = make1DDoubleArray(Np);
+        double* Yp_k = make1DDoubleArray(Np);
+
+        for (i = 0; i < m; i++)
+        {
+            for(j = 0; j <n; j++)
             {
-                update_Tp(&data, k);
-                update_Cp(&data, k);
+                u_k[i][j] = data.u_n[i][j];
+                v_k[i][j] = data.v_n[i][j];
+                p_k[i][j] = data.P[i][j]
+                Up_k[k] = data.Up[k][0];
+                Vp_k[i] = data.Vp[k][0];
+                Xp_k[k] = data.xg[k];
+                Yp_k[k] = data.yg[k];
             }
-#endif
-            compute_forces_fluxes(&data, k);
         }
 
-        /** --- SOLVE FLUID PHASE --- */
+        /** Check for collisions **/
+        while(delta > tol) {
+            //collision(&data);
+
+            for (k = 0; k < data.Np; k++) {
+                /* Integrate penalization term */
+                integrate_penalization_periodic(&data, u_k, v_k ,&surf, k);
 #ifdef  MOVE
-        /*Compute the mask functions */
-        get_masks(&data);
-        /* Deduce solid velocity field */
-        get_Us_Vs(&data);
+                /* Velocity - Forces */
+                if (t > data.t_move) {
+#ifdef TWO_WAY
+                    update_Up(&data, k);
+#endif
+                    update_Xp(&data, Up_k, Vp_k, Omega_p_k, k);
+                }
+#endif
+#ifdef  TEMP
+                /*Temperature - Species - Fluxes */
+                if(t > data.t_transfer)
+                {
+                    update_Tp(&data, k);
+                    update_Cp(&data, k);
+                }
+#endif
+                compute_forces_fluxes(&data, k);
+            }
+
+            /** --- SOLVE FLUID PHASE --- */
+#ifdef  MOVE
+            /*Compute the mask functions */
+            get_masks(&data);
+            /* Deduce solid velocity field */
+            get_Us_Vs(&data);
 #endif
 
 #ifdef TEMP
-        get_Ts(&data);
-        get_Cs(&data);
+            get_Ts(&data);
+            get_Cs(&data);
 #endif
-        get_Ustar_Vstar(&data, data.ramp);
-        clock_t t_init = clock();
-        poisson_solver_periodic(&data, rank, nbproc);
-        clock_t t_final = clock();
-        double t_Poisson = ((double) (t_final - t_init))/CLOCKS_PER_SEC;
-        PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
-        poisson_residual_periodic(&data);
+            get_Ustar_Vstar(&data, data.ramp);
+            clock_t t_init = clock();
+            poisson_solver_periodic(&data, rank, nbproc);
+            clock_t t_final = clock();
+            double t_Poisson = ((double) (t_final - t_init)) / CLOCKS_PER_SEC;
+            PetscPrintf(PETSC_COMM_WORLD, "Poisson solver took %f seconds \n", t_Poisson);
+            poisson_residual_periodic(&data);
 
-        update_flow(&data);
-        get_ghosts(&data, data.Tm0, data.C0);
+            update_flow(&data);
+            get_ghosts(&data, data.Tm0, data.C0);
+        }
+
+#ifdef TWO_WAY
+        Up[k][0] = Up[k][1];
+        Vp[k][0] = Vp[k][1];
+        Omega_p[k][0] = Omega_p[k][1];
+#endif
+
         get_vorticity(&data);
         get_tau_periodic(&data);
 
@@ -276,7 +314,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Dp = 1;
     data->d = 4.;
     data->H = 0.5*data->d;
-    data->L = 8.;
+    data->L = 10.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -303,7 +341,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 10;
+    data->rho_p = 100;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -311,7 +349,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 2;
-    data->Np = 2;
+    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     data->Df[0] = data->nu/data->Sc;
     data->Df[1] = data->nu/data->Sc;
@@ -327,7 +365,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.05;  /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1;  /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -336,7 +374,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ratio_dtau_dt = 1;
 #endif
 #ifndef EXPLICIT
-    data->ratio_dtau_dt = 1e-3;
+    data->ratio_dtau_dt = 1e-4;
 #endif
 
     data->dt = fmin(dt_CFL, dt_diff);
@@ -975,7 +1013,7 @@ void get_vorticity(Data* data){
     }
 }
 
-void update_Xp(Data* data, int k)
+void update_Xp(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
 {
     double* xg = data->xg;
     double* yg = data->yg;
@@ -985,9 +1023,9 @@ void update_Xp(Data* data, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
-    xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
-    yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
-    theta[k] += dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;
+    xg[k] += dt*(Up_k[k]+ Up[k][0])/2.;
+    yg[k] += dt*(Vp_k[k]+ Vp[k][0])/2.;
+    theta[k] += dt*(Omega_p_k[k]+Omega_p[k][0])/2.;
     PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", theta[k]);
 
@@ -1017,15 +1055,11 @@ void update_Up(Data* data, int k)
 
 
     dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
-    Up[k][3] = Up[k][2] + dt*dudt[k];
+    Up[k][1] = Up[k][0] + dt*dudt[k];
     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
-    Vp[k][3] = Vp[k][2] + dt*dvdt[k];
+    Vp[k][1] = Vp[k][0] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
-    Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
-
-    Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
-    Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
-    Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];
+    Omega_p[k][1] = Omega_p[k][0] + dt*domegadt[k];
 }
 
 

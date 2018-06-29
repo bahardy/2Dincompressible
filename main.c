@@ -110,7 +110,7 @@ int main(int argc, char *argv[]){
         strcat(fileFluxes, "-");
         strcat(fileFluxes, K);
         strcat(fileFluxes, ".txt");
-        fichier_fluxes[k] = fopen(fileForces, "w+");
+        fichier_fluxes[k] = fopen(fileFluxes, "w+");
     }
     FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 

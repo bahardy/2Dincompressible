@@ -194,7 +194,7 @@ void get_Ustar_Vstar(Data* data, double ramp);
 void get_vorticity(Data* data);
 void update_flow(Data* data);
 void update_scalars(Data* data);
-void update_Xp(Data* data, int k);
+void update_Xp(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k);
 void update_Up(Data* data, int k);
 void update_Tp(Data* data,int k);
 void update_Cp(Data* data, int k);

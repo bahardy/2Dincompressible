@@ -139,7 +139,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     return 0;
 }
 
-void integrate_penalization_periodic(Data *data, double* surf, int k)
+void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, double* surf, int k)
 {
     // Integral terms
     double** F = data->F;
@@ -151,8 +151,8 @@ void integrate_penalization_periodic(Data *data, double* surf, int k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
-    double** u_n = data->u_star;
-    double** v_n = data->v_star;
+//    double** u_n = data->u_star;
+//    double** v_n = data->v_star;
     double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
@@ -222,8 +222,8 @@ void integrate_penalization_periodic(Data *data, double* surf, int k)
 
         for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
-            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
-            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
+            f = -Ip_U[k][i][j]*(u_k[i][j]-u_s[i][j]);
+            g = -Ip_V[k][i][j]*(v_k[i][j]-v_s[i][j]);
 #ifdef TEMP
             q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
             Qint += q;
@@ -291,7 +291,7 @@ void compute_forces_fluxes(Data* data, int k)
 
     double cf = data->cf;
 
-    PetscPrintf(PETSC_COMM_WORLD,"\n F integration = %1.6e \n", k+1, F[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"F integration = %1.6e \n", k+1, F[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
