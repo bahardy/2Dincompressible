@@ -139,7 +139,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     return 0;
 }
 
-void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, double* surf, int k)
+void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, double* surf, int k)
 {
     // Integral terms
     double** F = data->F;
@@ -151,8 +151,8 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
-//    double** u_n = data->u_star;
-//    double** v_n = data->v_star;
+    double** u_n = data->u_star;
+    double** v_n = data->v_star;
     double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
@@ -172,18 +172,6 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
     double h = data->h;
     double dtau = data->dtau;
 
-
-    /* Force along x-direction */
-    F[k][0] = F[k][1]; /* n-2*/
-    F[k][1] = F[k][2]; /* n-1*/
-
-    /* Force along y-direction */
-    G[k][0] = G[k][1];
-    G[k][1] = G[k][2];
-
-    /* Moment along z-direction */
-    M[k][0] = M[k][1];
-    M[k][1] = M[k][2];
 
 #ifdef TEMP
     /* Particle heat balance  */
@@ -209,7 +197,7 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
     double h2;
     h2 = h*h;
     double yU, xV, f, g, q, qm;
-    double xG = fmod(xg[k], L);
+    double xG = fmod(Xp_k[k], L);
     int index;
 
     for(int i = 0; i<m; i++){
@@ -222,8 +210,8 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
 
         for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
-            f = -Ip_U[k][i][j]*(u_k[i][j]-u_s[i][j]);
-            g = -Ip_V[k][i][j]*(v_k[i][j]-v_s[i][j]);
+            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
+            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
 #ifdef TEMP
             q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
             Qint += q;
@@ -236,7 +224,7 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
 
             Fint += f; /* units : m/s */
             Gint += g; /* units : m/s */
-            Mint += dx_min*g-(yU-yg[k])*f;/* units: m^2/s */
+            Mint += dx_min*g-(yU-Yp_k[k])*f;/* units: m^2/s */
         }
     }
     Fint *= h2/dtau; /* units : m^3/s; */
@@ -257,11 +245,13 @@ void integrate_penalization_periodic(Data *data, double** u_k, double** v_k, dou
 #endif
     free(Qmint);
     free(d);
-    PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
+    //PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
 }
 
 void compute_forces_fluxes(Data* data, int k)
 {
+
+    double dt = data->dt;
 
     double* Fx = data->Fx;
     double* Fy = data->Fy;
@@ -277,6 +267,9 @@ void compute_forces_fluxes(Data* data, int k)
     double** QQ = data->QQ;
     double*** PP = data->PP;
 
+    double** Up = data->Up;
+    double** Vp = data->Vp;
+    double** Omega_p = data->Omega_p;
     double* dudt = data->dudt;
     double* dvdt = data->dvdt;
     double* domegadt = data->domegadt;
@@ -295,6 +288,10 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
+    dudt[k] = (Up[k][1]-Up[k][0])/dt;
+    dvdt[k] = (Vp[k][1]-Vp[k][0])/dt;
+    domegadt[k] = (Omega_p[k][1]-Omega_p[k][0])/dt;
+
     PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k]);
     PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k]);
     PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k]);
@@ -311,8 +308,8 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n", k+1, Fx[k], Fbis, Fter);
     PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m] \n", k+1, Fy[k]);
     PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
 }
 
 void get_tau(Data* data)
