@@ -41,6 +41,7 @@ struct Data{
     double Sc;
     double Le;
     double Fr;
+    double Ga;
     double alpha_f;
     double* Df;
     double dH; // kJ/mol
@@ -186,14 +187,16 @@ struct Data{
 void compute_Qr(double** Qr, double rate, double dH, int k);
 void diagnostic(Data* data);
 void get_ghosts(Data* data, double T0, double* C0);
-void get_masks(Data* data);
+void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k);
 void get_Cs(Data* data);
 void get_Ts(Data* data);
-void get_Us_Vs(Data* data);
+void get_Us_Vs(Data* data, double* Xp_k, double* Yp_k, double* Up_k, double* Vp_k, double* Omega_p_k);
 void get_Ustar_Vstar(Data* data, double ramp);
 void get_vorticity(Data* data);
 void update_flow(Data* data);
 void update_scalars(Data* data);
+void update_Tp(Data* data,int k);
+void update_Cp(Data* data, int k);
 void set_up(Data* data, int argc, char *argv[], int rank);
 
 /* SOME HELPFUL FUNCTIONS */

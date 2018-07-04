@@ -72,7 +72,7 @@ void initialize_fields(Data* data)
 
     data->u_n = make2DDoubleArray(m,n);
     data->u_n_1 = make2DDoubleArray(m,n);
-    data->Up = make2DDoubleArray(Np,4);
+    data->Up = make2DDoubleArray(Np,2);
     data->u_s = make2DDoubleArray(m,n);
     data->u_star = make2DDoubleArray(m,n);
 

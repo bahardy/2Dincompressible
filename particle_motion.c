@@ -1,29 +1,37 @@
+// Created by Baptiste Hardy on 29/06/18.
+// Created by Baptiste Hardy on 29/06/18.
 //
-// Created by Baptiste Hardy on 2/07/18.
-//
-
 #include "main.h"
 #include "particle_motion.h"
 
-void update_Xp(Data* data, int k)
-{
-double* xg = data->xg;
-double* yg = data->yg;
-double* theta = data->theta;
-double** Up = data->Up;
-double** Vp = data->Vp;
-double** Omega_p = data->Omega_p;
-double dt = data->dt;
 
-xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
-yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
-theta[k] += dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;
-PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
-PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", theta[k]);
+
+void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
+               double* Up_k, double* Vp_k, double* Omega_p_k,  int k)
+{
+    double* xg = data->xg;
+    double* yg = data->yg;
+    double* theta = data->theta;
+    double** Up = data->Up;
+    double** Vp = data->Vp;
+    double** Omega_p = data->Omega_p;
+    double dt = data->dt;
+
+    Xp_k[k] = xg[k] + dt*(Up_k[k]+ Up[k][0])/2.;
+    Yp_k[k] = yg[k] + dt*(Vp_k[k]+ Vp[k][0])/2.;
+    theta_k[k] = theta[k] + dt*(Omega_p_k[k]+Omega_p[k][0])/2.;
+
+
+    /*xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
+    yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
+    theta[k] += dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;*/
+
+    //PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", theta[k]);
 
 }
 
-void update_Up(Data* data, int k)
+void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
 {
     double* dudt = data->dudt;
     double* dvdt = data->dvdt;
@@ -45,19 +53,22 @@ void update_Up(Data* data, int k)
 
     double dt = data->dt;
 
+    Up_k[k] = Up[k][0] + dt*(F[k][2]/Sp[k] - g)/(rho_r -1);
+    Vp_k[k] = Vp[k][0] + dt*G[k][2]/(Sp[k]*(rho_r - 1.));
+    Omega_p_k[k] = Omega_p[k][0] + dt*M[k][2]/(J[k]*(rho_r - 1.));
 
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
-    Up[k][3] = Up[k][2] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
-    Vp[k][3] = Vp[k][2] + dt*dvdt[k];
-    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
-    Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
 
-    Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
-    Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
-    Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];
+    /* dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
+     Up[k][3] = Up[k][2] + dt*dudt[k];
+     dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
+     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
+     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
+     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
+
+     Up[k][0] = Up[k][1]; Up[k][1] = Up[k][2]; Up[k][2] = Up[k][3];
+     Vp[k][0] = Vp[k][1]; Vp[k][1] = Vp[k][2]; Vp[k][2] = Vp[k][3];
+     Omega_p[k][0] = Omega_p[k][1]; Omega_p[k][1] = Omega_p[k][2]; Omega_p[k][2] = Omega_p[k][3];*/
 }
-
 
 void update_Tp(Data* data, int k)
 {
