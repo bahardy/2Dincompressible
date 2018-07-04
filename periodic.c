@@ -9,6 +9,7 @@
 #include <mpi.h>
 #include <petsc.h>
 #include <sys/stat.h>
+
 #include "main.h"
 #include "poisson.h"
 #include "write.h"
@@ -16,21 +17,6 @@
 #include "forces.h"
 #include "collision.h"
 #include "particle_motion.h"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define TWO_WAY
-//#define RAMPING
-#define WRITE
-#define DISK
-#define SLIP
-//#define EXPLICIT
-#define GRAVITY
-#define SMOOTHING
-#define ITERATIVE
-#define SEDIMENTATION
 
 
 int main(int argc, char *argv[]){
@@ -45,7 +31,6 @@ int main(int argc, char *argv[]){
     if (stat("results", &st) == -1) {
         mkdir("results", 0700);
     }
-
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
@@ -74,18 +59,6 @@ int main(int argc, char *argv[]){
 
     data.Vp[0][1] =0.;
     data.Vp[0][0] = data.Vp[0][1];
-
-    //impulsively started cylinder : we impose the motion
-//    for(int k=0; k<data.Np; k++){
-//        //data.Up[k][2] = 0*data.u_m;
-//        data.Up[k][1] = data.Up[k][2];
-//        data.Up[k][0] = data.Up[k][2];
-//
-//        data.Vp[k][2] = 0; //data.u_m;
-//        data.Vp[k][1] = data.Vp[k][2];
-//        data.Vp[k][0] = data.Vp[k][2];
-//
-//    }
 
 
 #ifdef TEMP
@@ -215,8 +188,10 @@ int main(int argc, char *argv[]){
     double relax;
     int it_max;
 
+#ifndef ITERATIVE
     it_max = 1;
     relax = 1;
+#endif
 #ifdef ITERATIVE
     it_max = 100;
     relax = 0.2;
@@ -266,13 +241,9 @@ int main(int argc, char *argv[]){
 
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
-            /*Compute the mask functions */
             printf("xp = %f \n", Xp_k[0]);
             get_masks(&data, Xp_k, Yp_k, theta_k);
-
-            /* Deduce solid velocity field */
             get_Us_Vs(&data, Xp_k, Yp_k, Up_k, Vp_k, Omega_p_k);
-
 #endif
 
 #ifdef TEMP
@@ -439,12 +410,12 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->rho_f = 1.;
     data->rho_p = 1.5;
     data->rho_r = data->rho_p/data->rho_f;
-    data->Ga = 1e2*sqrt(data->rho_r -1);
-    // pre-factor 0.1 = (g*dp^3/nu)^0.5
     data->cp = 1000.;
     data->cf = 1000.;
     data->cr = data->cp/data->cf;
+
 #ifdef SEDIMENTATION
+    data->Ga = 1e2;
     data->Rep = data->Ga;
 #endif
     data->nu = data->u_m*data->Dp/data->Rep;
@@ -620,8 +591,6 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double** coloring = data->coloring;
-    double* xg = data->xg;
-    double* yg = data->yg;
     double* theta = data->theta;
     double* rp = data->rp;
     double dist;

@@ -159,9 +159,6 @@ void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, dou
     double** v_s = data->v_s;
     double** Ts = data->Ts;
     double*** Cs = data->Cs;
-    double* xg = data->xg;
-    double* yg = data->yg;
-    double* rp = data->rp;
     double* d = make1DDoubleArray(3);
     double dx_min;
 
@@ -194,19 +191,21 @@ void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, dou
     Qmint = make1DDoubleArray(Ns);
     sint = 0.;
 
-    double h2;
-    h2 = h*h;
+    double h2 = h*h;
     double yU, xV, f, g, q, qm;
+
     double xG = fmod(Xp_k[k], L);
-    int index;
+    double YG = Yp_k[k];
+
+    int i_min;
 
     for(int i = 0; i<m; i++){
         xV = (i+0.5)*h;
         d[0] = xV - (xG-L);
         d[1] = xV - xG;
         d[2] = xV - (xG+L);
-        index = min_abs(d,3);
-        dx_min = d[index];
+        i_min = min_abs(d,3);
+        dx_min = d[i_min];
 
         for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
@@ -224,7 +223,7 @@ void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, dou
 
             Fint += f; /* units : m/s */
             Gint += g; /* units : m/s */
-            Mint += dx_min*g-(yU-Yp_k[k])*f;/* units: m^2/s */
+            Mint += dx_min*g-(yU-YG)*f;/* units: m^2/s */
         }
     }
     Fint *= h2/dtau; /* units : m^3/s; */

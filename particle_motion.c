@@ -33,9 +33,6 @@ void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
 
 void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
 {
-    double* dudt = data->dudt;
-    double* dvdt = data->dvdt;
-    double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
     double rho_f = data->rho_f;
     double rho_p = data->rho_p;
@@ -53,7 +50,7 @@ void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
 
     double dt = data->dt;
 
-    Up_k[k] = Up[k][0] + dt*(F[k][2]/Sp[k] - g)/(rho_r -1);
+    Up_k[k] = Up[k][0] + dt*(F[k][2]/(Sp[k]*(rho_r -1)) - g);
     Vp_k[k] = Vp[k][0] + dt*G[k][2]/(Sp[k]*(rho_r - 1.));
     Omega_p_k[k] = Omega_p[k][0] + dt*M[k][2]/(J[k]*(rho_r - 1.));
 
