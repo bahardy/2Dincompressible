@@ -27,18 +27,13 @@ void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
 
     double dt = data->dt;
 
-
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.))
-              + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
-    Up_k[k] = Up[k][0] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.))
-              + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
-    Vp_k[k] = Vp[k][0] + dt*dvdt[k];
-    domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
-    Omega_p_k[k] = Omega_p[k][0] + dt*domegadt[k];
+    Up_k[k] = Up[k][0] + dt*(F[k][2]/Sp[k] - g)/(rho_r -1);
+    Vp_k[k] = Vp[k][0] + dt*G[k][2]/(Sp[k]*(rho_r - 1.));
+    Omega_p_k[k] = Omega_p[k][0] + dt*M[k][2]/(J[k]*(rho_r - 1.));
 }
 
-void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k, int k)
+void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
+               double* Up_k, double* Vp_k, double* Omega_p_k,  int k)
 {
     double* xg = data->xg;
     double* yg = data->yg;
@@ -48,9 +43,9 @@ void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
-    Xp_k[k] = xg[k] + dt*(Up[k][1]+ Up[k][0])/2.;
-    Yp_k[k] = yg[k] + dt*(Vp[k][1]+ Vp[k][0])/2.;
-    theta_k[k] = theta[k] + dt*(Omega_p[k][1]+Omega_p[k][0])/2.;
+    Xp_k[k] = xg[k] + dt*(Up_k[k]+ Up[k][0])/2.;
+    Yp_k[k] = yg[k] + dt*(Vp_k[k]+ Vp[k][0])/2.;
+    theta_k[k] = theta[k] + dt*(Omega_p_k[k]+Omega_p[k][0])/2.;
     //PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", theta[k]);
 

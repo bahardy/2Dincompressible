@@ -29,6 +29,8 @@
 //#define EXPLICIT
 #define GRAVITY
 #define SMOOTHING
+#define ITERATIVE
+#define SEDIMENTATION
 
 
 int  main(int argc, char *argv[]){
@@ -152,25 +154,6 @@ int  main(int argc, char *argv[]){
     FILE* fichier_stat = fopen("results/stats.txt", "w+");
     FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
-    /*Initialization of the mask */
-    get_masks(&data, data.xg, data.yg, data.theta);
-
-#ifdef WRITE
-    /*INITIAL SOLUTION (t=0) AFTER RAMPING */
-    if(rank==0){
-        writeFields_periodic(&data, 0);
-    }
-#endif
-
-
-    int iter_start = 1;
-    double t_start = 0.;
-
-    /** -------------------------------TIME STEPPING ------------------------------- **/
-    data.iter = iter_start;
-    double t = t_start;
-    double surf = 0;
-
     int m = data.m;
     int n = data.n;
     int Np = data.Np;
@@ -212,9 +195,34 @@ int  main(int argc, char *argv[]){
         }
     }
 
+    /*Initialization of the mask */
+    get_masks(&data, data.xg, data.yg, data.theta);
+    get_Us_Vs(&data, data.xg, data.yg, Up_k, Vp_k, Omega_p_k);
+
+#ifdef WRITE
+    /*INITIAL SOLUTION (t=0) AFTER RAMPING */
+    if(rank==0){
+        writeFields_periodic(&data, 0);
+    }
+#endif
+
+
+    /** -------------------------------TIME STEPPING ------------------------------- **/
+    data.iter = 1;
+    double c1, c2, c3, c4, c5, c6;
+    double t = 0;
+    double surf = 0;
     double delta;
     double tol = 1e-5;
-    double relax = 0.5;
+    double relax;
+    int it_max;
+
+    it_max = 1;
+    relax = 1;
+#ifdef ITERATIVE
+    it_max = 100;
+    relax = 0.2;
+#endif
 
     while(t < data.Tf){
 
@@ -222,17 +230,18 @@ int  main(int argc, char *argv[]){
 
         /** --- SOLVE SOLID PHASE --- */
         int k;
-        int itk = 0;
+        int it = 0;
+
         /** Check for collisions **/
-        //collision(&data);
+        collision(&data);
 
         delta = INFINITY;
         /** Check for collisions **/
-        while(delta > tol) {
+        while(delta > tol &&  it < it_max) {
             //collision(&data);
             for (k = 0; k < data.Np; k++) {
                 /* Integrate penalization term */
-                integrate_penalization_periodic(&data, Xp_k, Yp_k ,&surf, k);
+                integrate_penalization_periodic(&data, Xp_k, Yp_k, &surf, k);
 #ifdef  MOVE
                 /* Velocity - Forces */
                 if (t >= data.t_move) {
@@ -241,15 +250,10 @@ int  main(int argc, char *argv[]){
                     Up_k[k] = relax*Up_k[k] + (1-relax)*Up_k_1[k];
                     Vp_k[k] = relax*Vp_k[k] + (1-relax)*Vp_k_1[k];
                     Omega_p_k[k] = relax*Omega_p_k[k] + (1-relax)*Omega_p_k_1[k];
-                    data.Up[k][1] = Up_k[k];
-                    data.Vp[k][1] = Vp_k[k];
-                    data.Omega_p[k][1] = Omega_p_k[k];
 #endif
 
-                    update_Xp(&data, Xp_k, Yp_k, theta_k, k);
-                    Xp_k[k] = relax*Xp_k[k] + (1-relax)*Xp_k_1[k];
-                    Yp_k[k] = relax*Yp_k[k] + (1-relax)*Yp_k_1[k];
-                    theta_k[k] = relax*theta_k[k] + (1-relax)*theta_k_1[k];
+                    update_Xp(&data, Xp_k, Yp_k, theta_k, Up_k, Vp_k, Omega_p_k, k);
+
                 }
 #endif
 #ifdef  TEMP
@@ -265,6 +269,7 @@ int  main(int argc, char *argv[]){
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
             /*Compute the mask functions */
+            printf("xp = %f \n", Xp_k[0]);
             get_masks(&data, Xp_k, Yp_k, theta_k);
 
             /* Deduce solid velocity field */
@@ -278,9 +283,14 @@ int  main(int argc, char *argv[]){
 #endif
             get_Ustar_Vstar(&data, data.ramp);
 
-            delta = fmax(fabs(Xp_k[0] - Xp_k_1[0]), fmax(fabs(Yp_k[0] - Yp_k_1[0]),
-                         fmax(fabs(theta_k[0]-theta_k_1[0]), fmax(fabs(Up_k[0] - Up_k_1[0]),
-                         fmax(fabs(Vp_k[0] - Vp_k_1[0]), fabs(Omega_p_k[0] - Omega_p_k_1[0]))))));
+            c1 = fabs(Xp_k[0] - Xp_k_1[0]);
+            c2 = fabs(Yp_k[0] - Yp_k_1[0]);
+            c3 = fabs(theta_k[0] - theta_k_1[0])/2*M_PI;
+            c4 = fabs(Up_k[0] - Up_k_1[0]);
+            c5 = fabs(Vp_k[0] - Vp_k_1[0]);
+            c6 = fabs(Omega_p_k[0] - Omega_p_k_1[0]);
+
+            delta = fmax(c1, fmax(c2, fmax(c3, fmax(c4, fmax(c5, c6)))));
 
             for(k = 0; k<Np; k++)
             {
@@ -291,15 +301,18 @@ int  main(int argc, char *argv[]){
                 Up_k_1[k] = Up_k[k];
                 Vp_k_1[k] = Vp_k[k];
                 Omega_p_k_1[k] = Omega_p_k[k];
-
             }
 
-            itk++;
+            it++;
         }
 
-        PetscPrintf(PETSC_COMM_WORLD, "Fluid-solid coupling achievd after %d iterations. Delta = %f \n", itk, delta);
+        PetscPrintf(PETSC_COMM_WORLD, "Fluid-solid coupling achievd after %d iterations. Delta = %f \n", it, delta);
 
         for (k = 0; k < Np; ++k) {
+            data.Up[k][1] = Up_k[k];
+            data.Vp[k][1] = Vp_k[k];
+            data.Omega_p[k][1] = Omega_p_k[k];
+
             data.xg[k] = Xp_k[k];
             data.yg[k] = Yp_k[k];
             data.theta[k] = theta_k[k];
@@ -415,7 +428,6 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = 0.01;//data->u_m*data->Dp/data->Rep;
     data->g = 0;
 #ifdef GRAVITY
     data->g = 1;//9.81;
@@ -427,11 +439,17 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 2;
+    data->rho_p = 1.5;
     data->rho_r = data->rho_p/data->rho_f;
+    data->Ga = 1e2*sqrt(data->rho_r -1);
+    // pre-factor 0.1 = (g*dp^3/nu)^0.5
     data->cp = 1000.;
     data->cf = 1000.;
     data->cr = data->cp/data->cf;
+#ifdef SEDIMENTATION
+    data->Rep = data->Ga;
+#endif
+    data->nu = data->u_m*data->Dp/data->Rep;
 
     /* SPECIES */
     data->Ns = 2;
@@ -460,10 +478,11 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ratio_dtau_dt = 1;
 #endif
 #ifndef EXPLICIT
-    data->ratio_dtau_dt = 1e-4;
+    data->ratio_dtau_dt = 1e-3;
 #endif
 
     data->dt = fmin(dt_CFL, dt_diff);
+    data->dt = 0.005;
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     data->SORitermax = 100000;

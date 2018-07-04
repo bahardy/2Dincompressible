@@ -41,6 +41,7 @@ struct Data{
     double Sc;
     double Le;
     double Fr;
+    double Ga;
     double alpha_f;
     double* Df;
     double dH; // kJ/mol

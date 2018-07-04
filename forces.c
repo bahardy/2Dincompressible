@@ -245,7 +245,6 @@ void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, dou
 #endif
     free(Qmint);
     free(d);
-    //PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
 }
 
 void compute_forces_fluxes(Data* data, int k)
