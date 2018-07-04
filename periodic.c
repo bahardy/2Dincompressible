@@ -38,27 +38,33 @@ int main(int argc, char *argv[]){
 
     /**------------------------------- Matrix Fields Creation  ------------------------------- **/
 
-    initialize_fields(&data);
+    allocate_fields(&data);
 
     /** ------------------------------- Fields Initialization ------------------------------- **/
 
     /* Particles position */
-    data.xg[0] = 7;
+    data.xg[0][0] = 15;
+    data.xg[0][1] = data.xg[0][0];
+
     //data.xg[1] = 4.5;
-    data.yg[0] = data.H;
-    //data.yg[1] = data.H-0.001;
+    data.yg[0][0] = data.H;
+    data.yg[0][1] = data.yg[0][0];
+
+    data.theta[0][0] = 0;
+    data.theta[0][1] = data.theta[0][0];
+
     data.dp[0] = data.Dp;
     //data.dp[1] = data.Dp;
     data.rp[0] = .5*data.Dp;
     //data.rp[1] = .5*data.Dp;
-    data.theta[0] = 0;
-    //data.theta[1] = 0;
 
     data.Up[0][1] = 0;//-data.u_m;
     data.Up[0][0] = data.Up[0][1];
+    data.Up[0][2] = data.Up[0][1];
 
-    data.Vp[0][1] =0.;
+    data.Vp[0][1] = 0.;
     data.Vp[0][0] = data.Vp[0][1];
+    data.Vp[0][2] = data.Vp[0][1];
 
 
 #ifdef TEMP
@@ -129,46 +135,9 @@ int main(int argc, char *argv[]){
     int n = data.n;
     int Np = data.Np;
 
-    double* Up_k = make1DDoubleArray(Np);
-    double* Up_k_1 =  make1DDoubleArray(Np);
-    double* Vp_k = make1DDoubleArray(Np);
-    double* Vp_k_1 =  make1DDoubleArray(Np);
-    double* Omega_p_k = make1DDoubleArray(Np);
-    double* Omega_p_k_1 =  make1DDoubleArray(Np);
-
-    double* Xp_k = make1DDoubleArray(Np);
-    double* Xp_k_1 = make1DDoubleArray(Np);
-    double* Yp_k = make1DDoubleArray(Np);
-    double* Yp_k_1 = make1DDoubleArray(Np);
-    double* theta_k = make1DDoubleArray(Np);
-    double* theta_k_1 = make1DDoubleArray(Np);
-
-    int i, j;
-    for (i = 0; i < m; i++)
-    {
-        for(j = 0; j <n; j++)
-        {
-            for (int K = 0; K< Np; K++) {
-                Xp_k[K] = data.xg[K];
-                Xp_k_1[K] = data.xg[K];
-                Yp_k[K] = data.yg[K];
-                Yp_k_1[K] = data.yg[K];
-                theta_k[K] = data.theta[K];
-                theta_k_1[K] = data.theta[K];
-
-                Up_k_1[K] = data.Up[K][0];
-                Up_k[K] = data.Up[K][0];
-                Vp_k_1[K] = data.Vp[K][0];
-                Vp_k[K] = data.Vp[K][0];
-                Omega_p_k_1[K] = data.Omega_p[K][0];
-                Omega_p_k[K] = data.Omega_p[K][0];
-            }
-        }
-    }
-
     /*Initialization of the mask */
-    get_masks(&data, data.xg, data.yg, data.theta);
-    get_Us_Vs(&data, data.xg, data.yg, Up_k, Vp_k, Omega_p_k);
+    get_masks(&data);
+    get_Us_Vs(&data);
 
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
@@ -194,8 +163,28 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef ITERATIVE
     it_max = 100;
-    relax = 0.2;
+    relax = 0.5;
 #endif
+
+    double* Up_old =  make1DDoubleArray(Np);
+    double* Vp_old =  make1DDoubleArray(Np);
+    double* Omega_p_old =  make1DDoubleArray(Np);
+
+    double* Xp_old = make1DDoubleArray(Np);
+    double* Yp_old = make1DDoubleArray(Np);
+    double* theta_old = make1DDoubleArray(Np);
+
+    int i, j;
+    for (int K = 0; K< Np; K++) {
+        Xp_old[K] = data.xg[K][0];
+        Yp_old[K] = data.yg[K][0];
+        theta_old[K] = data.theta[K][0];
+
+        Up_old[K] = data.Up[K][0];
+        Vp_old[K] = data.Vp[K][0];
+        Omega_p_old[K] = data.Omega_p[K][0];
+    }
+
 
     while(t < data.Tf){
 
@@ -214,18 +203,17 @@ int main(int argc, char *argv[]){
             //collision(&data);
             for (k = 0; k < data.Np; k++) {
                 /* Integrate penalization term */
-                integrate_penalization_periodic(&data, Xp_k, Yp_k, &surf, k);
+                integrate_penalization_periodic(&data, &surf, k);
 #ifdef  MOVE
                 /* Velocity - Forces */
                 if (t >= data.t_move) {
 #ifdef TWO_WAY
-                    update_Up(&data, Up_k, Vp_k, Omega_p_k, k);
-                    Up_k[k] = relax*Up_k[k] + (1-relax)*Up_k_1[k];
-                    Vp_k[k] = relax*Vp_k[k] + (1-relax)*Vp_k_1[k];
-                    Omega_p_k[k] = relax*Omega_p_k[k] + (1-relax)*Omega_p_k_1[k];
+                    update_Up(&data, k);
+                    data.Up[k][2] = relax*data.Up[k][2] + (1-relax)*Up_old[k];
+                    data.Vp[k][2] = relax*data.Vp[k][2] + (1-relax)*Vp_old[k];
+                    data.Omega_p[k][2] = relax*data.Omega_p[k][2] + (1-relax)*Omega_p_old[k];
 #endif
-
-                    update_Xp(&data, Xp_k, Yp_k, theta_k, Up_k, Vp_k, Omega_p_k, k);
+                    update_Xp(&data, k);
 
                 }
 #endif
@@ -241,9 +229,9 @@ int main(int argc, char *argv[]){
 
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
-            printf("xp = %f \n", Xp_k[0]);
-            get_masks(&data, Xp_k, Yp_k, theta_k);
-            get_Us_Vs(&data, Xp_k, Yp_k, Up_k, Vp_k, Omega_p_k);
+            printf("xp = %f \n", Xp_old[0]);
+            get_masks(&data);
+            get_Us_Vs(&data);
 #endif
 
 #ifdef TEMP
@@ -252,43 +240,32 @@ int main(int argc, char *argv[]){
 #endif
             get_Ustar_Vstar(&data, data.ramp);
 
-            c1 = fabs(Xp_k[0] - Xp_k_1[0]);
-            c2 = fabs(Yp_k[0] - Yp_k_1[0]);
-            c3 = fabs(theta_k[0] - theta_k_1[0])/2*M_PI;
-            c4 = fabs(Up_k[0] - Up_k_1[0]);
-            c5 = fabs(Vp_k[0] - Vp_k_1[0]);
-            c6 = fabs(Omega_p_k[0] - Omega_p_k_1[0]);
+            c1 = fabs(data.xg[0][1] - Xp_old[0]);
+            c2 = fabs(data.yg[0][1] - Yp_old[0]);
+            c3 = fabs(data.theta[0][1] - theta_old[0])/2*M_PI;
+            c4 = fabs(data.Up[0][2] - Up_old[0]);
+            c5 = fabs(data.Vp[0][2] - Vp_old[0]);
+            c6 = fabs(data.Omega_p[0][2] - Omega_p_old[0]);
 
             delta = fmax(c1, fmax(c2, fmax(c3, fmax(c4, fmax(c5, c6)))));
 
             for(k = 0; k<Np; k++)
             {
-                Xp_k_1[k] = Xp_k[k];
-                Yp_k_1[k] = Yp_k[k];
-                theta_k_1[k] = theta_k[k];
+                Xp_old[k] = data.xg[k][1];
+                Yp_old[k] = data.yg[k][1];
+                theta_old[k] = data.theta[k][1];
 
-                Up_k_1[k] = Up_k[k];
-                Vp_k_1[k] = Vp_k[k];
-                Omega_p_k_1[k] = Omega_p_k[k];
+                Up_old[k] = data.Up[k][2];
+                Vp_old[k] = data.Vp[k][2];
+                Omega_p_old[k] = data.Omega_p[k][2];
             }
 
             it++;
         }
 
         PetscPrintf(PETSC_COMM_WORLD, "Fluid-solid coupling achievd after %d iterations. Delta = %f \n", it, delta);
-
-        for (k = 0; k < Np; ++k) {
-            data.Up[k][1] = Up_k[k];
-            data.Vp[k][1] = Vp_k[k];
-            data.Omega_p[k][1] = Omega_p_k[k];
-
-            data.xg[k] = Xp_k[k];
-            data.yg[k] = Yp_k[k];
-            data.theta[k] = theta_k[k];
-            PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, data.xg[k], data.yg[k]);
-            PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", data.theta[k]);
-
-        }
+        PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, data.xg[0][1], data.yg[0][1]);
+        PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", data.theta[0][1]);
 
         compute_forces_fluxes(&data, 0);
 
@@ -308,6 +285,15 @@ int main(int argc, char *argv[]){
 
         /** Update quantities **/
         for (k=0; k<Np; k++) {
+
+            data.Fx_coll[k][0] =  data.Fx_coll[k][1];
+            data.Fx_coll[k][1] =  data.Fx_coll[k][2];
+            data.Fx_coll[k][2] = 0;
+
+            data.Fy_coll[k][0] =  data.Fy_coll[k][1];
+            data.Fy_coll[k][1] =  data.Fy_coll[k][2];
+            data.Fy_coll[k][2] = 0;
+
             /* Force along x-direction */
             data.F[k][0] = data.F[k][1]; /* n-2*/
             data.F[k][1] = data.F[k][2]; /* n-1*/
@@ -320,10 +306,20 @@ int main(int argc, char *argv[]){
             data.Mz[k][0] = data.Mz[k][1];
             data.Mz[k][1] = data.Mz[k][2];
 
+            data.xg[k][0] = data.xg[k][1];
+            data.yg[k][0] = data.yg[k][1];
+            data.theta[k][0] = data.theta[k][1];
+
 #ifdef TWO_WAY
             data.Up[k][0] = data.Up[k][1];
+            data.Up[k][1] = data.Up[k][2];
+
             data.Vp[k][0] = data.Vp[k][1];
+            data.Up[k][1] = data.Up[k][2];
+
             data.Omega_p[k][0] = data.Omega_p[k][1];
+            data.Omega_p[k][1] = data.Omega_p[k][2];
+
 #endif
         }
 
@@ -367,8 +363,8 @@ int main(int argc, char *argv[]){
 
     /* Free memory */
     free_fields(&data);
-    free(Up_k), free(Up_k_1), free(Vp_k), free(Vp_k_1), free(Omega_p_k), free(Omega_p_k_1);
-    free(Xp_k), free(Xp_k_1), free(Yp_k), free(Yp_k_1), free(theta_k), free(theta_k_1);
+    free(Up_old), free(Vp_old), free(Omega_p_old);
+    free(Xp_old), free(Yp_old), free(theta_old);
 
 
     PetscFinalize();
@@ -382,7 +378,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Dp = 1;
     data->d = 4.;
     data->H = 0.5*data->d;
-    data->L = 8.;
+    data->L = 16.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -408,7 +404,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 1.5;
+    data->rho_p = 10;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -577,7 +573,7 @@ void get_ghosts(Data* data, double T0, double* C0)
 
 }
 
-void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
+void get_masks(Data* data)
 {
     double*** chi_S = data->chi_S;
     double*** chi_U = data->chi_U;
@@ -591,7 +587,6 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double** coloring = data->coloring;
-    double* theta = data->theta;
     double* rp = data->rp;
     double dist;
     int m = data->m;
@@ -602,6 +597,10 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
     int b1, b2, b3;
     double d1, d2, d3;
     double xU, xV, yU, yV, yS, xS;
+    double** xg = data->xg;
+    double** yg = data->yg;
+    double** theta = data->theta;
+
     double xloc, yloc, delta;
 
 
@@ -622,7 +621,8 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
 
             /*Go over all the particles */
             for(int k=0; k<Np; k++){
-                double xG = fmod(Xp_k[k], L);
+                double xG = fmod(xg[k][1], L);
+                double yG = yg[k][1];
 
 #ifdef ELLIPSE
                 double x;
@@ -635,13 +635,13 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
                 - pow(a,2)*pow(b,2);
 
 		x = xV-Xp_k[k];
-		y = yV-Yp_k[k];
+		y = yV-yG;
                 double EV = pow(b,2)*(pow(y*cos(theta[k]),2)+pow(x*sin(theta[k]),2)-y*x*sin(2*theta[k]))
                 + pow(a,2)*(pow(x*cos(theta[k]),2)+pow(y*sin(theta[k]),2)+y*x*sin(2*theta[k]))
                 - pow(a,2)*pow(b,2);
 
 		x = xS-Xp_k[k];
-		y = yS-Yp_k[k];
+		y = yS-yG;
                 double ES = pow(b,2)*(pow(y*cos(theta[k]),2)+pow(x*sin(theta[k]),2)-y*x*sin(2*theta[k]))
                 + pow(a,2)*(pow(x*cos(theta[k]),2)+pow(y*sin(theta[k]),2)+y*x*sin(2*theta[k]))
                 - pow(a,2)*pow(b,2);
@@ -654,34 +654,34 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
 #endif
 
 #ifdef DISK
-                b1 = ((xS-xG)*(xS-xG)+(yS-Yp_k[k])*(yS-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-Yp_k[k])*(yS-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b3 = ((xS-(xG-L))*(xS-(xG-L))+(yS-Yp_k[k])*(yS-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b1 = ((xS-xG)*(xS-xG)+(yS-yG)*(yS-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-yG)*(yS-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xS-(xG-L))*(xS-(xG-L))+(yS-yG)*(yS-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
                 chi_S[k][i][j]= (b1 || b2 || b3);
 
-                b1 = ((xU-xG)*(xU-xG)+(yU-Yp_k[k])*(yU-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-Yp_k[k])*(yU-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b3 = ((xU-(xG-L))*(xU-(xG-L))+(yU-Yp_k[k])*(yU-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b1 = ((xU-xG)*(xU-xG)+(yU-yG)*(yU-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-yG)*(yU-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xU-(xG-L))*(xU-(xG-L))+(yU-yG)*(yU-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
 
                 chi_U[k][i][j]= (b1 || b2 || b3);
 
-                b1 = ((xV-xG)*(xV-xG)+(yV-Yp_k[k])*(yV-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-Yp_k[k])*(yV-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
-                b3 = ((xV-(xG-L))*(xV-(xG-L))+(yV-Yp_k[k])*(yV-Yp_k[k])<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b1 = ((xV-xG)*(xV-xG)+(yV-yG)*(yV-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-yG)*(yV-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
+                b3 = ((xV-(xG-L))*(xV-(xG-L))+(yV-yG)*(yV-yG)<= (rp[k]+data->eps)*(rp[k]+data->eps));
 
                 chi_V[k][i][j]= (b1 || b2 || b3);
 
 #ifndef SMOOTHING
-                b1 = ((xS-xG)*(xS-xG)+(yS-Yp_k[k])*(yS-Yp_k[k])<= rp[k]*rp[k]);
-                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-Yp_k[k])*(yS-Yp_k[k])<= rp[k]*rp[k]);
+                b1 = ((xS-xG)*(xS-xG)+(yS-yG)*(yS-yG)<= rp[k]*rp[k]);
+                b2 = ((xS-(xG+L))*(xS-(xG+L))+(yS-yG)*(yS-yG)<= rp[k]*rp[k]);
                 Ip_S[k][i][j]= b1 || b2;
 
-                b1 = ((xU-xG)*(xU-xG)+(yU-Yp_k[k])*(yU-Yp_k[k])<= rp[k]*rp[k]);
-                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-Yp_k[k])*(yU-Yp_k[k])<= rp[k]*rp[k]);
+                b1 = ((xU-xG)*(xU-xG)+(yU-yG)*(yU-yG)<= rp[k]*rp[k]);
+                b2 = ((xU-(xG+L))*(xU-(xG+L))+(yU-yG)*(yU-yG)<= rp[k]*rp[k]);
                 Ip_U[k][i][j]= b1 || b2;
 
-                b1 = ((xV-xG)*(xV-xG)+(yV-Yp_k[k])*(yV-Yp_k[k])<= rp[k]*rp[k]);
-                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-Yp_k[k])*(yV-Yp_k[k])<= rp[k]*rp[k]);
+                b1 = ((xV-xG)*(xV-xG)+(yV-yG)*(yV-yG)<= rp[k]*rp[k]);
+                b2 = ((xV-(xG+L))*(xV-(xG+L))+(yV-yG)*(yV-yG)<= rp[k]*rp[k]);
                 Ip_V[k][i][j]= b1 || b2;
 
 #endif
@@ -689,9 +689,9 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
 #ifdef SMOOTHING
 
                 //Smoothing S
-                d1 = sqrt((xS-xG)*(xS-xG)+(yS-Yp_k[k])*(yS-Yp_k[k]));
-                d2 = sqrt((xS-(xG+L))*(xS-(xG+L))+(yS-Yp_k[k])*(yS-Yp_k[k]));
-                d3 = sqrt((xS-(xG-L))*(xS-(xG-L))+(yS-Yp_k[k])*(yS-Yp_k[k]));
+                d1 = sqrt((xS-xG)*(xS-xG)+(yS-yG)*(yS-yG));
+                d2 = sqrt((xS-(xG+L))*(xS-(xG+L))+(yS-yG)*(yS-yG));
+                d3 = sqrt((xS-(xG-L))*(xS-(xG-L))+(yS-yG)*(yS-yG));
                 dist =  rp[k] - fmin(d1, fmin(d2,d3));
 
                 if( dist < - data->eps)
@@ -702,9 +702,9 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
                     Ip_S[k][i][j] = 1;
 
                 //Smoothing U
-                d1 = sqrt((xU-xG)*(xU-xG)+(yU-Yp_k[k])*(yU-Yp_k[k]));
-                d2 = sqrt((xU-(xG+L))*(xU-(xG+L))+(yU-Yp_k[k])*(yU-Yp_k[k]));
-                d3 = sqrt((xU-(xG-L))*(xU-(xG-L))+(yU-Yp_k[k])*(yU-Yp_k[k]));
+                d1 = sqrt((xU-xG)*(xU-xG)+(yU-yG)*(yU-yG));
+                d2 = sqrt((xU-(xG+L))*(xU-(xG+L))+(yU-yG)*(yU-yG));
+                d3 = sqrt((xU-(xG-L))*(xU-(xG-L))+(yU-yG)*(yU-yG));
                 dist =  rp[k] - fmin(d1, fmin(d2,d3));
 
                 if( dist < - data->eps)
@@ -716,9 +716,9 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
 
 
                 //Smoothing V
-                d1 = sqrt((xV-xG)*(xV-xG)+(yV-Yp_k[k])*(yV-Yp_k[k]));
-                d2 = sqrt((xV-(xG+L))*(xV-(xG+L))+(yV-Yp_k[k])*(yV-Yp_k[k]));
-                d3 = sqrt((xV-(xG-L))*(xV-(xG-L))+(yV-Yp_k[k])*(yV-Yp_k[k]));
+                d1 = sqrt((xV-xG)*(xV-xG)+(yV-yG)*(yV-yG));
+                d2 = sqrt((xV-(xG+L))*(xV-(xG+L))+(yV-yG)*(yV-yG));
+                d3 = sqrt((xV-(xG-L))*(xV-(xG-L))+(yV-yG)*(yV-yG));
                 dist =  rp[k] - fmin(d1, fmin(d2,d3));
 
                 if( dist < - data->eps)
@@ -730,12 +730,12 @@ void get_masks(Data* data, double* Xp_k, double* Yp_k, double* theta_k)
 
 #endif
 
-                xloc = xS-Xp_k[k];
-                yloc = yS-Yp_k[k];
+                xloc = xS-xg[k][1];
+                yloc = yS-yG;
                 delta = atan2(yloc, xloc);
                 coloring[i][j] += Ip_S[k][i][j];
 
-                if((int) floor(((delta-theta[k])/(M_PI/2.))) % 2 == 0 ){
+                if((int) floor(((delta-theta[k][1])/(M_PI/2.))) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
 #endif
@@ -794,15 +794,15 @@ void get_Ts(Data* data)
     }
 }
 
-void get_Us_Vs(Data* data, double* Xp_k, double* Yp_k, double* Up_k, double* Vp_k, double* Omega_p_k){
+void get_Us_Vs(Data* data){
 
     double** u_s = data-> u_s;
     double** v_s = data-> v_s;
-//    double** Up = data->Up;
-//    double** Vp = data->Vp;
-//    double** Omega_p = data->Omega_p;
-//    double* xg = data->xg;
-//    double* yg = data->yg;
+    double** Up = data->Up;
+    double** Vp = data->Vp;
+    double** Omega_p = data->Omega_p;
+    double** xg = data->xg;
+    double** yg = data->yg;
 
     double*** chi_U = data->chi_U;
     double*** chi_V = data->chi_V;
@@ -821,8 +821,8 @@ void get_Us_Vs(Data* data, double* Xp_k, double* Yp_k, double* Up_k, double* Vp_
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= chi_U[k][i][j]*( Up_k[k] - Omega_p_k[k]*(yU-Yp_k[k]) );
-                v_s[i][j]+= chi_V[k][i][j]*( Vp_k[k] + Omega_p_k[k]*fmod(xV-Xp_k[k],L) );
+                u_s[i][j]+= chi_U[k][i][j]*(Up[k][2] - Omega_p[k][2]*(yU-yg[k][1]) );
+                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][2] + Omega_p[k][2]*fmod(xV-xg[k][1],L) );
             }
         }
     }

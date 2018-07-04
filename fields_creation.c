@@ -5,7 +5,7 @@
 #include "main.h"
 #include "fields_creation.h"
 
-void initialize_fields(Data* data)
+void allocate_fields(Data* data)
 {
     int m = data->m;
     int n = data->n;
@@ -25,7 +25,6 @@ void initialize_fields(Data* data)
     data->dTdt = make1DDoubleArray(Np);
     data->dCdt = make2DDoubleArray(Np,Ns);
     data->dp = make1DDoubleArray(Np);
-    data->F = make2DDoubleArray(Np,3);
 
     data->Fx = make1DDoubleArray(Np);
     data->Fy = make1DDoubleArray(Np);
@@ -33,7 +32,10 @@ void initialize_fields(Data* data)
     data->Fx_coll = make2DDoubleArray(Np,3);
     data->Fy_coll = make2DDoubleArray(Np,3);
 
+    data->F = make2DDoubleArray(Np,3);
     data->G = make2DDoubleArray(Np,3);
+    data->Mz = make2DDoubleArray(Np,3);
+
     data->chi_S = make3DDoubleArray(Np,m,n);
     data->chi_U = make3DDoubleArray(Np,m,n);
     data->chi_V = make3DDoubleArray(Np,m,n);
@@ -43,10 +45,8 @@ void initialize_fields(Data* data)
     data->I_S = make2DDoubleArray(m,n);
     data->I_U = make2DDoubleArray(m,n);
     data->I_V = make2DDoubleArray(m,n);
+
     data->J = make1DDoubleArray(Np);
-    data->Mz = make2DDoubleArray(Np,3);
-    data->omega = make2DDoubleArray(m,n);
-    data->Omega_p = make2DDoubleArray(Np,4);
     data->phi = make2DDoubleArray(m,n);
     data->Qm = make2DDoubleArray(Np,Ns);
     data->P = make2DDoubleArray(m,n);
@@ -58,7 +58,6 @@ void initialize_fields(Data* data)
     data->Reh = make2DDoubleArray(m,n);
     data->Reh_omega = make2DDoubleArray(m,n);
     data->Sp = make1DDoubleArray(Np);
-    data->theta = make1DDoubleArray(Np);
 
     data->H_u_n_1 = make2DDoubleArray(m,n);
     data->H_v_n_1 = make2DDoubleArray(m,n);
@@ -72,13 +71,13 @@ void initialize_fields(Data* data)
 
     data->u_n = make2DDoubleArray(m,n);
     data->u_n_1 = make2DDoubleArray(m,n);
-    data->Up = make2DDoubleArray(Np,2);
     data->u_s = make2DDoubleArray(m,n);
     data->u_star = make2DDoubleArray(m,n);
 
+    data->omega = make2DDoubleArray(m,n);
+
     data->v_n = make2DDoubleArray(m,n);
     data->v_n_1 = make2DDoubleArray(m,n);
-    data->Vp = make2DDoubleArray(Np,4);
     data->v_s = make2DDoubleArray(m,n);
     data->v_star = make2DDoubleArray(m,n);
 
@@ -86,8 +85,15 @@ void initialize_fields(Data* data)
     data->tau_yy = make2DDoubleArray(m,n);
     data->tau_xy = make2DDoubleArray(m,n);
 
-    data->xg = make1DDoubleArray(Np);
-    data->yg = make1DDoubleArray(Np);
+    data->xg = make2DDoubleArray(Np,2);
+    data->yg = make2DDoubleArray(Np,2);
+    data->theta = make2DDoubleArray(Np,2);
+
+    data->Up = make2DDoubleArray(Np,3);
+    data->Vp = make2DDoubleArray(Np,3);
+    data->Omega_p = make2DDoubleArray(Np,3);
+
+
 }
 
 void free_fields(Data* data)
@@ -97,7 +103,8 @@ void free_fields(Data* data)
     int Ns = data->Ns;
 
     /* Free memory */
-    free(data->xg), free(data->yg), free(data->theta), free(data->dp), free(data->rp), free(data->Sp), free(data->J);
+    free2Darray(data->xg,Np), free2Darray(data->yg,Np), free2Darray(data->theta,Np);
+    free(data->dp), free(data->rp), free(data->Sp), free(data->J);
     free(data->dudt), free(data->dvdt), free(data->domegadt), free(data->dTdt); free2Darray(data->dCdt, Np);
     free(data->Fx), free(data->Fy), free(data->Tz), free(data->Q), free2Darray(data->Qm, Np);
     free2Darray(data->Fx_coll, Np), free2Darray(data->Fy_coll, Np);

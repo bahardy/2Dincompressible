@@ -8,7 +8,8 @@
 #include "main.h"
 
 
-void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
-               double* Up_k, double* Vp_k, double* Omega_p_k,  int k);
-void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k);
+void update_Xp(Data* data, int k);
+void update_Up(Data* data, int k);
+void update_Tp(Data* data,int k);
+void update_Cp(Data* data, int k);
 #endif //INC_2DINCOMP_PARTICLE_MOTION_H

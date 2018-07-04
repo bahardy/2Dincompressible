@@ -19,8 +19,8 @@ void collision(Data* data)
     double z = data->h;
     double d12, d_wall;
     double d = data->d;
-    double* xg = data->xg;
-    double* yg = data->yg;
+    double** xg = data->xg;
+    double** yg = data->yg;
     double* rp = data->rp;
     double** Fx_coll = data->Fx_coll;
     double** Fy_coll = data->Fy_coll;
@@ -38,19 +38,13 @@ void collision(Data* data)
     double ew = 1e-8;
     double Ew = 1e-10;
 
-    for(int k = 0; k<Np; k++){
-        Fx_coll[k][0] = Fx_coll[k][1], Fx_coll[k][1] = Fx_coll[k][2], Fx_coll[k][2] = 0;
-        Fy_coll[k][0] = Fy_coll[k][1], Fy_coll[k][1] = Fy_coll[k][2], Fy_coll[k][2] = 0;
-    }
-
-
     for(k1=0; k1<Np; k1++) {
-        x1 = fmod(xg[k1],L);
-        y1 = yg[k1];
+        x1 = fmod(xg[k1][1],L);
+        y1 = yg[k1][1];
         R1 = rp[k1];
         for(k2=k1+1; k2<Np; k2++) {
-            x2 = fmod(xg[k2],L);
-            y2 = yg[k2];
+            x2 = fmod(xg[k2][1],L);
+            y2 = yg[k2][1];
             R2 = rp[k2];
             d12 = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
             if (d12 > (R1 + R2) && d12 <= (R1 + R2 + z))

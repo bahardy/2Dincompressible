@@ -25,8 +25,8 @@ int integrate_penalization(Data *data, double* surf, int k)
     double** v_s = data->v_s;
     double** Ts = data->Ts;
     double*** Cs = data->Cs;
-    double* xg = data->xg;
-    double* yg = data->yg;
+    double** xg = data->xg;
+    double** yg = data->yg;
     double* rp = data->rp;
     int Ns = data->Ns;
     int m = data->m;
@@ -62,15 +62,15 @@ int integrate_penalization(Data *data, double* surf, int k)
     }
 #endif
 
-    int startX = (int) floor((xg[k] - rp[k]) / h);
-    PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
-    int endX = (int) ceil((xg[k]+rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
-
-    int startY = (int) floor((yg[k]-rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
-    int endY = (int) ceil((yg[k]+rp[k])/h);
-    PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);
+//    int startX = (int) floor((xg[k] - rp[k]) / h);
+//    PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
+//    int endX = (int) ceil((xg[k]+rp[k])/h);
+//    PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
+//
+//    int startY = (int) floor((yg[k]-rp[k])/h);
+//    PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
+//    int endY = (int) ceil((yg[k]+rp[k])/h);
+//    PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);
 
 //    if(startY <= 1||endY >= n-1){
 //        PetscPrintf(PETSC_COMM_WORLD,"Wall collision! \n");
@@ -115,7 +115,7 @@ int integrate_penalization(Data *data, double* surf, int k)
 
             Fint += f; /* units : m/s */
             Gint += g; /* units : m/s */
-            Mint += ((xV-xg[k])*g-(yU-yg[k])*f);/* units: m^2/s */
+            Mint += ((xV-xg[k][1])*g-(yU-yg[k][1])*f);/* units: m^2/s */
         }
     }
     Fint *= h2/dtau; /* units : m^3/s; */
@@ -139,7 +139,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     return 0;
 }
 
-void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, double* surf, int k)
+void integrate_penalization_periodic(Data *data, double* surf, int k)
 {
     // Integral terms
     double** F = data->F;
@@ -194,8 +194,8 @@ void integrate_penalization_periodic(Data *data, double* Xp_k, double* Yp_k, dou
     double h2 = h*h;
     double yU, xV, f, g, q, qm;
 
-    double xG = fmod(Xp_k[k], L);
-    double YG = Yp_k[k];
+    double xG = fmod(data->xg[k][1], L);
+    double YG = data->yg[k][1];
 
     int i_min;
 

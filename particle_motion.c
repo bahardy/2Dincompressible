@@ -1,26 +1,23 @@
 // Created by Baptiste Hardy on 29/06/18.
-// Created by Baptiste Hardy on 29/06/18.
 //
 #include "main.h"
 #include "particle_motion.h"
 
 
 
-void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
-               double* Up_k, double* Vp_k, double* Omega_p_k,  int k)
+void update_Xp(Data* data, int k)
 {
-    double* xg = data->xg;
-    double* yg = data->yg;
-    double* theta = data->theta;
+    double** xg = data->xg;
+    double** yg = data->yg;
+    double** theta = data->theta;
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
-    Xp_k[k] = xg[k] + dt*(Up_k[k]+ Up[k][0])/2.;
-    Yp_k[k] = yg[k] + dt*(Vp_k[k]+ Vp[k][0])/2.;
-    theta_k[k] = theta[k] + dt*(Omega_p_k[k]+Omega_p[k][0])/2.;
-
+    xg[k][1] = xg[k][0] + dt*(Up[k][2]+ Up[k][1])/2.;
+    yg[k][1] = yg[k][0] + dt*(Vp[k][2]+ Vp[k][1])/2.;
+    theta[k][1] = theta[k][0] + dt*(Omega_p[k][2]+Omega_p[k][1])/2.;
 
     /*xg[k] += dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
     yg[k] += dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
@@ -31,7 +28,7 @@ void update_Xp(Data* data, double* Xp_k, double* Yp_k, double* theta_k,
 
 }
 
-void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
+void update_Up(Data* data, int k)
 {
     double rho_r = data->rho_r;
     double rho_f = data->rho_f;
@@ -47,13 +44,32 @@ void update_Up(Data* data, double* Up_k, double* Vp_k, double* Omega_p_k, int k)
     double** Omega_p = data->Omega_p;
     double** Fx_coll = data->Fx_coll;
     double** Fy_coll = data->Fy_coll;
-
+    double dudt, dvdt, domegadt;
     double dt = data->dt;
 
-    Up_k[k] = Up[k][0] + dt*(F[k][2]/(Sp[k]*(rho_r -1)) - g);
-    Vp_k[k] = Vp[k][0] + dt*G[k][2]/(Sp[k]*(rho_r - 1.));
-    Omega_p_k[k] = Omega_p[k][0] + dt*M[k][2]/(J[k]*(rho_r - 1.));
+    dudt = F[k][1]/(Sp[k]*(rho_r-1)) - g + Fx_coll[k][1]/(Sp[k]*(rho_p - rho_f));
+    dvdt = G[k][1]/(Sp[k]*(rho_r-1)) + Fy_coll[k][1]/(Sp[k]*(rho_p - rho_f));
+    domegadt = M[k][1]/(J[k]*(rho_r-1));
 
+#ifdef ITERATIVE
+    Up[k][2] = Up[k][1] + dt*dudt;
+    Vp[k][2] = Vp[k][1] + dt*dvdt;
+    Omega_p[k][2] = Omega_p[k][1] + dt*domegadt;
+#endif
+
+#ifndef ITERATIVE
+    if (data->iter == 1) {
+        Up[k][2] = Up[k][1] + dt*dudt;
+        Vp[k][2] = Vp[k][1] + dt*dvdt;
+        Omega_p[k][2] = Omega_p[k][1] + dt*domegadt;
+    }
+    else
+    {
+        Up[k][2] = Up[k][0] + 2*dt*dudt;
+        Vp[k][2] = Vp[k][0] + 2*dt*dvdt;
+        Omega_p[k][2] = Omega_p[k][0] + 2*dt*domegadt;
+    }
+#endif
 
     /* dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
      Up[k][3] = Up[k][2] + dt*dudt[k];
