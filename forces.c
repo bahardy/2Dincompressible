@@ -448,7 +448,8 @@ void compute_forces_NOCA(Data* data, FILE* file, int I1, int I2, int J1, int J2)
 
 }
 
-int min_abs(double* array, int arraySize){
+int min_abs(double* array, int arraySize)
+{
     double min = INFINITY;
     int index = -1;
     for(int i = 0; i < arraySize; i++) {
