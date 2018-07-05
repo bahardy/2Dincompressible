@@ -1,7 +1,3 @@
-//
-// Created by Baptiste Hardy on 12/04/18.
-//
-
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -35,7 +31,7 @@ int main(int argc, char *argv[]){
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
-    set_up(&data, argc, argv, rank);
+    set_up_periodic(&data, argc, argv, rank);
     FILE* fichier_data = fopen("results/data.txt", "w");
     writeData(fichier_data, data);
     fclose(fichier_data);
@@ -46,7 +42,6 @@ int main(int argc, char *argv[]){
     FILE** fichier_forces = malloc(sizeof(FILE*)*data.Np);
     FILE** fichier_fluxes = malloc(sizeof(FILE*)*data.Np);
     FILE* fichier_stat = fopen("results/stats.txt", "w+");
-    FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
 
     for(int k = 0; k<data.Np; k++)
     {
@@ -77,13 +72,10 @@ int main(int argc, char *argv[]){
 
 
 
-    /**------------------------------- Matrix Fields Creation  ------------------------------- **/
+    /**------------------------------- FIELDS INITIALIZATION  ------------------------------- **/
 
     allocate_fields(&data);
-
-    /** ------------------------------- Fields Initialization ------------------------------- **/
-
-    initialize_fields(&data);
+    initialize_fields_periodic(&data);
     get_masks(&data);
     get_Us_Vs(&data);
 
@@ -241,14 +233,12 @@ int main(int argc, char *argv[]){
         fclose(fichier_fluxes[k]);
         fclose(fichier_particles[k]);
     }
+    fclose(fichier_stat);
+
     free(fichier_forces);
     free(fichier_fluxes);
     free(fichier_particles);
-
-    fclose(fichier_stat);
-    fclose(fichier_forces_NOCA);
-
-
+    
     /* Free memory */
     free_fields(&data);
     free(Up_old), free(Vp_old), free(Omega_p_old);
