@@ -196,25 +196,12 @@ struct Data{
 };
 
 
-/* FUNCTIONS PROTOTYPES */
-/*--------------------------------------------------------*/
-
-/* FUNCTIONS TO SOLVE THE FLOW */
-void compute_Qr(double** Qr, double rate, double dH, int k);
 void diagnostic(Data* data);
-void get_ghosts(Data* data, double T0, double* C0);
-void get_masks(Data* data);
-void get_Cs(Data* data);
-void get_Ts(Data* data);
-void get_Us_Vs(Data* data);
-void get_Ustar_Vstar(Data* data, double ramp);
-void get_vorticity(Data* data);
-void update_flow(Data* data);
-void update_scalars(Data* data);
-void set_up(Data* data, int argc, char *argv[], int rank);
+double check_convergence(Data* data, double* Xp_old, double* Yp_old, double* theta_old,
+                         double* Up_old, double* Vp_old, double* Omega_p_old);
+void update_quantities(Data* data);
 
 /* SOME HELPFUL FUNCTIONS */
-//void writeFile(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);
 double* make1DDoubleArray(int arraySize);
 double** make2DDoubleArray(int arraySizeX, int arraySizeY);
