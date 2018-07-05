@@ -34,9 +34,9 @@ void collision(Data* data)
     double c11 = S*(rho_s - rho_f)*g;
     double c12 = c11;
     double ep = 1e-6;
-    double Ep = 1e-10;
-    double ew = 1e-8;
-    double Ew = 1e-10;
+    double Ep = 1e-8;
+    double ew = 1e-6;
+    double Ew = 1e-8;
 
     for(k1=0; k1<Np; k1++) {
         x1 = fmod(xg[k1][1],L);
