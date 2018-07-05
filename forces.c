@@ -286,9 +286,9 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
-    dudt[k] = (Up[k][1]-Up[k][0])/dt;
-    dvdt[k] = (Vp[k][1]-Vp[k][0])/dt;
-    domegadt[k] = (Omega_p[k][1]-Omega_p[k][0])/dt;
+    dudt[k] = (Up[k][2]-Up[k][0])/(2*dt);
+    dvdt[k] = (Vp[k][2]-Vp[k][0])/(2*dt);
+    domegadt[k] = (Omega_p[k][2]-Omega_p[k][0])/(2*dt);
 
     PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k]);
     PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k]);
