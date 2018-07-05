@@ -147,10 +147,8 @@ void writeFields(Data* data, int it) {
     strcat(fileYB, ".txt");
     fichier_YB = fopen(fileYB, "w");
 #endif
-    //write2Darray(fichier_Chi, data->chi_S[0], 1, m-1, 1, n-1);
     write2Darray(fichier_Mask, data->coloring, 1, m - 1, 1, n - 1);
     write2Darray(fichier_U, data->u_n, 0, m - 1, 1, n - 1);
-    //write2Darray(fichier_Us, data->u_s, 0,m-1,1,n-1);
     write2Darray(fichier_V, data->v_n, 1, m - 1, 0, n - 1);
     write2Darray(fichier_Vtx, data->omega, 1, m - 1, 1, n - 1);
     //write2Darray(fichier_P, data->P,1,m-1,1,n-1);
