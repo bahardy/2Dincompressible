@@ -15,7 +15,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
-    data->eps = 2.*data->h;
+    data->eps = data->h;
 #endif
     /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
@@ -26,12 +26,11 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    //data->u_max = 1.5*data->u_m;
-    //data->nu = 0.03926;
     data->nu = data->u_m*data->Dp/data->Rep;
+
     data->g = 0;
 #ifdef GRAVITY
-    data->g = 9.81;
+    data->g = 1/pow((data->Fr),2);
 #endif
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
@@ -40,7 +39,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 100.;
+    data->rho_p = 10.;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -68,7 +67,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.05; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -153,7 +152,7 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 10;
+    data->rho_p = 1.1;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;

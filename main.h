@@ -13,11 +13,12 @@
 #define WRITE
 #define DISK
 #define SLIP
-//#define EXPLICIT
+#define EXPLICIT
 #define GRAVITY
 #define SMOOTHING
+#define LF
 //#define ITERATIVE
-#define SEDIMENTATION
+//#define SEDIMENTATION
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */

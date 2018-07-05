@@ -23,13 +23,11 @@ int main(int argc, char *argv[]){
     int rank, nbproc;
     MPI_Comm_rank(PETSC_COMM_WORLD, &rank );
     MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
-    printf("Hello from rank %d \n", rank);
 
     struct stat st = {0};
     if (stat("results", &st) == -1) {
         mkdir("results", 0700);
     }
-
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
@@ -77,7 +75,7 @@ int main(int argc, char *argv[]){
     allocate_fields(&data);
     initialize_fields(&data);
     get_masks(&data);
-    get_Us_Vs(&data);
+    //get_Us_Vs(&data);
 
     /** ----- BOUNDARY CONDITION -----------**/
     get_ghosts(&data, data.Tm0, data.C0);
@@ -133,8 +131,8 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
         for (k = 0; k<data.Np; k++) {
             PetscPrintf(PETSC_COMM_WORLD, "Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k + 1,
-                        data.xg[k], data.yg[k]);
-            PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k]);
+                        data.xg[k][1], data.yg[k][1]);
+            PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k][1]);
         }
 
         /** --- SOLVE SOLID PHASE --- */
@@ -149,8 +147,15 @@ int main(int argc, char *argv[]){
 #ifdef  MOVE
             /* Velocity - Forces */
             if(t > data.t_move){
+#ifdef AB3
                 update_Xp(&data, k);
                 update_Up(&data, k);
+#endif
+#ifdef LF
+                update_Up(&data, k);
+                update_Xp(&data, k);
+
+#endif
             }
 #endif
 #ifdef  TEMP
@@ -196,7 +201,7 @@ int main(int argc, char *argv[]){
 
         compute_forces_NOCA(&data, fichier_forces_NOCA, 1, data.m-2, 1, data.n-2);
         diagnostic(&data);
-        update_quantities(&data); 
+        update_quantities(&data);
 
 
 #ifdef WRITE
@@ -309,7 +314,7 @@ void update_quantities(Data* data)
         data->Up[k][1] = data->Up[k][2];
 
         data->Vp[k][0] = data->Vp[k][1];
-        data->Up[k][1] = data->Up[k][2];
+        data->Vp[k][1] = data->Vp[k][2];
 
         data->Omega_p[k][0] = data->Omega_p[k][1];
         data->Omega_p[k][1] = data->Omega_p[k][2];

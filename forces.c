@@ -34,21 +34,6 @@ int integrate_penalization(Data *data, double* surf, int k)
     double h = data->h;
     double dtau = data->dtau;
 
-    /* Force along x-direction */
-    F[k][0] = F[k][1]; /* n-2*/
-    F[k][1] = F[k][2]; /* n-1*/
-    //F[k][2] = 0.; /* n*/
-
-    /* Force along y-direction */
-    G[k][0] = G[k][1];
-    G[k][1] = G[k][2];
-    //G[k][2] = 0.;
-
-    /* Moment along z-direction */\
-    M[k][0] = M[k][1];
-    M[k][1] = M[k][2];
-    //M[k][2] = 0.;
-
 #ifdef TEMP
     /* Particle heat balance  */
     QQ[k][0] = QQ[k][1]; /* n-2*/

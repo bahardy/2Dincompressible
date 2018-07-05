@@ -275,8 +275,8 @@ void get_Us_Vs(Data* data)
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= chi_U[k][i][j]*(Up[k][3] - Omega_p[k][3]*(yU-yg[k][1]));
-                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][3] + Omega_p[k][3]*(xV-xg[k][1]));
+                u_s[i][j]+= chi_U[k][i][j]*(Up[k][2] - Omega_p[k][2]*(yU-yg[k][1]));
+                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][2] + Omega_p[k][2]*(xV-xg[k][1]));
             }
         }
     }
