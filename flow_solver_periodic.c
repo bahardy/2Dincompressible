@@ -87,8 +87,8 @@ void get_masks(Data* data)
 
             /*Go over all the particles */
             for(int k=0; k<Np; k++){
-                double xG = fmod(xg[k][1], L);
-                double yG = yg[k][1];
+                double xG = fmod(xg[k][2], L);
+                double yG = yg[k][2];
 
 #ifdef ELLIPSE
                 double x;
@@ -196,7 +196,7 @@ void get_masks(Data* data)
 
 #endif
 
-                xloc = xS-xg[k][1];
+                xloc = xS-xg[k][2];
                 yloc = yS-yG;
                 delta = atan2(yloc, xloc);
                 coloring[i][j] += Ip_S[k][i][j];
@@ -288,8 +288,8 @@ void get_Us_Vs(Data* data)
             u_s[i][j] = 0.;
             v_s[i][j] = 0.;
             for (int k = 0; k<Np; k++){
-                u_s[i][j]+= chi_U[k][i][j]*(Up[k][2] - Omega_p[k][2]*(yU-yg[k][1]) );
-                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][2] + Omega_p[k][2]*fmod(xV-xg[k][1],L) );
+                u_s[i][j]+= chi_U[k][i][j]*(Up[k][2] - Omega_p[k][2]*(yU-yg[k][2]) );
+                v_s[i][j]+= chi_V[k][i][j]*(Vp[k][2] + Omega_p[k][2]*fmod(xV-xg[k][2],L) );
             }
         }
     }

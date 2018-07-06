@@ -16,7 +16,7 @@
 #define EXPLICIT
 #define GRAVITY
 #define SMOOTHING
-#define LF
+#define AB3
 //#define ITERATIVE
 //#define SEDIMENTATION
 

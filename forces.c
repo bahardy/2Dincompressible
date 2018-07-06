@@ -100,7 +100,7 @@ int integrate_penalization(Data *data, double* surf, int k)
 
             Fint += f; /* units : m/s */
             Gint += g; /* units : m/s */
-            Mint += ((xV-xg[k][1])*g-(yU-yg[k][1])*f);/* units: m^2/s */
+            Mint += ((xV-xg[k][2])*g-(yU-yg[k][2])*f);/* units: m^2/s */
         }
     }
     Fint *= h2/dtau; /* units : m^3/s; */
@@ -179,8 +179,8 @@ void integrate_penalization_periodic(Data *data, double* surf, int k)
     double h2 = h*h;
     double yU, xV, f, g, q, qm;
 
-    double xG = fmod(data->xg[k][1], L);
-    double YG = data->yg[k][1];
+    double xG = fmod(data->xg[k][2], L);
+    double YG = data->yg[k][2];
 
     int i_min;
 

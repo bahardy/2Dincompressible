@@ -296,7 +296,7 @@ void writeStatistics(Data* data, FILE* file)
 void writeParticle(Data* data, FILE** file_array, int k)
 {
     fprintf(file_array[k], "%3.6e \t  %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \t %3.6e \n",
-            data->xg[k][1], data->yg[k][1], data->theta[k][1], data->Up[k][2], data->Vp[k][2], data->Omega_p[k][2], data->Tp[k]);
+            data->xg[k][2], data->yg[k][2], data->theta[k][2], data->Up[k][2], data->Vp[k][2], data->Omega_p[k][2], data->Tp[k]);
     fflush(file_array[k]);
 }
 

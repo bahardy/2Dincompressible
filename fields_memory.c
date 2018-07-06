@@ -85,9 +85,9 @@ void allocate_fields(Data* data)
     data->tau_yy = make2DDoubleArray(m,n);
     data->tau_xy = make2DDoubleArray(m,n);
 
-    data->xg = make2DDoubleArray(Np,2);
-    data->yg = make2DDoubleArray(Np,2);
-    data->theta = make2DDoubleArray(Np,2);
+    data->xg = make2DDoubleArray(Np,3);
+    data->yg = make2DDoubleArray(Np,3);
+    data->theta = make2DDoubleArray(Np,3);
 
     data->Up = make2DDoubleArray(Np,3);
     data->Vp = make2DDoubleArray(Np,3);

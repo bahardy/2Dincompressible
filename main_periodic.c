@@ -254,9 +254,9 @@ int main(int argc, char *argv[]){
 double check_convergence(Data* data, double* Xp_old, double* Yp_old, double* theta_old, double* Up_old, double* Vp_old, double* Omega_p_old)
 {
     double c1, c2, c3, c4, c5, c6;
-    c1 = fabs(data->xg[0][1] - Xp_old[0]);
-    c2 = fabs(data->yg[0][1] - Yp_old[0]);
-    c3 = fabs(data->theta[0][1] - theta_old[0])/2*M_PI;
+    c1 = fabs(data->xg[0][2] - Xp_old[0]);
+    c2 = fabs(data->yg[0][2] - Yp_old[0]);
+    c3 = fabs(data->theta[0][2] - theta_old[0])/2*M_PI;
     c4 = fabs(data->Up[0][2] - Up_old[0]);
     c5 = fabs(data->Vp[0][2] - Vp_old[0]);
     c6 = fabs(data->Omega_p[0][2] - Omega_p_old[0]);
@@ -265,9 +265,9 @@ double check_convergence(Data* data, double* Xp_old, double* Yp_old, double* the
 
     for(int k = 0; k<data->Np; k++)
     {
-        Xp_old[k] = data->xg[k][1];
-        Yp_old[k] = data->yg[k][1];
-        theta_old[k] = data->theta[k][1];
+        Xp_old[k] = data->xg[k][2];
+        Yp_old[k] = data->yg[k][2];
+        theta_old[k] = data->theta[k][2];
 
         Up_old[k] = data->Up[k][2];
         Vp_old[k] = data->Vp[k][2];
@@ -341,8 +341,13 @@ void update_quantities(Data* data)
         data->Mz[k][1] = data->Mz[k][2];
 
         data->xg[k][0] = data->xg[k][1];
+        data->xg[k][1] = data->xg[k][2];
+
         data->yg[k][0] = data->yg[k][1];
+        data->yg[k][1] = data->yg[k][2];
+
         data->theta[k][0] = data->theta[k][1];
+        data->theta[k][1] = data->theta[k][2];
 
 #ifdef TWO_WAY
         data->Up[k][0] = data->Up[k][1];

@@ -39,12 +39,12 @@ void collision(Data* data)
     double Ew = 1e-8;
 
     for(k1=0; k1<Np; k1++) {
-        x1 = fmod(xg[k1][1],L);
-        y1 = yg[k1][1];
+        x1 = fmod(xg[k1][2],L);
+        y1 = yg[k1][2];
         R1 = rp[k1];
         for(k2=k1+1; k2<Np; k2++) {
-            x2 = fmod(xg[k2][1],L);
-            y2 = yg[k2][1];
+            x2 = fmod(xg[k2][2],L);
+            y2 = yg[k2][2];
             R2 = rp[k2];
             d12 = sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
             if (d12 > (R1 + R2) && d12 <= (R1 + R2 + z))

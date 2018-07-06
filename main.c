@@ -131,8 +131,8 @@ int main(int argc, char *argv[]){
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
         for (k = 0; k<data.Np; k++) {
             PetscPrintf(PETSC_COMM_WORLD, "Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k + 1,
-                        data.xg[k][1], data.yg[k][1]);
-            PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k][1]);
+                        data.xg[k][2], data.yg[k][2]);
+            PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k][2]);
         }
 
         /** --- SOLVE SOLID PHASE --- */
@@ -152,9 +152,8 @@ int main(int argc, char *argv[]){
                 update_Up(&data, k);
 #endif
 #ifdef LF
-                update_Up(&data, k);
                 update_Xp(&data, k);
-
+                update_Up(&data, k);
 #endif
             }
 #endif
@@ -306,8 +305,14 @@ void update_quantities(Data* data)
         data->Mz[k][1] = data->Mz[k][2];
 
         data->xg[k][0] = data->xg[k][1];
+        data->xg[k][1] = data->xg[k][2];
+
         data->yg[k][0] = data->yg[k][1];
+        data->yg[k][1] = data->yg[k][2];
+
         data->theta[k][0] = data->theta[k][1];
+        data->theta[k][1] = data->theta[k][2];
+
 
 #ifdef TWO_WAY
         data->Up[k][0] = data->Up[k][1];
