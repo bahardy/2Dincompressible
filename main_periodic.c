@@ -13,7 +13,7 @@
 #include "forces.h"
 #include "collision.h"
 #include "particle_motion.h"
-#include "set_up.h"
+#include "set_up_periodic.h"
 #include "flow_solver_periodic.h"
 
 
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef ITERATIVE
     it_max = 100;
-    relax = 0.5;
+    relax = 0.25;
 #endif
 
 
@@ -117,13 +117,13 @@ int main(int argc, char *argv[]){
     double* Yp_old = make1DDoubleArray(Np);
     double* theta_old = make1DDoubleArray(Np);
 
-    int i, j;
     for (int K = 0; K< Np; K++) {
         Xp_old[K] = data.xg[K][0];
         Yp_old[K] = data.yg[K][0];
         theta_old[K] = data.theta[K][0];
 
         Up_old[K] = data.Up[K][0];
+        printf("Up_old = %f \n", Up_old[0]);
         Vp_old[K] = data.Vp[K][0];
         Omega_p_old[K] = data.Omega_p[K][0];
     }
@@ -166,6 +166,8 @@ int main(int argc, char *argv[]){
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
             printf("xp = %f \n", data.xg[0][1]);
+            printf("Up = %f \n", data.Up[0][2]);
+
             get_masks(&data);
             get_Us_Vs(&data);
 #endif
