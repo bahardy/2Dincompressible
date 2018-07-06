@@ -53,7 +53,7 @@ void update_Up(Data* data, int k)
 
 
 #ifdef ITERATIVE
-    dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+    dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f)) -g;
     dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
     domegadt = M[k][2]/(J[k]*(rho_r-1));
 
