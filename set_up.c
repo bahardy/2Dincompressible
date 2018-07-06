@@ -16,7 +16,13 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifdef SMOOTHING
     data->eps = data->h;
 #endif
-    /* NON-DIMENSIONAL NUMBERS */
+    /* Collision paramaters */
+    data->ep = data->h*data->h;
+    data->Ep = 0.01*data->ep;
+    data->ew = data->h*data->h;//1e-6;
+    data->Ew = 0.01*data->ew;//1e-8;
+
+    // /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
@@ -38,7 +44,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 10;
+    data->rho_p = 1000;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;

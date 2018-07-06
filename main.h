@@ -62,6 +62,12 @@ struct Data{
     double* Df;
     double dH; // kJ/mol
 
+    /*Collision*/
+    double ep;
+    double Ep;
+    double ew;
+    double Ew;
+
     /*Flow */
     double u_m; // Mean streamwise velocity
     double u_max; // Max Poiseuille velocity

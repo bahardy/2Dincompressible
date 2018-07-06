@@ -75,7 +75,6 @@ int main(int argc, char *argv[]){
     allocate_fields(&data);
     initialize_fields(&data);
     get_masks(&data);
-    //get_Us_Vs(&data);
 
     /** ----- BOUNDARY CONDITION -----------**/
     get_ghosts(&data, data.Tm0, data.C0);
@@ -148,12 +147,13 @@ int main(int argc, char *argv[]){
             /* Velocity - Forces */
             if(t > data.t_move){
 #ifdef AB3
-                update_Xp(&data, k);
                 update_Up(&data, k);
+                update_Xp(&data, k);
+
 #endif
 #ifdef LF
-                update_Xp(&data, k);
                 update_Up(&data, k);
+                update_Xp(&data, k);
 #endif
             }
 #endif
