@@ -192,7 +192,7 @@ void get_masks(Data* data)
                 delta = atan2(yloc, xloc);
                 coloring[i][j] += Ip_S[k][i][j];
 
-                if((int) floor((delta-theta[k][1])/(M_PI/2.)) % 2 == 0 ){
+                if((int) floor((delta-theta[k][2])/(M_PI/2.)) % 2 == 0 ){
                     coloring[i][j] = -coloring[i][j];
                 }
 #endif

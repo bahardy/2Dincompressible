@@ -44,7 +44,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 1000;
+    data->rho_p = 100;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -72,7 +72,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.05; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -112,7 +112,8 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     double Tf = data->N_write*data->T_write*data->dt;
     data->Tf = Tf;
-    data->t_move = 0; //data->Tf/10.;
+    data->t_move = 0; //data->Tf/
+    data->t_coupling = 0.5;
     data->t_transfer = 3.;
     data->nKmax = 2;
     data->Kmax = 50; /* number of ramping steps */
@@ -163,15 +164,15 @@ void initialize_fields(Data* data)
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 3;
+    data->xg[0][0] = 2.5;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
-    data->yg[0][0] = data->H;
+    data->yg[0][0] = 2.5;
     data->yg[0][1] = data->yg[0][0];
     data->yg[0][2] = data->yg[0][1];
 
-    data->theta[0][0] = 0; // M_PI/10.
+    data->theta[0][0] = 0;
     data->theta[0][1] = data->theta[0][0];
     data->theta[0][2] = data->theta[0][1];
 
@@ -181,7 +182,7 @@ void initialize_fields(Data* data)
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = data->u_m;
+        data->Vp[k][2] = 0.5*data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 

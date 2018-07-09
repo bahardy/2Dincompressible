@@ -28,18 +28,17 @@ void update_Xp(Data* data, int k)
 
     xg[k][2] = xg[k][1] + dt*Up[k][2];
     yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt+Omega_p[k][2];
+    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
 #ifdef AB3
-//    xg[k][2] = xg[k][1] + dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
-//    yg[k][2] = yg[k][1] + dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
-//    theta[k][2] = theta[k][1] + dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;
+    xg[k][2] = xg[k][1] + dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
+    yg[k][2] = yg[k][1] + dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
+    theta[k][2] = theta[k][1] + dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;
 
-    xg[k][2] = xg[k][1] + dt*Up[k][2];
-    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
-    printf("theta = %f, \t omega = %f", theta[k][2], Omega_p[k][2]);
+//    xg[k][2] = xg[k][1] + dt*Up[k][2];
+//    yg[k][2] = yg[k][1] + dt*Vp[k][2];
+//    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
     //PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
@@ -66,6 +65,15 @@ void update_Up(Data* data, int k)
     double dudt, dvdt, domegadt;
     double dt = data->dt;
 
+
+    data->Up[k][0] = data->Up[k][1];
+    data->Up[k][1] = data->Up[k][2];
+
+    data->Vp[k][0] = data->Vp[k][1];
+    data->Vp[k][1] = data->Vp[k][2];
+
+    data->Omega_p[k][0] = data->Omega_p[k][1];
+    data->Omega_p[k][1] = data->Omega_p[k][2];
 
 #ifdef ITERATIVE
     dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f)) -g;
@@ -112,7 +120,6 @@ void update_Up(Data* data, int k)
 #endif
     }
 #endif
-
 
 }
 

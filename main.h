@@ -94,6 +94,7 @@ struct Data{
     int Kmax;
     int nKmax;
     double t_move;
+    double t_coupling;
     double t_transfer;
     double dt;
     double dtau;
