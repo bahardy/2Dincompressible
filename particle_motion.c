@@ -38,7 +38,8 @@ void update_Xp(Data* data, int k)
 
     xg[k][2] = xg[k][1] + dt*Up[k][2];
     yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt+Omega_p[k][2];
+    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
+    printf("theta = %f, \t omega = %f", theta[k][2], Omega_p[k][2]);
 #endif
 
     //PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
