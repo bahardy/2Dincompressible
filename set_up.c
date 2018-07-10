@@ -10,7 +10,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Dp = 1.;
     data->d = 4.;
     data->H = 0.5*data->d;
-    data->L = 8.;
+    data->L = 24.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -22,6 +22,14 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ew = data->h*data->h;//1e-6;
     data->Ew = 0.01*data->ew;//1e-8;
 
+    /* PHYSICAL PARAMETERS */
+    data->rho_f = 1.;
+    data->rho_p = 1.5;
+    data->rho_r = data->rho_p/data->rho_f;
+    data->cp = 1000.;
+    data->cf = 1000.;
+    data->cr = data->cp/data->cf;
+
     // /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
@@ -29,30 +37,30 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Rep = 40.;
     data->Fr = sqrt(1e3);
 
+    data->g = 0;
+
+#ifdef GRAVITY
+    data->g = 1/pow((data->Fr),2);
+#endif
+
+#ifdef SEDIMENTATION
+    data->Ga = 276.84*sqrt(data->rho_r -1);//39.15*sqrt(data->rho_r-1); //usually:100
+    data->Rep = data->Ga;
+    data->g = 1./(data->rho_r -1);
+#endif
+
     /* FLOW */
     data->u_m = 1.;
     data->nu = data->u_m*data->Dp/data->Rep;
 
-    data->g = 0;
-#ifdef GRAVITY
-    data->g = 1/pow((data->Fr),2);
-#endif
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
     data->Tm0 = 1; // cup-mixing temperature at the inlet
     data->Tp0 = 0.5; // initial particle temperature
 
-    /* PHYSICAL PARAMETERS */
-    data->rho_f = 1.;
-    data->rho_p = 100;
-    data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
-
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 1;
+    data->Np = 2;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -83,7 +91,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-3;
 #endif
-    data->dt = fmin(dt_CFL, dt_diff);
+    data->dt = 0.001; //fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
@@ -113,7 +121,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     double Tf = data->N_write*data->T_write*data->dt;
     data->Tf = Tf;
     data->t_move = 0; //data->Tf/
-    data->t_coupling = 0.5;
+    data->t_coupling = 0;
     data->t_transfer = 3.;
     data->nKmax = 2;
     data->Kmax = 50; /* number of ramping steps */
@@ -128,10 +136,10 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 void initialize_fields(Data* data)
 {
-    data->dp[0] = data->Dp;
-    data->rp[0] = .5*data->Dp;
-
     for(int k=0; k<data->Np; k++){
+        data->dp[k] = data->Dp;
+        data->rp[k] = .5 * data->Dp;
+
 #ifdef DISK
         data->Sp[k]=M_PI*data->rp[k]*data->rp[k];
         //data->II[k]=(data->dp[k]*data->dp[k])/8.; /* IN 2-D !! */
@@ -164,11 +172,11 @@ void initialize_fields(Data* data)
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 2.5;
+    data->xg[0][0] = 20;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
-    data->yg[0][0] = 2.5;
+    data->yg[0][0] = 0.999*data->H;
     data->yg[0][1] = data->yg[0][0];
     data->yg[0][2] = data->yg[0][1];
 
@@ -176,13 +184,25 @@ void initialize_fields(Data* data)
     data->theta[0][1] = data->theta[0][0];
     data->theta[0][2] = data->theta[0][1];
 
+    data->xg[1][0] = 18;
+    data->xg[1][1] = data->xg[1][0];
+    data->xg[1][2] = data->xg[1][1];
+
+    data->yg[1][0] = 1.001*data->H;
+    data->yg[1][1] = data->yg[1][0];
+    data->yg[1][2] = data->yg[1][1];
+
+    data->theta[1][0] = 0;
+    data->theta[1][1] = data->theta[1][0];
+    data->theta[1][2] = data->theta[1][1];
+
     /*Initialization of particles velocities */
     for(int k=0; k<data->Np; k++){
-        data->Up[k][2] = 0.5*data->u_m;
+        data->Up[k][2] = 0*data->u_m;
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = 0.5*data->u_m;
+        data->Vp[k][2] = 0*data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 
