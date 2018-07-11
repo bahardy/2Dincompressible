@@ -107,7 +107,7 @@ void free_fields(Data* data)
     /* Free memory */
     free2Darray(data->xg,Np), free2Darray(data->yg,Np), free2Darray(data->theta,Np);
     free(data->dp), free(data->rp), free(data->Sp), free(data->J);
-    free(data->dudt), free(data->dvdt), free(data->domegadt), free(data->dTdt); free2Darray(data->dCdt, Np);
+    free2Darray(data->dudt, Np), free2Darray(data->dvdt,Np), free2Darray(data->domegadt,Np), free(data->dTdt); free2Darray(data->dCdt, Np);
     free(data->Fx), free(data->Fy), free(data->Tz), free(data->Q), free2Darray(data->Qm, Np);
     free2Darray(data->Fx_coll, Np), free2Darray(data->Fy_coll, Np);
     free2Darray(data->u_n,m), free2Darray(data->u_n_1,m), free2Darray(data->u_star, m), free2Darray(data->u_s, m);

@@ -8,8 +8,8 @@
 #include "main.h"
 
 
-void writeFields(Data* data, int it);
-void writeFields_periodic(Data* data, int i);
+void writeFields(Data* data, char* folder, int it);
+void writeFields_periodic(Data* data, char* folder, int it);
 void writeMask(Data* data);
 void write2Darray(FILE* file, double **data, int iStart, int iEnd, int jStart, int jEnd);
 void writeData(FILE* fichier_data, Data data);

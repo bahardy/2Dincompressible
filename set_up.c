@@ -24,7 +24,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 1.25;
+    data->rho_p = 1.5;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -52,7 +52,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = 0.1; //data->u_m*data->Dp/data->Rep;
+    data->nu = 0.01; //data->u_m*data->Dp/data->Rep;
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
@@ -61,7 +61,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 1;
+    data->Np = 2;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -96,7 +96,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
-        printf("Rep = %f\n", data->Rep);
+        printf("nu = %f\n", data->nu);
         printf("ratio L/d = %f \n", data->L/data->d);
         printf("Um = %f\n", data->u_m);
         printf("dt_CFL = %f\n", dt_CFL);
@@ -179,11 +179,11 @@ void initialize_fields(Data* data)
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 4;
+    data->xg[0][0] = 4.5;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
-    data->yg[0][0] = data->H;
+    data->yg[0][0] = data->H + 0.001;
     data->yg[0][1] = data->yg[0][0];
     data->yg[0][2] = data->yg[0][1];
 
@@ -191,17 +191,17 @@ void initialize_fields(Data* data)
     data->theta[0][1] = data->theta[0][0];
     data->theta[0][2] = data->theta[0][1];
 
-//    data->xg[1][0] = 2.5;
-//    data->xg[1][1] = data->xg[1][0];
-//    data->xg[1][2] = data->xg[1][1];
-//
-//    data->yg[1][0] = 4;//*data->H;
-//    data->yg[1][1] = data->yg[1][0];
-//    data->yg[1][2] = data->yg[1][1];
-//
-//    data->theta[1][0] = 0;
-//    data->theta[1][1] = data->theta[1][0];
-//    data->theta[1][2] = data->theta[1][1];
+    data->xg[1][0] = 5;
+    data->xg[1][1] = data->xg[1][0];
+    data->xg[1][2] = data->xg[1][1];
+
+    data->yg[1][0] = data->H - 0.001;
+    data->yg[1][1] = data->yg[1][0];
+    data->yg[1][2] = data->yg[1][1];
+
+    data->theta[1][0] = 0;
+    data->theta[1][1] = data->theta[1][0];
+    data->theta[1][2] = data->theta[1][1];
 
     /*Initialization of particles velocities */
     for(int k=0; k<data->Np; k++){
