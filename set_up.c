@@ -7,10 +7,10 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Dp = 1.;
-    data->d = 4.;
+    data->Dp = 0.25;
+    data->d = 2.;
     data->H = 0.5*data->d;
-    data->L = 24.;
+    data->L = 6.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -24,7 +24,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 1.5;
+    data->rho_p = 1.25;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -44,14 +44,15 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #endif
 
 #ifdef SEDIMENTATION
-    data->Ga = 276.84*sqrt(data->rho_r -1);//39.15*sqrt(data->rho_r-1); //usually:100
+    data->Ga = 100*sqrt(data->rho_r -1);//39.15*sqrt(data->rho_r-1); //usually:100
     data->Rep = data->Ga;
     data->g = 1./(data->rho_r -1);
 #endif
+    data->g = 981;
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->nu = 0.1; //data->u_m*data->Dp/data->Rep;
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
@@ -60,7 +61,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 2;
+    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -80,7 +81,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.05; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = .25; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -91,7 +92,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-3;
 #endif
-    data->dt = 0.001; //fmin(dt_CFL, dt_diff);
+    data->dt = 7.5e-5; //fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
@@ -138,7 +139,7 @@ void initialize_fields(Data* data)
 {
     for(int k=0; k<data->Np; k++){
         data->dp[k] = data->Dp;
-        data->rp[k] = .5 * data->Dp;
+        data->rp[k] = .5*data->Dp;
 
 #ifdef DISK
         data->Sp[k]=M_PI*data->rp[k]*data->rp[k];
@@ -165,18 +166,24 @@ void initialize_fields(Data* data)
             /* v_n is initially at zero */
         }
     }
+    /*BC's*/
+    for(int j=0; j<data->n; j++) {
+        data->u_n[0][j] = 0*data->u_m;
+        data->u_n_1[0][j] = data->u_n[0][j];
+        data->u_star[0][j] = data->u_n[0][j];
+    }
 
-    /*Initialization of particles temperatures */
+        /*Initialization of particles temperatures */
     for(int k=0; k<data->Np; k++){
         data->Tp[k] = data->Tp0;
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 20;
+    data->xg[0][0] = 4;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
-    data->yg[0][0] = 0.999*data->H;
+    data->yg[0][0] = data->H;
     data->yg[0][1] = data->yg[0][0];
     data->yg[0][2] = data->yg[0][1];
 
@@ -184,17 +191,17 @@ void initialize_fields(Data* data)
     data->theta[0][1] = data->theta[0][0];
     data->theta[0][2] = data->theta[0][1];
 
-    data->xg[1][0] = 18;
-    data->xg[1][1] = data->xg[1][0];
-    data->xg[1][2] = data->xg[1][1];
-
-    data->yg[1][0] = 1.001*data->H;
-    data->yg[1][1] = data->yg[1][0];
-    data->yg[1][2] = data->yg[1][1];
-
-    data->theta[1][0] = 0;
-    data->theta[1][1] = data->theta[1][0];
-    data->theta[1][2] = data->theta[1][1];
+//    data->xg[1][0] = 2.5;
+//    data->xg[1][1] = data->xg[1][0];
+//    data->xg[1][2] = data->xg[1][1];
+//
+//    data->yg[1][0] = 4;//*data->H;
+//    data->yg[1][1] = data->yg[1][0];
+//    data->yg[1][2] = data->yg[1][1];
+//
+//    data->theta[1][0] = 0;
+//    data->theta[1][1] = data->theta[1][0];
+//    data->theta[1][2] = data->theta[1][1];
 
     /*Initialization of particles velocities */
     for(int k=0; k<data->Np; k++){

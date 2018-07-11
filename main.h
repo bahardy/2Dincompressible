@@ -12,13 +12,13 @@
 //#define RAMPING
 #define WRITE
 #define DISK
-#define SLIP
+//#define SLIP
 #define EXPLICIT
 #define GRAVITY
 #define SMOOTHING
 #define AB3
 //#define ITERATIVE
-//#define SEDIMENTATION
+#define SEDIMENTATION
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -115,9 +115,9 @@ struct Data{
     double* C0;
     double*** Cs;
     double** Cp;
-    double* dudt;
-    double* dvdt;
-    double* domegadt;
+    double** dudt;
+    double** dvdt;
+    double** domegadt;
     double* dTdt;
     double** dCdt;
 

@@ -19,12 +19,14 @@ void allocate_fields(Data* data)
     data->C_n_1 = make3DDoubleArray(Ns,m,n);
     data->Cs = make3DDoubleArray(Ns,m,n);
     data->Cp = make2DDoubleArray(Np,Ns);
-    data->dudt = make1DDoubleArray(Np);
-    data->dvdt = make1DDoubleArray(Np);
-    data->domegadt = make1DDoubleArray(Np);
+
     data->dTdt = make1DDoubleArray(Np);
     data->dCdt = make2DDoubleArray(Np,Ns);
     data->dp = make1DDoubleArray(Np);
+
+    data->dudt = make2DDoubleArray(Np,3);
+    data->dvdt = make2DDoubleArray(Np,3);
+    data->domegadt = make2DDoubleArray(Np,3);
 
     data->Fx = make1DDoubleArray(Np);
     data->Fy = make1DDoubleArray(Np);

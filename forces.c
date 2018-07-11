@@ -253,9 +253,9 @@ void compute_forces_fluxes(Data* data, int k)
     double** Up = data->Up;
     double** Vp = data->Vp;
     double** Omega_p = data->Omega_p;
-    double* dudt = data->dudt;
-    double* dvdt = data->dvdt;
-    double* domegadt = data->domegadt;
+    double** dudt = data->dudt;
+    double** dvdt = data->dvdt;
+    double** domegadt = data->domegadt;
     double* dTdt = data->dTdt;
 
     double* Sp = data->Sp;
@@ -267,23 +267,32 @@ void compute_forces_fluxes(Data* data, int k)
 
     double cf = data->cf;
 
+    dudt[k][0] = dudt[k][1];
+    dudt[k][1] = dudt[k][2];
+
+    dvdt[k][0] = dvdt[k][1];
+    dvdt[k][1] = dvdt[k][2];
+
+    domegadt[k][0] = domegadt[k][1];
+    domegadt[k][1] = domegadt[k][2];
+
     PetscPrintf(PETSC_COMM_WORLD,"F integration = %1.6e \n", k+1, F[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
     PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
-    dudt[k] = (Up[k][2]-Up[k][1])/dt;
-    dvdt[k] = (Vp[k][2]-Vp[k][1])/dt;
-    domegadt[k] = (Omega_p[k][2]-Omega_p[k][1])/dt;
+    dudt[k][2] = (Up[k][2]-Up[k][1])/dt;
+    dvdt[k][2] = (Vp[k][2]-Vp[k][1])/dt;
+    domegadt[k][2] = (Omega_p[k][2]-Omega_p[k][1])/dt;
 
-    PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k]);
+    PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k][2]);
+    PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k][2]);
 
-    Fx[k] = rho_f*(Sp[k]*dudt[k] + F[k][2]);
-    Fbis = rho_p*Sp[k]*dudt[k];
-    Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
-    Fy[k] = rho_f*(Sp[k]*dvdt[k] + G[k][2]);
-    Tz[k] = rho_f*(J[k]*domegadt[k] + M[k][2]);
+    Fx[k] = rho_f*(Sp[k]*dudt[k][2] + F[k][2]);
+//    Fbis = rho_p*Sp[k]*dudt[k];
+//    Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
+    Fy[k] = rho_f*(Sp[k]*dvdt[k][2]  + G[k][2]);
+    Tz[k] = rho_f*(J[k]*domegadt[k][2]  + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
     Qm[k][0] = PP[k][0][2];
 

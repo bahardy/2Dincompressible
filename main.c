@@ -146,11 +146,18 @@ int main(int argc, char *argv[]){
 #ifdef  MOVE
             /* Velocity - Forces */
             if(t > data.t_move){
+#ifdef EE
+                if(t > data.t_coupling) {
+                    update_Up(&data, k);
+                }
+                update_Xp(&data, k);
+#endif
 #ifdef AB3
                 update_Xp(&data, k);
                 if(t > data.t_coupling) {
                     update_Up(&data, k);
                 }
+
 #endif
 #ifdef LF
                 if(t > data.t_coupling) {
