@@ -25,14 +25,20 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
 
     struct stat st = {0};
-    if (stat("results", &st) == -1) {
-        mkdir("results", 0700);
+    char* folder = "new_results";
+    if (stat(folder, &st) == -1) {
+        mkdir(folder, 0700);
     }
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
     set_up_periodic(&data, argc, argv, rank);
-    FILE* fichier_data = fopen("results/data.txt", "w");
+
+    FILE* fichier_data = NULL;
+    char fileData[30];
+    strcpy(fileData, folder);
+    strcat(fileData, "/data.txt");
+    fichier_data = fopen(fileData, "w");
     writeData(fichier_data, data);
     fclose(fichier_data);
 
@@ -41,7 +47,12 @@ int main(int argc, char *argv[]){
     FILE** fichier_particles = malloc(sizeof(FILE*)*data.Np);
     FILE** fichier_forces = malloc(sizeof(FILE*)*data.Np);
     FILE** fichier_fluxes = malloc(sizeof(FILE*)*data.Np);
-    FILE* fichier_stat = fopen("results/stats.txt", "w+");
+
+    FILE* fichier_stat = NULL;
+    char fileStat[30];
+    strcpy(fileStat, folder);
+    strcat(fileStat, "/stats.txt");
+    fichier_stat = fopen(fileStat, "w");
 
     for(int k = 0; k<data.Np; k++)
     {
@@ -49,27 +60,29 @@ int main(int argc, char *argv[]){
         sprintf(K, "%d", k);
 
         char fileParticle[30];
-        strcpy(fileParticle, "results/particle");
+        strcpy(fileParticle, folder);
+        strcat(fileParticle, "/particle");
         strcat(fileParticle, "-");
         strcat(fileParticle, K);
         strcat(fileParticle, ".txt");
         fichier_particles[k] = fopen(fileParticle, "w+");
 
         char fileForces[30];
-        strcpy(fileForces, "results/forces");
+        strcpy(fileForces, folder);
+        strcat(fileForces, "/forces");
         strcat(fileForces, "-");
         strcat(fileForces, K);
         strcat(fileForces, ".txt");
         fichier_forces[k] = fopen(fileForces, "w+");
 
         char fileFluxes[30];
-        strcpy(fileFluxes, "results/fluxes");
+        strcpy(fileFluxes, folder);
+        strcat(fileFluxes, "/fluxes");
         strcat(fileFluxes, "-");
         strcat(fileFluxes, K);
         strcat(fileFluxes, ".txt");
         fichier_fluxes[k] = fopen(fileFluxes, "w+");
     }
-
 
 
     /**------------------------------- FIELDS INITIALIZATION  ------------------------------- **/
@@ -82,7 +95,7 @@ int main(int argc, char *argv[]){
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) */
     if(rank==0){
-        writeFields_periodic(&data, 0);
+        writeFields_periodic(&data, folder, 0);
     }
 #endif
 
@@ -218,7 +231,7 @@ int main(int argc, char *argv[]){
             }
 
             if(data.iter % data.T_write == 0){
-                writeFields_periodic(&data, data.iter);
+                writeFields_periodic(&data, folder, data.iter);
             }
         }
 #endif

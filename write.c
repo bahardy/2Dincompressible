@@ -67,18 +67,18 @@ void writeData(FILE* fichier_data, Data data)
     }
 }
 
-void writeMask(Data* data)
-{	
-	int m = data->m; 
-	int n = data->n; 
+//void writeMask(Data* data)
+//{
+//	int m = data->m;
+//	int n = data->n;
+//
+//	FILE* fichier_Mask = NULL;
+//	fichier_Mask = fopen("results2/Mask.txt", "w");
+//	write2Darray(fichier_Mask, data->coloring, 1, m-1, 1, n-1);
+//	fclose(fichier_Mask);
+//}
 
-	FILE* fichier_Mask = NULL;
-	fichier_Mask = fopen("results/Mask.txt", "w");
-	write2Darray(fichier_Mask, data->coloring, 1, m-1, 1, n-1); 
-	fclose(fichier_Mask); 
-}
-
-void writeFields(Data* data, int it) {
+void writeFields(Data* data, char* folder, int it) {
     int m = data->m;
     int n = data->n;
 
@@ -95,35 +95,40 @@ void writeFields(Data* data, int it) {
     sprintf(buffer, "%d", it);
 
     char fileMask[30];
-    strcpy(fileMask, "results/Mask");
+    strcpy(fileMask, folder);
+    strcat(fileMask, "/Mask");
     strcat(fileMask, "-");
     strcat(fileMask, buffer);
     strcat(fileMask, ".txt");
     fichier_Mask = fopen(fileMask, "w");
 
     char fileU[30];
-    strcpy(fileU, "results/U");
+    strcpy(fileU, folder);
+    strcat(fileU, "/U");
     strcat(fileU, "-");
     strcat(fileU, buffer);
     strcat(fileU, ".txt");
     fichier_U = fopen(fileU, "w");
 
     char fileV[30];
-    strcpy(fileV, "results/V");
+    strcpy(fileV, folder);
+    strcat(fileV, "/V");
     strcat(fileV, "-");
     strcat(fileV, buffer);
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
 //    char fileP[30];
-//    strcpy(fileP, "results/P");
+//    strcpy(fileP, folder);
+//    strcat(fileP, "P");
 //    strcat(fileP, "-");
 //    strcat(fileP, buffer);
 //    strcat(fileP, ".txt");
 //    fichier_P = fopen(fileP, "w");
 
     char fileVtx[30];
-    strcpy(fileVtx, "results/Vtx");
+    strcpy(fileVtx, folder);
+    strcat(fileVtx, "/Vtx");
     strcat(fileVtx, "-");
     strcat(fileVtx, buffer);
     strcat(fileVtx, ".txt");
@@ -131,21 +136,24 @@ void writeFields(Data* data, int it) {
 
 #ifdef TEMP
     char fileT[30];
-    strcpy(fileT, "results/T");
+    strcpy(fileT, folder);
+    strcat(fileT, "/T");
     strcat(fileT, "-");
     strcat(fileT, buffer);
     strcat(fileT, ".txt");
     fichier_T = fopen(fileT, "w");
 
     char fileYA[30];
-    strcpy(fileYA, "results/CA");
+    strcpy(fileYA, folder);
+    strcat(fileYA, "/CA");
     strcat(fileYA, "-");
     strcat(fileYA, buffer);
     strcat(fileYA, ".txt");
     fichier_YA = fopen(fileYA, "w");
 
     char fileYB[30];
-    strcpy(fileYB, "results/CB");
+    strcpy(fileYB, folder);
+    strcat(fileYB, "/CB");
     strcat(fileYB, "-");
     strcat(fileYB, buffer);
     strcat(fileYB, ".txt");
@@ -168,6 +176,7 @@ void writeFields(Data* data, int it) {
     fclose(fichier_V);
     fclose(fichier_Vtx);
     //fclose(fichier_P);
+
 #ifdef TEMP
     fclose(fichier_T);
     fclose(fichier_YA);
@@ -176,7 +185,7 @@ void writeFields(Data* data, int it) {
 
 }
 
-void writeFields_periodic(Data* data, int it) {
+void writeFields_periodic(Data* data, char* folder, int it) {
     int m = data->m;
     int n = data->n;
 
@@ -194,35 +203,40 @@ void writeFields_periodic(Data* data, int it) {
     sprintf(buffer, "%d", it);
 
     char fileMask[30];
-    strcpy(fileMask, "results/Mask");
+    strcpy(fileMask, folder);
+    strcat(fileMask, "/Mask");
     strcat(fileMask, "-");
     strcat(fileMask, buffer);
     strcat(fileMask, ".txt");
     fichier_Mask = fopen(fileMask, "w");
 
     char fileU[30];
-    strcpy(fileU, "results/U");
+    strcpy(fileU, folder);
+    strcat(fileU, "/U");
     strcat(fileU, "-");
     strcat(fileU, buffer);
     strcat(fileU, ".txt");
     fichier_U = fopen(fileU, "w");
 
     char fileV[30];
-    strcpy(fileV, "results/V");
+    strcpy(fileV, folder);
+    strcat(fileV, "/V");
     strcat(fileV, "-");
     strcat(fileV, buffer);
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
     char fileP[30];
-    strcpy(fileP, "results/P");
+    strcpy(fileP, folder);
+    strcat(fileP, "/P");
     strcat(fileP, "-");
     strcat(fileP, buffer);
     strcat(fileP, ".txt");
     fichier_P = fopen(fileP, "w");
 
     char fileVtx[30];
-    strcpy(fileVtx, "results/Vtx");
+    strcpy(fileVtx, folder);
+    strcat(fileVtx, "/Vtx");
     strcat(fileVtx, "-");
     strcat(fileVtx, buffer);
     strcat(fileVtx, ".txt");
@@ -230,21 +244,24 @@ void writeFields_periodic(Data* data, int it) {
 
 #ifdef TEMP
     char fileT[30];
-    strcpy(fileT, "results/T");
+    strcpy(fileT, folder);
+    strcat(fileT, "/T");
     strcat(fileT, "-");
     strcat(fileT, buffer);
     strcat(fileT, ".txt");
     fichier_T = fopen(fileT, "w");
 
     char fileYA[30];
-    strcpy(fileYA, "results/CA");
+    strcpy(fileYA, folder);
+    strcat(fileYA, "/CA");
     strcat(fileYA, "-");
     strcat(fileYA, buffer);
     strcat(fileYA, ".txt");
     fichier_YA = fopen(fileYA, "w");
 
     char fileYB[30];
-    strcpy(fileYB, "results/CB");
+    strcpy(fileYB, folder);
+    strcat(fileYB, "/CB");
     strcat(fileYB, "-");
     strcat(fileYB, buffer);
     strcat(fileYB, ".txt");

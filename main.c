@@ -25,14 +25,20 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
 
     struct stat st = {0};
-    if (stat("results", &st) == -1) {
-        mkdir("results", 0700);
+    char* folder = "results";
+    if (stat(folder, &st) == -1) {
+        mkdir(folder, 0700);
     }
 
     /**------------------------------- DATA BASE CREATION ------------------------------- **/
     Data data;
     set_up(&data, argc, argv, rank);
-    FILE* fichier_data = fopen("results/data.txt", "w");
+
+    FILE* fichier_data = NULL;
+    char fileData[30];
+    strcpy(fileData, folder);
+    strcat(fileData, "/data.txt");
+    fichier_data = fopen(fileData, "w");
     writeData(fichier_data, data);
     fclose(fichier_data);
 
@@ -41,8 +47,18 @@ int main(int argc, char *argv[]){
     FILE** fichier_particles = malloc(sizeof(FILE*)*data.Np);
     FILE** fichier_forces = malloc(sizeof(FILE*)*data.Np);
     FILE** fichier_fluxes = malloc(sizeof(FILE*)*data.Np);
-    FILE* fichier_stat = fopen("results/stats.txt", "w");
-    FILE* fichier_forces_NOCA = fopen("results/forces_NOCA.txt", "w+");
+
+    FILE* fichier_stat = NULL;
+    char fileStat[30];
+    strcpy(fileStat, folder);
+    strcat(fileStat, "/stats.txt");
+    fichier_stat = fopen(fileStat, "w");
+
+    FILE* fichier_NOCA = NULL;
+    char fileNOCA[30];
+    strcpy(fileNOCA, folder);
+    strcat(fileNOCA, "/forces_NOCA.txt");
+    fichier_NOCA = fopen(fileNOCA, "w");
 
     for(int k = 0; k<data.Np; k++)
     {
@@ -50,21 +66,24 @@ int main(int argc, char *argv[]){
         sprintf(K, "%d", k);
 
         char fileParticle[30];
-        strcpy(fileParticle, "results/particle");
+        strcpy(fileParticle, folder);
+        strcat(fileParticle, "/particle");
         strcat(fileParticle, "-");
         strcat(fileParticle, K);
         strcat(fileParticle, ".txt");
         fichier_particles[k] = fopen(fileParticle, "w+");
 
         char fileForces[30];
-        strcpy(fileForces, "results/forces");
+        strcpy(fileForces, folder);
+        strcat(fileForces, "/forces");
         strcat(fileForces, "-");
         strcat(fileForces, K);
         strcat(fileForces, ".txt");
         fichier_forces[k] = fopen(fileForces, "w+");
 
         char fileFluxes[30];
-        strcpy(fileFluxes, "results/fluxes");
+        strcpy(fileFluxes, folder);
+        strcat(fileFluxes, "/fluxes");
         strcat(fileFluxes, "-");
         strcat(fileFluxes, K);
         strcat(fileFluxes, ".txt");
@@ -109,7 +128,7 @@ int main(int argc, char *argv[]){
 #ifdef WRITE
     /*INITIAL SOLUTION (t=0) AFTER RAMPING */
     if(rank==0){
-        writeFields(&data, 0);
+        writeFields(&data, folder, 0);
     }
 #endif
 
@@ -208,7 +227,7 @@ int main(int argc, char *argv[]){
         get_vorticity(&data);
         get_tau(&data);
 
-        compute_forces_NOCA(&data, fichier_forces_NOCA, 1, data.m-2, 1, data.n-2);
+        compute_forces_NOCA(&data, fichier_NOCA, 1, data.m-2, 1, data.n-2);
         diagnostic(&data);
         update_quantities(&data);
 
@@ -222,7 +241,7 @@ int main(int argc, char *argv[]){
                 writeFluxes(&data, fichier_fluxes, k);
             }
             if(data.iter % data.T_write == 0){
-                writeFields(&data, data.iter);
+                writeFields(&data, folder, data.iter);
             }
         }
 #endif
@@ -237,12 +256,13 @@ int main(int argc, char *argv[]){
         fclose(fichier_fluxes[k]);
         fclose(fichier_particles[k]);
     }
+
     free(fichier_forces);
     free(fichier_fluxes);
     free(fichier_particles);
 
     fclose(fichier_stat);
-    fclose(fichier_forces_NOCA);
+    fclose(fichier_NOCA);
 
     free_fields(&data);
 
