@@ -1,4 +1,4 @@
-EXEC=channel perio2
+EXEC=2Dincomp
 CC=mpicc
 
 IDIR1=${PETSC_DIR}/${PETSC_ARCH}/include/
@@ -14,29 +14,18 @@ LIBS=/home/ucl/mema/jonathan/easybuild/software/PETSc/3.8.2-foss-2017a/lib/libpe
 
 all: $(EXEC)
 
-channel: main.o write.o fields.o poisson.o forces.o
+2Dincomp: main.o collision.o fields_memory.o flow_solver.o forces.o particle_motion.o poisson.o set_up.o write.o
 	 $(CC) -I$(IDIR1) -I$(IDIR2) -I$(IDIR_LOCAL) -o $@ $^ $(CFLAGS) $(LIBS)
 
-perio2: perio.o write.o fields.o poisson.o forces.o
-	$(CC) -I$(IDIR1) -I$(IDIR2) -I$(IDIR_LOCAL) -o $@ $^ $(CFLAGS) $(LIBS)
-
-forces.o: forces.c forces.h
+%.o: %.c %.h
 	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS)
 
-fields.o: fields_creation.c fields_creation.h
-	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS)
+#perio2: perio.o write.o fields.o poisson.o forces.o
+#	$(CC) -I$(IDIR1) -I$(IDIR2) -I$(IDIR_LOCAL) -o $@ $^ $(CFLAGS) $(LIBS)
 
-write.o: write.c write.h
-	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS)
+#perio.o: periodic.c main.h
+#	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS) $(LIBS)
 
-poisson.o: poisson.c poisson.h 
-	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS)
-
-perio.o: periodic.c main.h
-	$(CC) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS) $(LIBS)
-
-main.o: main.c main.h  
-	$(CC) -I$(IDIR1) -I$(IDIR2) -I$(IDIR_LOCAL) -c $< -o $@ $(CFLAGS) $(LIBS) 
 
 clean:
 	rm -rf *.o
