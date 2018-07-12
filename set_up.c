@@ -11,15 +11,15 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->d = 2.;
     data->H = 0.5*data->d;
     data->L = 6.;
-    data->h = data->Dp/30;
+    data->h = data->Dp/48;
     data->eps = 0;
 #ifdef SMOOTHING
     data->eps = data->h;
 #endif
     /* Collision paramaters */
-    data->ep = data->h*data->h;
+    data->ep = 1e-3;
     data->Ep = 0.01*data->ep;
-    data->ew = data->h*data->h;//1e-6;
+    data->ew = 1e-3; //data->h*data->h;//1e-6;
     data->Ew = 0.01*data->ew;//1e-8;
 
     /* PHYSICAL PARAMETERS */
@@ -92,7 +92,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-3;
 #endif
-    data->dt = 7.5e-5; //fmin(dt_CFL, dt_diff);
+    data->dt = 2e-5; //fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
