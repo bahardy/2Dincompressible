@@ -188,11 +188,11 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
-            if(t > data.t_transfer)
-            {
-                update_Tp(&data, k);
-                update_Cp(&data, k);
-            }
+//            if(t > data.t_transfer)
+//            {
+//                update_Tp(&data, k);
+//                update_Cp(&data, k);
+//            }
 #endif
             compute_forces_fluxes(&data, k);
         }
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]){
         get_Us_Vs(&data);
 #endif
 #ifdef TEMP
-        get_Ts(&data);
+        //get_Ts(&data);
         //get_Cs(&data);
 #endif
         get_Ustar_Vstar(&data, data.ramp);
