@@ -52,15 +52,12 @@ void get_ghosts(Data* data, double T0, double* C0)
 
 #ifdef TEMP
         /* On T_n and C */
-        /* Inflow : T_n uniform  */
+        /* Inflow : T, C imposed  */
+        /* Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
+
         T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
         T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
 
-//        /* Inflow : CA = CA0; CB = CB0 */
-//        C[0][0][j] = -0.2*(C[0][3][j]-5.*C[0][2][j]+15.*C[0][1][j]-16.*C0[0]);
-//        C[1][0][j] = -0.2*(C[1][3][j]-5.*C[1][2][j]+15.*C[1][1][j]-16.*C0[1]);
-
-        /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
         for(int s=0; s<Ns; s++){
             C[s][0][j] = -0.2*(C[s][3][j]-5.*C[s][2][j]+15.*C[s][1][j]-16.*C0[s]);
             C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;

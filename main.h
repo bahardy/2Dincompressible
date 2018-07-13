@@ -6,19 +6,19 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-//#define TEMP
-#define MOVE
+#define TEMP
+//#define MOVE
 #define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
-//#define SLIP
-#define EXPLICIT
-#define GRAVITY
-#define SMOOTHING
+#define SLIP
+//#define EXPLICIT
+//#define GRAVITY
+//#define SMOOTHING
 #define AB3
 //#define ITERATIVE
-#define SEDIMENTATION
+//#define SEDIMENTATION
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */

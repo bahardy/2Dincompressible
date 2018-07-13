@@ -151,13 +151,14 @@ void writeFields(Data* data, char* folder, int it) {
     strcat(fileYA, ".txt");
     fichier_YA = fopen(fileYA, "w");
 
-    char fileYB[30];
-    strcpy(fileYB, folder);
-    strcat(fileYB, "/CB");
-    strcat(fileYB, "-");
-    strcat(fileYB, buffer);
-    strcat(fileYB, ".txt");
-    fichier_YB = fopen(fileYB, "w");
+//    char fileYB[30];
+//    strcpy(fileYB, folder);
+//    strcat(fileYB, "/CB");
+//    strcat(fileYB, "-");
+//    strcat(fileYB, buffer);
+//    strcat(fileYB, ".txt");
+//    fichier_YB = fopen(fileYB, "w");
+
 #endif
     write2Darray(fichier_Mask, data->coloring, 1, m - 1, 1, n - 1);
     write2Darray(fichier_U, data->u_n, 0, m - 1, 1, n - 1);
@@ -167,7 +168,7 @@ void writeFields(Data* data, char* folder, int it) {
 #ifdef TEMP
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
     write2Darray(fichier_YA, data->C_n[0],1,m-1,1,n-1);
-    write2Darray(fichier_YB, data->C_n[1],1,m-1,1,n-1);
+    //write2Darray(fichier_YB, data->C_n[1],1,m-1,1,n-1);
 #endif
 
     //CLOSE FILES 
