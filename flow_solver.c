@@ -40,6 +40,7 @@ void get_ghosts(Data* data, double T0, double* C0)
             C[s][i][0] = C[s][i][1];
             C[s][i][n-1] = C[s][i][n-2];
         }
+
 #endif
     }
 
@@ -62,6 +63,7 @@ void get_ghosts(Data* data, double T0, double* C0)
             C[s][0][j] = -0.2*(C[s][3][j]-5.*C[s][2][j]+15.*C[s][1][j]-16.*C0[s]);
             C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
         }
+	
 #endif
 
     }
@@ -216,9 +218,9 @@ void get_Cs(Data* data)
 
     for(int i=0; i<m; i++){
         for(int j=0; j<n; j++){
-            Cs[1][i][j] = 0.;
+            Cs[0][i][j] = 0.;
             for(int k=0; k<Np; k++){
-                Cs[1][i][j] += chi_S[k][i][j]*Cp[k][1];
+                Cs[0][i][j] += chi_S[k][i][j]*Cp[k][0];
             }
         }
     }
@@ -518,7 +520,7 @@ void update_scalars(Data* data)
 
             /** SPECIES **/
 
-            for (int s = 0; s < Ns-1; s++) {
+            for (int s = 0; s < Ns; s++) {
                 // ADVECTIVE TERMS
                 H_C = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
                       + .5*(v_n[i][j]*(C_n[s][i][j+1]-C_n[s][i][j])/h + v_n[i][j-1]*(C_n[s][i][j]-C_n[s][i][j-1])/h);
