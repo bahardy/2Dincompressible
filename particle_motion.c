@@ -22,13 +22,13 @@ void update_Xp(Data* data, int k)
 #endif
 
 #ifdef LF
-//    xg[k][2] = xg[k][0] + 2*dt*Up[k][1];
-//    yg[k][2] = yg[k][0] + 2*dt*Vp[k][1];
-//    theta[k][2] = theta[k][0] + 2*dt+Omega_p[k][1];
+    xg[k][2] = xg[k][0] + 2*dt*Up[k][1];
+    yg[k][2] = yg[k][0] + 2*dt*Vp[k][1];
+    theta[k][2] = theta[k][0] + 2*dt+Omega_p[k][1];
 
-    xg[k][2] = xg[k][1] + dt*Up[k][2];
-    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
+//    xg[k][2] = xg[k][1] + dt*Up[k][2];
+//    yg[k][2] = yg[k][1] + dt*Vp[k][2];
+//    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
 #ifdef AB3
@@ -46,9 +46,6 @@ void update_Xp(Data* data, int k)
     yg[k][2] = yg[k][1] + dt*Vp[k][2];
     theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
-
-    //PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, xg[k], yg[k]);
-    //PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", theta[k]);
 
 }
 
@@ -76,6 +73,7 @@ void update_Up(Data* data, int k)
     double dt = data->dt;
 
 #ifndef ITERATIVE
+#ifndef LF    
     data->Up[k][0] = data->Up[k][1];
     data->Up[k][1] = data->Up[k][2];
 
@@ -84,8 +82,9 @@ void update_Up(Data* data, int k)
 
     data->Omega_p[k][0] = data->Omega_p[k][1];
     data->Omega_p[k][1] = data->Omega_p[k][2];
-
 #endif
+#endif
+
 #ifdef ITERATIVE
     dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f)) -g;
     dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
@@ -97,7 +96,7 @@ void update_Up(Data* data, int k)
 #else
     if (data->iter <= 2)
     {
-        dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f)) - g;
+        dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f));// - g;
         dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
         domegadt = M[k][2]/(J[k]*(rho_r-1));
 
@@ -118,23 +117,23 @@ void update_Up(Data* data, int k)
 #endif
 
 #ifdef AB3
-//        dudt = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
-//                (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
-//        dvdt = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
-//                (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
-//        domegadt = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
+        dudt = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
+                (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f));// - g;
+        dvdt = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
+                (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
+        domegadt = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
 
-        dudt = (1./rho_r)*ax[k][2]  //(23.*ax[k][2]-16.*ax[k][1]+5.*ax[k][0])/12.
-               + (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*rho_r)
-               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_p)
-               - (1 - 1/rho_r)*g;
+//        dudt = (1./rho_r)*ax[k][2]  //(23.*ax[k][2]-16.*ax[k][1]+5.*ax[k][0])/12.
+//               + (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*rho_r)
+//               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_p)
+//               - (1 - 1/rho_r)*g;
 
-        dvdt = (1./rho_r)*ay[k][2] // (23*ay[k][2]-16.*ay[k][1]+5.*ay[k][0])/12.
-               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
-               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
+//        dvdt = (1./rho_r)*ay[k][2] // (23*ay[k][2]-16.*ay[k][1]+5.*ay[k][0])/12.
+//               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
+//               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
 
-        domegadt = (1./rho_r)*aomega[k][2] // (23.*aomega[k][2]-16.*aomega[k][1]+5.*aomega[k][0])/12.
-                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
+//        domegadt = (1./rho_r)*aomega[k][2] // (23.*aomega[k][2]-16.*aomega[k][1]+5.*aomega[k][0])/12.
+//                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
 
         Up[k][2] = Up[k][1] + dt*dudt;
         Vp[k][2] = Vp[k][1] + dt*dvdt;
@@ -142,12 +141,16 @@ void update_Up(Data* data, int k)
 #endif
 
 #ifdef EE
-        dudt = (1./rho_r)*ax[k][2] + F[k][2]/(Sp[k]*rho_r) + Fx_coll[k][2]/(Sp[k]*rho_p)
-               -(1 - 1./rho_r)*g;
+//        dudt = (1./rho_r)*ax[k][2] + F[k][2]/(Sp[k]*rho_r) + Fx_coll[k][2]/(Sp[k]*rho_p)
+//               -(1 - 1./rho_r)*g;
+//
+//        dvdt = (1./rho_r)*ay[k][2] + G[k][2]/(Sp[k]*rho_r) + Fy_coll[k][2]/(Sp[k]*rho_p);
+//
+//        domegadt = (1./rho_r)*aomega[k][2] + M[k][2]/(J[k]*rho_r);
 
-        dvdt = (1./rho_r)*ay[k][2] + G[k][2]/(Sp[k]*rho_r) + Fy_coll[k][2]/(Sp[k]*rho_p);
-
-        domegadt = (1./rho_r)*aomega[k][2] + M[k][2]/(J[k]*rho_r);
+	dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+	dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+	domegadt = M[k][2]/(J[k]*(rho_r-1));
 
         Up[k][2] = Up[k][1] + dt*dudt;
         Vp[k][2] = Vp[k][1] + dt*dvdt;
