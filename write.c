@@ -27,7 +27,7 @@ void writeData(FILE* fichier_data, Data data)
         fprintf(fichier_data,"Le\t %f\n",data.Le);
         fprintf(fichier_data,"Fr\t %f\n",data.Fr);
         fprintf(fichier_data,"nu\t %1.8f\n",data.nu);
-        fprintf(fichier_data,"alpha\t %1.8f\n",data.alpha_f);
+        fprintf(fichier_data,"alpha_SOR\t %1.8f\n",data.alpha_f);
         fprintf(fichier_data,"Ns \t %d\n", data.Ns);
         fprintf(fichier_data,"DfA\t %1.8f\n",data.Df[0]);
         fprintf(fichier_data,"DfB\t %1.8f\n",data.Df[1]);

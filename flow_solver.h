@@ -12,6 +12,8 @@ void get_Ts(Data* data);
 void get_Us_Vs(Data* data);
 void get_Ustar_Vstar(Data* data, double ramp);
 void get_vorticity(Data* data);
+void get_diffusivity(Data* data);
+void get_conductivity(Data* data);
 void update_flow(Data* data);
 void update_scalars(Data* data);
 

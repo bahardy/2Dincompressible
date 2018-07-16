@@ -48,6 +48,9 @@ void allocate_fields(Data* data)
     data->I_U = make2DDoubleArray(m,n);
     data->I_V = make2DDoubleArray(m,n);
 
+    data->D = make3DDoubleArray(Ns,m,n);
+    data->alpha = make2DDoubleArray(m,n);
+
     data->J = make1DDoubleArray(Np);
     data->phi = make2DDoubleArray(m,n);
     data->Qm = make2DDoubleArray(Np,Ns);
@@ -105,13 +108,14 @@ void free_fields(Data* data)
     int Ns = data->Ns;
 
     /* Free memory */
+    free2Darray(data->alpha,m), free3Darray(data->D, Ns, m);
     free2Darray(data->xg,Np), free2Darray(data->yg,Np), free2Darray(data->theta,Np);
     free(data->dp), free(data->rp), free(data->Sp), free(data->J);
     free2Darray(data->dudt, Np), free2Darray(data->dvdt,Np), free2Darray(data->domegadt,Np), free(data->dTdt); free2Darray(data->dCdt, Np);
     free(data->Fx), free(data->Fy), free(data->Tz), free(data->Q), free2Darray(data->Qm, Np);
     free2Darray(data->Fx_coll, Np), free2Darray(data->Fy_coll, Np);
     free2Darray(data->u_n,m), free2Darray(data->u_n_1,m), free2Darray(data->u_star, m), free2Darray(data->u_s, m);
-    free2Darray(data->H_u_n_1, m) , free2Darray(data->H_v_n_1, m); //free2Darray(data->H_T_n_1, m), free3Darray(data->H_Y_n_1, Ns, m);
+    free2Darray(data->H_u_n_1, m) , free2Darray(data->H_v_n_1, m), free2Darray(data->H_T_n_1, m), free3Darray(data->H_C_n_1, Ns, m);
     free2Darray(data->v_n,m), free2Darray(data->v_n_1,m), free2Darray(data->v_star,m), free2Darray(data->v_s,m);
     free2Darray(data->omega, m); free2Darray(data->Reh,m); free2Darray(data->Reh_omega,m); free2Darray(data->CFL_array, m);
     free2Darray(data->P,m), free2Darray(data->phi, m);

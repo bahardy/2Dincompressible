@@ -461,7 +461,17 @@ void update_scalars(Data* data)
     int m = data->m;
     int n = data->n;
     double h = data->h;
+    double dx = data->h;
+    double dy = data->h;
     int i,j;
+
+    double ramp = data->ramp;
+    double dtau = data->dtau;
+    double dt = data->dt;
+
+    double rho_p = data->rho_p;
+    double c_p = data->cp;
+    double dH = data->dH;
 
     double **T_new = make2DDoubleArray(m, n);
     double **T_n = data->T_n;
@@ -478,33 +488,53 @@ void update_scalars(Data* data)
     double ***Cs = data->Cs;
 
     double alpha_f = data->alpha_f;
+    double** alpha = data->alpha;
     double *Df = data->Df;
-    double **I_S = data->I_S;
-    double ramp = data->ramp;
-    double dtau = data->dtau;
-    double dt = data->dt;
+    double ***D = data->D;
 
-    double H_T, H_T_old, lapT;
-    double H_C, H_C_old, lapC;
+    double **I_S = data->I_S;
+
+    double q_left, q_right, q_top, q_bottom;
+    double j_left, j_right, j_top, j_bottom;
+
+    double H_T_n, H_T_n_1, lapT;
+    double H_C_n, H_C_n_1, lapC;
+
+    double* rate = make1DDoubleArray(Ns);
 
     /** TEMPERATURE **/
 
     for (i = 1; i < m - 1; i++) {
         for (j = 1; j < n - 1; j++) {
 
+            get_rate(rate, C_n, T_n, i, j);
+
             // ADVECTIVE TERMS
-            H_T = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
+            H_T_n = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
                   + .5*(v_n[i][j]*(T_n[i][j+1]-T_n[i][j])/h + v_n[i][j-1]*(T_n[i][j]-T_n[i][j-1])/h);
 
             if(data->iter == 1)
             {
-                H_T_old = H_T;
+                H_T_n_1 = H_T_n;
             }
             else{
-                H_T_old = data->H_T_n_1[i][j];
+                H_T_n_1 = data->H_T_n_1[i][j];
             }
 
             // DIFFUSION TERM
+
+#ifdef INTRAPARTICLE
+
+            q_left = -.5*(alpha[i][j] + alpha[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
+            q_right = -.5*(alpha[i+1][j] + alpha[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
+            q_top = -.5*(alpha[i][j+1] + alpha[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
+            q_bottom = -.5*(alpha[i][j] + alpha[i][j-1])*(T_n[i][j] - T_n[i][j-1])/dy;
+
+            lapT = -((q_right-q_left)/dx + (q_top-q_bottom)/dy);
+
+            T_new[i][j] = T_n[i][j] + dt*((1 - I_S[i][j])*(-1.5*H_T_n_1 + 0.5*H_T_n_1)
+                                          + lapT + I_S[i][j]*fabs(rate[0])*(-dH)/(rho_p*c_p));
+#else
             lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
 #ifdef EXPLICIT
@@ -514,29 +544,45 @@ void update_scalars(Data* data)
                                     - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
 #else
             // IMPLICIT VERSION
-            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
                                              + alpha_f * lapT
                                              + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
                           (1. + ramp * I_S[i][j] * dt / dtau);
 #endif
-            data->H_T_n_1[i][j] = H_T;
+
+#endif
+            data->H_T_n_1[i][j] = H_T_n;
 
             /** SPECIES **/
 
             for (int s = 0; s < Ns; s++) {
+
                 // ADVECTIVE TERMS
-                H_C = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
+                H_C_n = .5*(u_n[i][j]*(C_n[s][i+1][j]-C_n[s][i][j])/h + u_n[i-1][j]*(C_n[s][i][j]-C_n[s][i-1][j])/h)
                       + .5*(v_n[i][j]*(C_n[s][i][j+1]-C_n[s][i][j])/h + v_n[i][j-1]*(C_n[s][i][j]-C_n[s][i][j-1])/h);
 
                 if(data->iter == 1)
                 {
-                    H_C_old = H_C;
+                    H_C_n_1 = H_C_n;
                 }
                 else{
-                    H_C_old = data->H_C_n_1[s][i][j];
+                    H_C_n_1 = data->H_C_n_1[s][i][j];
                 }
 
                 // DIFFUSION TERM
+
+#ifdef INTRAPARTICLE
+
+                j_left = -.5*(D[s][i][j] + D[s][i-1][j])*(C_n[s][i][j] - C_n[s][i-1][j])/dx;
+                j_right = -.5*(D[s][i+1][j] + D[s][i][j])*(C_n[s][i+1][j] - C_n[s][i][j])/dx;
+                j_top = -.5*(D[s][i][j+1] + D[s][i][j])*(C_n[s][i][j+1] - C_n[s][i][j])/dy;
+                j_bottom = -.5*(D[s][i][j] + D[s][i][j-1])*(C_n[s][i][j] - C_n[s][i][j-1])/dy;
+
+                lapC = -( (j_right-j_left)/dx + (j_top-j_bottom)/dy );
+
+                C_new[s][i][j] = C_n[s][i][j] + dt*((1 - I_S[i][j])*(-1.5*H_C_n + 0.5*H_C_n_1) + lapC + I_S[i][j]*rate[s]) ;
+
+#else
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 #ifdef EXPLICIT
                 //EXPLICIT VERSION
@@ -545,13 +591,14 @@ void update_scalars(Data* data)
                                               - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
 #else
                 // IMPLICIT VERSION
-                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+                C_new[s][i][j] = (C_n[s][i][j] + dt * (-1.5 * H_C_n + 0.5 * H_C_n_1
                                                        + Df[s] * lapC
                                                        + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
                                  (1. + ramp * I_S[i][j] * dt / dtau);
 
 #endif
-                data->H_C_n_1[s][i][j] = H_C;
+#endif
+                data->H_C_n_1[s][i][j] = H_C_n;
             }
 
         }
@@ -585,3 +632,42 @@ void get_vorticity(Data* data){
     }
 }
 
+void get_diffusivity(Data* data)
+{
+    double*** D = data->D;
+    double** I_S = data->I_S;
+    double* Df = data->Df;
+    double Ds;
+
+    int i, j, s;
+    int m = data->m;
+    int n = data->n;
+    int Ns = data->Ns;
+
+    for(i=0; i<m; i++) {
+        for(j=0; j<n; j++){
+            for(s = 0; s<Ns; s++) {
+                Ds = 0.1*Df[s];
+                D[s][i][j] = (1 - I_S[i][j])*Df[s] + I_S[i][j] * Ds;
+            }
+        }
+    }
+}
+
+void get_conductivity(Data* data)
+{
+    double** I_S = data->I_S;
+    double** alpha = data->alpha;
+    double alpha_f = data->alpha_f;
+    double alpha_s = 0.2*alpha_f;
+
+    int i, j;
+    int m = data->m;
+    int n = data->n;
+
+    for(i=0; i<m; i++) {
+        for(j=0; j<n; j++){
+            alpha[i][j] = (1-I_S[i][j])*alpha_f + I_S[i][j]*alpha_s;
+        }
+    }
+}

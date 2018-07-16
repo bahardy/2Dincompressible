@@ -17,7 +17,7 @@ void old_poisson_solver(Data* data)
     double** phi = data->phi;
 
     double **R = make2DDoubleArray(m,n);
-    double alpha = data->alpha;
+    double alpha = data->alpha_SOR;
     double dt = data->dt;
     double e;
     int SORiter = 0;
@@ -84,7 +84,7 @@ void old_poisson_solver_periodic(Data* data)
     double** phi = data->phi;
 
     double **R = make2DDoubleArray(m,n);
-    double alpha = data->alpha;
+    double alpha = data->alpha_SOR;
     double dt = data->dt;
     double e;
     int SORiter = 0;

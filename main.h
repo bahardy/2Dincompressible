@@ -17,6 +17,7 @@
 //#define GRAVITY
 //#define SMOOTHING
 #define AB3
+#define INTRAPARTICLE
 //#define ITERATIVE
 //#define SEDIMENTATION
 
@@ -59,7 +60,9 @@ struct Data{
     double Fr;
     double Ga;
     double alpha_f;
+    double** alpha;
     double* Df;
+    double*** D;
     double dH; // kJ/mol
 
     /*Collision*/
@@ -199,7 +202,7 @@ struct Data{
 
     double SORtol;
     int SORitermax;
-    double alpha;
+    double alpha_SOR;
 
 };
 

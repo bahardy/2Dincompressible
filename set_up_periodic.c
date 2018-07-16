@@ -83,7 +83,7 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     data->SORitermax = 100000;
-    data->alpha = 1.98;
+    data->alpha_SOR = 1.98;
     data->SORtol = 1e-6;
 
     if(rank == 0){
