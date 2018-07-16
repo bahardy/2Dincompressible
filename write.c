@@ -181,7 +181,7 @@ void writeFields(Data* data, char* folder, int it) {
 #ifdef TEMP
     fclose(fichier_T);
     fclose(fichier_YA);
-    fclose(fichier_YB);
+   // fclose(fichier_YB);
 #endif
 
 }
