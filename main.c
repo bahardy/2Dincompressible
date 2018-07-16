@@ -179,10 +179,10 @@ int main(int argc, char *argv[]){
 
 #endif
 #ifdef LF
-                if(t > data.t_coupling) {
+		update_Xp(&data, k);
+		if(t > data.t_coupling) {
                     update_Up(&data, k);
                 }
-                update_Xp(&data, k);
 #endif
             }
 #endif
@@ -342,6 +342,16 @@ void update_quantities(Data* data)
 
         data->theta[k][0] = data->theta[k][1];
         data->theta[k][1] = data->theta[k][2];
+#ifndef AB3
+	data->Up[k][0] = data->Up[k][1];
+        data->Up[k][1] = data->Up[k][2];
+
+	data->Vp[k][0] = data->Vp[k][1];
+	data->Vp[k][1] = data->Vp[k][2];
+
+	data->Omega_p[k][0] = data->Omega_p[k][1];
+	data->Omega_p[k][1] = data->Omega_p[k][2];
+#endif
     }
 }
 
