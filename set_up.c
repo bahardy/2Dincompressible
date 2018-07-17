@@ -3,14 +3,15 @@
 //
 
 #include "set_up.h"
+#include "flow_solver.h"
 
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1;
-    data->d = 30.;
+    data->d = 5.;
     data->H = 0.5*data->d;
-    data->L = 30.;
+    data->L = 5.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -34,8 +35,9 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
-    data->Rep = 100.;
+    data->Rep = 10.;
     data->Fr = sqrt(1e3);
+    data->Da = 0.2;
 
     data->g = 0;
 
@@ -56,7 +58,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->Tm0 = 1; // cup-mixing temperature at the inlet
+    data->T0 = 1; // cup-mixing temperature at the inlet
     data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
@@ -92,7 +94,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-4;
 #endif
-    data->dt = fmin(dt_CFL, dt_diff);
+    data->dt = 1e-3; //fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
@@ -135,16 +137,16 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     }
 }
 
-void initialize_fields(Data* data)
-{
-    for(int k=0; k<data->Np; k++){
+void initialize_fields(Data* data) {
+
+    for (int k = 0; k < data->Np; k++) {
         data->dp[k] = data->Dp;
-        data->rp[k] = .5*data->Dp;
+        data->rp[k] = .5 * data->Dp;
 
 #ifdef DISK
-        data->Sp[k]=M_PI*data->rp[k]*data->rp[k];
+        data->Sp[k] = M_PI * data->rp[k] * data->rp[k];
         //data->II[k]=(data->dp[k]*data->dp[k])/8.; /* IN 2-D !! */
-        data->J[k] =(M_PI/2.)*pow(data->rp[k],4);
+        data->J[k] = (M_PI / 2.) * pow(data->rp[k], 4);
 #endif
 #ifdef ELLIPSE
         data->a = 2*Dp;
@@ -155,35 +157,8 @@ void initialize_fields(Data* data)
 #endif
     }
 
-    /* VELOCITY : horizontal flow Um  */
-    for(int i=0; i<data->m; i++){
-        for(int j=0; j<data->n; j++){
-            data->u_n[i][j] = data->u_m;
-            data->u_n_1[i][j] = data->u_n[i][j];
-            data->u_star[i][j] = data->u_n[i][j];
-            data->T_n[i][j] = 1;
-            data->T_n_1[i][j] = data->T_n[i][j];
-            for (int s=0; s<data->Ns; s++){
-                data->C_n[s][i][j] = 1;
-                data->C_n_1[s][i][j] = data->C_n[s][i][j];
-            }
-            /* v_n is initially at zero */
-        }
-    }
-    /*INLET BC*/
-    for(int j=0; j<data->n; j++) {
-        data->u_n[0][j] = data->u_m;
-        data->u_n_1[0][j] = data->u_n[0][j];
-        data->u_star[0][j] = data->u_n[0][j];
-    }
-
-        /*Initialization of particles temperatures */
-    for(int k=0; k<data->Np; k++){
-        data->Tp[k] = data->Tp0;
-    }
-
     /* Initialization of particles position */
-    data->xg[0][0] = 10;
+    data->xg[0][0] = 2.5;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
@@ -207,19 +182,53 @@ void initialize_fields(Data* data)
 //    data->theta[1][1] = data->theta[1][0];
 //    data->theta[1][2] = data->theta[1][1];
 
+    /* DEDUCE MASK */
+    get_masks(data);
+
     /*Initialization of particles velocities */
-    for(int k=0; k<data->Np; k++){
-        data->Up[k][2] = 0*data->u_m;
+    for (int k = 0; k < data->Np; k++) {
+        data->Up[k][2] = 0 * data->u_m;
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = 0*data->u_m;
+        data->Vp[k][2] = 0 * data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 
     }
 
-}
 
+    /* VELOCITY : horizontal flow Um  */
+    for (int i = 0; i < data->m; i++) {
+        for (int j = 0; j < data->n; j++) {
+            data->u_n[i][j] = 0 * data->u_m;
+            data->u_n_1[i][j] = data->u_n[i][j];
+            data->u_star[i][j] = data->u_n[i][j];
+            data->T_n[i][j] = 1;
+            data->T_n_1[i][j] = data->T_n[i][j];
+            for (int s = 0; s < data->Ns; s++) {
+                data->C_n[s][i][j] = 1;
+                data->C_n_1[s][i][j] = data->C_n[s][i][j];
+            }
+            /* v_n is initially at zero */
+        }
+    }
+
+    /*INLET BC*/
+    for (int j = 0; j < data->n; j++) {
+        data->u_n[0][j] = 0*data->u_m;
+        data->u_n_1[0][j] = data->u_n[0][j];
+        data->u_star[0][j] = data->u_n[0][j];
+    }
+
+    /*Initialization of particles temperatures */
+    for (int k = 0; k < data->Np; k++) {
+        data->Tp[k] = data->Tp0;
+    }
+
+    /* Inlet concentration */
+    data->C0[0] = data->CA0;
+
+}
 
 

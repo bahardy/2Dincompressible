@@ -16,5 +16,6 @@ void get_diffusivity(Data* data);
 void get_conductivity(Data* data);
 void update_flow(Data* data);
 void update_scalars(Data* data);
+void get_rate(Data* data, double* r, double*** Cs, double** Ts, int i, int j);
 
 #endif //INC_2DINCOMP_FLOW_SOLVER_H

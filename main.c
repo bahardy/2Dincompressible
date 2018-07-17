@@ -93,10 +93,10 @@ int main(int argc, char *argv[]){
     /** ------------------------------- FIELDS INITIALIZATION ------------------------------- **/
     allocate_fields(&data);
     initialize_fields(&data);
-    get_masks(&data);
+    //get_masks(&data);
 
     /** ----- BOUNDARY CONDITION -----------**/
-    get_ghosts(&data, data.Tm0, data.C0);
+    get_ghosts(&data, data.T0, data.C0);
 
 
     /** ------------------------------- RAMPING ------------------------------- **/
@@ -139,10 +139,6 @@ int main(int argc, char *argv[]){
 
     data.ramp = 1;
     data.iter = 1;
-
-    // we feed reactants at the inlet
-    data.C0[0] = data.CA0;
-    //data.C0[1] = data.CB0;
 
     while(t < data.Tf){
 
@@ -188,11 +184,13 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
-//            if(t > data.t_transfer)
-//            {
-//                update_Tp(&data, k);
-//                update_Cp(&data, k);
-//            }
+#ifndef INTRAPARTICLE
+            if(t > data.t_transfer)
+            {
+                update_Tp(&data, k);
+                update_Cp(&data, k);
+            }
+#endif
 #endif
             compute_forces_fluxes(&data, k);
         }
@@ -206,9 +204,16 @@ int main(int argc, char *argv[]){
         get_masks(&data);
         get_Us_Vs(&data);
 #endif
+
 #ifdef TEMP
+#ifndef INTRAPARTICLE
         //get_Ts(&data);
         //get_Cs(&data);
+#else
+        get_conductivity(&data);
+        get_diffusivity(&data);
+#endif
+
 #endif
         get_Ustar_Vstar(&data, data.ramp);
 
@@ -223,7 +228,7 @@ int main(int argc, char *argv[]){
         update_scalars(&data);
 #endif
         update_flow(&data);
-        get_ghosts(&data, data.Tm0, data.C0);
+        get_ghosts(&data, data.T0, data.C0);
         get_vorticity(&data);
         get_tau(&data);
 

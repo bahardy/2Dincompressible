@@ -53,7 +53,7 @@ void writeData(FILE* fichier_data, Data data)
         fprintf(fichier_data,"Tf\t %f\n", data.Tf);
         fprintf(fichier_data, "Np \t %d \n", data.Np);
         fprintf(fichier_data, "Ns \t %d \n", data.Ns);
-        fprintf(fichier_data, "Tm0 \t %f \n", data.Tm0);
+        fprintf(fichier_data, "Tm0 \t %f \n", data.T0);
         fprintf(fichier_data, "Tp0 \t %f \n", data.Tp0);
         fprintf(fichier_data, "epsilon/h \t %f \n", data.eps/data.h);
         fprintf(fichier_data, "ep \t %f \n", data.ep);

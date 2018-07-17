@@ -212,7 +212,7 @@ int main(int argc, char *argv[]){
         update_scalars(&data);
 #endif
         update_flow(&data);
-        get_ghosts(&data, data.Tm0, data.C0);
+        get_ghosts(&data, data.T0, data.C0);
         get_vorticity(&data);
         get_tau_periodic(&data);
 

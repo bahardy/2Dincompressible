@@ -31,7 +31,7 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
 #endif
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->Tm0 = 1; // cup-mixing temperature at the inlet
+    data->T0 = 1; // cup-mixing temperature at the inlet
     data->Tp0 = 0.5; // initial particle temperature
 
     /* PHYSICAL PARAMETERS */

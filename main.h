@@ -59,6 +59,7 @@ struct Data{
     double Le;
     double Fr;
     double Ga;
+    double Da;
     double alpha_f;
     double** alpha;
     double* Df;
@@ -76,7 +77,7 @@ struct Data{
     double u_max; // Max Poiseuille velocity
     int Np; // Number of particles
     int Ns; // Number of species
-    double Tm0; // Initial fluid temperature
+    double T0; // Initial fluid temperature
     double Tp0; // Initial particle temperature
     double CA0; // Inlet A concentration
     double CB0; // Inlet B concentration
