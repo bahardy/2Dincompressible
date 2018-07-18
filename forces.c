@@ -136,8 +136,8 @@ void integrate_penalization_periodic(Data *data, double* surf, int k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
-    double** u_n = data->u_star;
-    double** v_n = data->v_star;
+    double** u_n = data->u_n;
+    double** v_n = data->v_n;
     double*** C_n = data->C_n;
     double** T_n = data->T_n;
     double** u_s = data->u_s;
