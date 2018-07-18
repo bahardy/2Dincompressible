@@ -36,14 +36,14 @@ void get_ghosts(Data* data, double T0, double* C0)
         T_n[i][0] = -0.2*(T_n[i][3]-5.*T_n[i][2]+15.*T_n[i][1]-16.*T0);
         T_n[i][n-1] = -0.2*(T_n[i][n-4]-5.*T_n[i][n-3]+15.*T_n[i][n-2]-16.*T0);
 
-//        T_n[i][0] = T_n[i][1];
-//        T_n[i][n-1] = T_n[i][n-2];
+        T_n[i][0] = T_n[i][1];
+        T_n[i][n-1] = T_n[i][n-2];
         for (int s=0; s<Ns; s++){
-            C[s][i][0] = -0.2*(C[s][i][3]-5.*C[s][i][2]+15.*C[s][i][1]-16.*C0[0]);
-            C[s][i][n-1] = -0.2*(C[s][i][n-4]-5.*C[s][i][n-3]+15.*C[s][i][n-2]-16.*C0[0]);
+//            C[s][i][0] = -0.2*(C[s][i][3]-5.*C[s][i][2]+15.*C[s][i][1]-16.*C0[0]);
+//            C[s][i][n-1] = -0.2*(C[s][i][n-4]-5.*C[s][i][n-3]+15.*C[s][i][n-2]-16.*C0[0]);
 
-//            C[s][i][0] = C[s][i][1];
-//            C[s][i][n-1] = C[s][i][n-2];
+            C[s][i][0] = C[s][i][1];
+            C[s][i][n-1] = C[s][i][n-2];
         }
 
 #endif
@@ -59,19 +59,16 @@ void get_ghosts(Data* data, double T0, double* C0)
 #ifdef TEMP
         /* On T_n and C */
         /* Inflow : T_n uniform  */
-        T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
-        T_n[m-1][j] = (T_n[m-4][j]-5.*T_n[m-3][j]+15.*T_n[m-2][j]-16.*T0);
-        //T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
-
-//        /* Inflow : CA = CA0; CB = CB0 */
-//        C[0][0][j] = -0.2*(C[0][3][j]-5.*C[0][2][j]+15.*C[0][1][j]-16.*C0[0]);
-//        C[1][0][j] = -0.2*(C[1][3][j]-5.*C[1][2][j]+15.*C[1][1][j]-16.*C0[1]);
-
         /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
+
+        T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
+        //T_n[m-1][j] = (T_n[m-4][j]-5.*T_n[m-3][j]+15.*T_n[m-2][j]-16.*T0);
+        T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
+
         for(int s=0; s<Ns; s++){
             C[s][0][j] = -0.2*(C[s][3][j]-5.*C[s][2][j]+15.*C[s][1][j]-16.*C0[s]);
-            //C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
-            C[s][m-1][j] = -0.2*(C[s][m-4][j]-5.*C[s][m-3][j]+15.*C[s][m-2][j]-16.*C0[s]);
+            C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
+            //C[s][m-1][j] = -0.2*(C[s][m-4][j]-5.*C[s][m-3][j]+15.*C[s][m-2][j]-16.*C0[s]);
         }
 	
 #endif
@@ -314,7 +311,7 @@ void get_Ustar_Vstar(Data* data, double ramp)
 
     double** P = data->P;
 
-    double Um = 0*data->u_m;
+    double Um = data->u_m;
 
     double H_U, H_U_old;
     double H_V, H_V_old;
@@ -546,7 +543,7 @@ void update_scalars(Data* data)
 
 #ifdef EXPLICIT
             // EXPLICIT VERSION
-            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T + 0.5 * H_T_old
+            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
                                             + alpha_f * lapT)
                                     - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
 #else
@@ -593,7 +590,7 @@ void update_scalars(Data* data)
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
 #ifdef EXPLICIT
                 //EXPLICIT VERSION
-              C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C + 0.5 * H_C_old
+              C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C_n + 0.5 * H_C_n_1
                                                      + Df[s] * lapC)
                                               - ramp*I_S[i][j]*(dt/dtau)*(C_n[s][i][j] - Cs[s][i][j]);
 #else

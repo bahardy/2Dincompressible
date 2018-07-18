@@ -8,10 +8,10 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Dp = 1;
-    data->d = 5.;
+    data->Dp = 0.25;
+    data->d = 2.;
     data->H = 0.5*data->d;
-    data->L = 5.;
+    data->L = 6.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -25,7 +25,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 100;
+    data->rho_p = 1.25;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -35,14 +35,15 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
-    data->Rep = 10.;
+    data->Rep = 40.;
     data->Fr = sqrt(1e3);
     data->Da = 0.2;
 
     data->g = 0;
 
 #ifdef GRAVITY
-    data->g = 1/pow((data->Fr),2);
+    //data->g = 1/pow((data->Fr),2);
+    data->g = 981;
 #endif
 
 #ifdef SEDIMENTATION
@@ -50,7 +51,6 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Rep = data->Ga;
     data->g = 1./(data->rho_r -1);
 #endif
-    //data->g = 981;
 
     /* FLOW */
     data->u_m = 1.;
@@ -63,7 +63,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 1;
+    data->Np = 3;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -94,7 +94,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-4;
 #endif
-    data->dt = 1e-3; //fmin(dt_CFL, dt_diff);
+    data->dt = 7.5e-5;//fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
@@ -158,7 +158,7 @@ void initialize_fields(Data* data) {
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 2.5;
+    data->xg[0][0] = 4;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
@@ -174,13 +174,25 @@ void initialize_fields(Data* data) {
 //    data->xg[1][1] = data->xg[1][0];
 //    data->xg[1][2] = data->xg[1][1];
 //
-//    data->yg[1][0] = data->H - 0.001;
+//    data->yg[1][0] = data->H;
 //    data->yg[1][1] = data->yg[1][0];
 //    data->yg[1][2] = data->yg[1][1];
 //
 //    data->theta[1][0] = 0;
 //    data->theta[1][1] = data->theta[1][0];
 //    data->theta[1][2] = data->theta[1][1];
+//
+//    data->xg[2][0] = 7.5;
+//    data->xg[2][1] = data->xg[2][0];
+//    data->xg[2][2] = data->xg[2][1];
+//
+//    data->yg[2][0] = data->H;
+//    data->yg[2][1] = data->yg[2][0];
+//    data->yg[2][2] = data->yg[2][1];
+//
+//    data->theta[2][0] = 0;
+//    data->theta[2][1] = data->theta[2][0];
+//    data->theta[2][2] = data->theta[2][1];
 
     /* DEDUCE MASK */
     get_masks(data);
@@ -201,13 +213,13 @@ void initialize_fields(Data* data) {
     /* VELOCITY : horizontal flow Um  */
     for (int i = 0; i < data->m; i++) {
         for (int j = 0; j < data->n; j++) {
-            data->u_n[i][j] = 0 * data->u_m;
+            data->u_n[i][j] = 0*data->u_m;
             data->u_n_1[i][j] = data->u_n[i][j];
             data->u_star[i][j] = data->u_n[i][j];
-            data->T_n[i][j] = 1;
+            data->T_n[i][j] = 0;
             data->T_n_1[i][j] = data->T_n[i][j];
             for (int s = 0; s < data->Ns; s++) {
-                data->C_n[s][i][j] = 1;
+                data->C_n[s][i][j] = 0;
                 data->C_n_1[s][i][j] = data->C_n[s][i][j];
             }
             /* v_n is initially at zero */
