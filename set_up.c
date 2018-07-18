@@ -137,7 +137,8 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     }
 }
 
-void initialize_fields(Data* data) {
+void initialize_fields(Data* data)
+{
 
     for (int k = 0; k < data->Np; k++) {
         data->dp[k] = data->Dp;

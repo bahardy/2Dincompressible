@@ -8,13 +8,13 @@
 
 //#define TEMP
 #define MOVE
-#define TWO_WAY
+//#define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
 //#define SLIP
 #define EXPLICIT
-#define GRAVITY
+//#define GRAVITY
 #define SMOOTHING
 #define AB3
 //#define INTRAPARTICLE

@@ -11,7 +11,7 @@
 #include "write.h"
 #include "fields_memory.h"
 #include "forces.h"
-#include "collision.h"
+#include "collision_periodic.h"
 #include "particle_motion.h"
 #include "set_up_periodic.h"
 #include "flow_solver_periodic.h"
@@ -25,7 +25,7 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(PETSC_COMM_WORLD, &nbproc);
 
     struct stat st = {0};
-    char* folder = "new_results";
+    char* folder = "results";
     if (stat(folder, &st) == -1) {
         mkdir(folder, 0700);
     }
@@ -159,11 +159,19 @@ int main(int argc, char *argv[]){
                 integrate_penalization_periodic(&data, &surf, k);
 #ifdef  MOVE
                 if (t >= data.t_move) {
+#ifdef ITERATIVE
 #ifdef TWO_WAY
                     update_Up(&data, k);
                     relax_Up(&data, relax, Up_old, Vp_old, Omega_p_old, k);
 #endif
                     update_Xp(&data, k);
+#else
+                    update_Xp(&data, k);
+#ifdef TWO_WAY
+                    update_Up(&data, k);
+#endif
+#endif
+
                 }
 #endif
 #ifdef  TEMP
@@ -178,7 +186,7 @@ int main(int argc, char *argv[]){
 
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
-            printf("xp = %f \n", data.xg[0][1]);
+            printf("xp = %f \n", data.xg[0][2]);
             printf("Up = %f \n", data.Up[0][2]);
 
             get_masks(&data);
@@ -197,8 +205,8 @@ int main(int argc, char *argv[]){
         }
 
         PetscPrintf(PETSC_COMM_WORLD, "Fluid-solid coupling achievd after %d iterations. Delta = %f \n", it, delta);
-        PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, data.xg[0][1], data.yg[0][1]);
-        PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", data.theta[0][1]);
+        PetscPrintf(PETSC_COMM_WORLD,"Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k+1, data.xg[0][2], data.yg[0][2]);
+        PetscPrintf(PETSC_COMM_WORLD,"Angle: theta  = %f \n", data.theta[0][2]);
 
         compute_forces_fluxes(&data, 0);
 
@@ -214,7 +222,7 @@ int main(int argc, char *argv[]){
         update_flow(&data);
         get_ghosts(&data, data.T0, data.C0);
         get_vorticity(&data);
-        get_tau_periodic(&data);
+        //get_tau_periodic(&data);
 
         diagnostic(&data);
         update_quantities(&data);
@@ -362,7 +370,7 @@ void update_quantities(Data* data)
         data->theta[k][0] = data->theta[k][1];
         data->theta[k][1] = data->theta[k][2];
 
-#ifdef TWO_WAY
+#ifndef AB3
         data->Up[k][0] = data->Up[k][1];
         data->Up[k][1] = data->Up[k][2];
 

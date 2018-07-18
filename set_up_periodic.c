@@ -8,14 +8,24 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1;
-    data->d = 4.;
+    data->d = 30.;
     data->H = 0.5*data->d;
-    data->L = 8.;
+    data->L = 30.;
     data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
-    data->eps = 2*data->h;
+    data->eps = data->h;
 #endif
+
+    /* PHYSICAL PARAMETERS */
+    data->rho_f = 1.;
+    data->rho_p = 100;
+    data->rho_r = data->rho_p/data->rho_f;
+    data->cp = 1000.;
+    data->cf = 1000.;
+    data->cr = data->cp/data->cf;
+    data->g = 0;
+
     /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
@@ -23,33 +33,23 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
     data->Rep = 40.;
     data->Fr = sqrt(1e3);
 
+#ifdef SEDIMENTATION
+    data->Ga = 100*sqrt(data->rho_r -1);
+    data->Rep = data->Ga;
+    data->g = 1./(data->rho_r -1);
+#endif
+
     /* FLOW */
     data->u_m = 1.;
-    data->g = 0;
-#ifdef GRAVITY
-    data->g = 1;//9.81;
-#endif
+    data->nu = data->u_m*data->Dp/data->Rep;
+
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
     data->T0 = 1; // cup-mixing temperature at the inlet
-    data->Tp0 = 0.5; // initial particle temperature
-
-    /* PHYSICAL PARAMETERS */
-    data->rho_f = 1.;
-    data->rho_p = 1.5;
-    data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
-
-#ifdef SEDIMENTATION
-    data->Ga = 1e2;
-    data->Rep = data->Ga;
-#endif
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
-    data->Ns = 2;
+    data->Ns = 1;
     data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     data->Df[0] = data->nu/data->Sc;
@@ -129,11 +129,10 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
 void initialize_fields_periodic(Data* data)
 {
     /* Particles position */
-    data->xg[0][0] = 3;
+    data->xg[0][0] = 25;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
-    //data->xg[1] = 4.5;
     data->yg[0][0] = data->H;
     data->yg[0][1] = data->yg[0][0];
     data->yg[0][2] = data->yg[0][1];
@@ -143,15 +142,15 @@ void initialize_fields_periodic(Data* data)
     data->theta[0][2] = data->theta[0][1];
 
     data->dp[0] = data->Dp;
-    //data->dp[1] = data->Dp;
     data->rp[0] = .5*data->Dp;
-    //data->rp[1] = .5*data->Dp;
 
-    data->Up[0][1] = 0.5*data->u_m;
+    /* Particles velocities */
+
+    data->Up[0][1] = -1*data->u_m;
     data->Up[0][0] = data->Up[0][1];
     data->Up[0][2] = data->Up[0][1];
 
-    data->Vp[0][1] = data->u_m;
+    data->Vp[0][1] = 0*data->u_m;
     data->Vp[0][0] = data->Vp[0][1];
     data->Vp[0][2] = data->Vp[0][1];
 

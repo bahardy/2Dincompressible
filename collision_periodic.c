@@ -1,9 +1,8 @@
 //
-// Created by Baptiste Hardy on 18/06/18.
+// Created by Baptiste Hardy on 18/07/18.
 //
 
-#include "main.h"
-#include "collision.h"
+#include "collision_periodic.h"
 
 int sign(double x)
 {
@@ -62,7 +61,7 @@ void collision(Data* data)
                 Fy_coll[k2][2] += -Fy_coll[k1][2];
             }
         }
-        /** Check for wall collisions **/
+        /** Check for side wall collisions **/
 
         d_wall = fmin(y1, d-y1);
 
@@ -73,17 +72,6 @@ void collision(Data* data)
         else if (2*d_wall < 2*R1 + z)
         {
             Fy_coll[k1][2] += (c11/ew)*pow((2*d_wall - (2*R1 + z))/z, 2.)*sign(d/2. - y1);
-        }
-
-        d_wall = fmin(x1, L-x1);
-
-        if(2*d_wall < 2*R1)
-        {
-            Fx_coll[k1][2] += ( (c11/ew)*pow((2*d_wall - (2*R1 + z))/z, 2.) + (c12/Ew)*(2*R1 - 2*d_wall)/z )*sign(L/2. - x1);
-        }
-        else if (2*d_wall < 2*R1 + z)
-        {
-            Fx_coll[k1][2] += (c11/ew)*pow((2*d_wall - (2*R1 + z))/z, 2.)*sign(L/2. - x1);
         }
 
     }
