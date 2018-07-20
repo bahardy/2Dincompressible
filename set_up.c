@@ -8,8 +8,8 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Dp = 0.25;
-    data->d = 2.;
+    data->Dp = 1;
+    data->d = 4.;
     data->H = 0.5*data->d;
     data->L = 6.;
     data->h = data->Dp/30;
@@ -25,7 +25,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 1.25;
+    data->rho_p = 100;
     data->rho_r = data->rho_p/data->rho_f;
     data->cp = 1000.;
     data->cf = 1000.;
@@ -39,12 +39,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Fr = sqrt(1e3);
     data->Da = 0.2;
 
-    data->g = 0;
-
-#ifdef GRAVITY
-    //data->g = 1/pow((data->Fr),2);
-    data->g = 981;
-#endif
+    data->g =  1/pow((data->Fr),2);
 
 #ifdef SEDIMENTATION
     data->Ga = 100*sqrt(data->rho_r -1);//39.15*sqrt(data->rho_r-1); //usually:100
@@ -63,7 +58,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 3;
+    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -94,7 +89,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 #ifndef EXPLICIT
     data->ratio_dtau_dt = 1e-4;
 #endif
-    data->dt = 7.5e-5;//fmin(dt_CFL, dt_diff);
+    data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
 
     if(rank == 0){
@@ -159,7 +154,7 @@ void initialize_fields(Data* data)
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 4;
+    data->xg[0][0] = 2;
     data->xg[0][1] = data->xg[0][0];
     data->xg[0][2] = data->xg[0][1];
 
@@ -204,7 +199,7 @@ void initialize_fields(Data* data)
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = 0 * data->u_m;
+        data->Vp[k][2] = 1 * data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 

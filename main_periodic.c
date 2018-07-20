@@ -186,8 +186,8 @@ int main(int argc, char *argv[]){
 
             /** --- SOLVE FLUID PHASE --- */
 #ifdef  MOVE
-            printf("xp = %f \n", data.xg[0][2]);
-            printf("Up = %f \n", data.Up[0][2]);
+            PetscPrintf(MPI_COMM_WORLD, "xp = %f \n", data.xg[0][2]);
+            PetscPrintf(MPI_COMM_WORLD, "Up = %f \n", data.Up[0][2]);
 
             get_masks(&data);
             get_Us_Vs(&data);

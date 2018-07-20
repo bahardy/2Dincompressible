@@ -8,11 +8,11 @@
 
 //#define TEMP
 #define MOVE
-//#define TWO_WAY
+#define TWO_WAY
 //#define RAMPING
 #define WRITE
 #define DISK
-//#define SLIP
+#define SLIP
 #define EXPLICIT
 //#define GRAVITY
 #define SMOOTHING

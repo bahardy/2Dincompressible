@@ -15,38 +15,44 @@ void update_Xp(Data* data, int k)
     double** Omega_p = data->Omega_p;
     double dt = data->dt;
 
+    if (data->iter <= 2)
+    {
+        xg[k][2] = xg[k][1] + dt*Up[k][2];
+        yg[k][2] = yg[k][1] + dt*Vp[k][2];
+        theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
+    }
+    else {
+
 #ifdef ITERATIVE
-    xg[k][2] = xg[k][1] + dt*Up[k][2];
-    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt+Omega_p[k][2];
+        xg[k][2] = xg[k][1] + dt*Up[k][2];
+        yg[k][2] = yg[k][1] + dt*Vp[k][2];
+        theta[k][2] = theta[k][1] + dt+Omega_p[k][2];
 #endif
 
 #ifdef LF
-    xg[k][2] = xg[k][0] + 2*dt*Up[k][1];
-    yg[k][2] = yg[k][0] + 2*dt*Vp[k][1];
-    theta[k][2] = theta[k][0] + 2*dt+Omega_p[k][1];
+        xg[k][2] = xg[k][0] + 2*dt*Up[k][1];
+        yg[k][2] = yg[k][0] + 2*dt*Vp[k][1];
+        theta[k][2] = theta[k][0] + 2*dt+Omega_p[k][1];
 
-//    xg[k][2] = xg[k][1] + dt*Up[k][2];
-//    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-//    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
+    //    xg[k][2] = xg[k][1] + dt*Up[k][2];
+    //    yg[k][2] = yg[k][1] + dt*Vp[k][2];
+    //    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
 #ifdef AB3
-    xg[k][2] = xg[k][1] + dt*(23.*Up[k][2]-16.*Up[k][1]+5.*Up[k][0])/12.;
-    yg[k][2] = yg[k][1] + dt*(23.*Vp[k][2]-16.*Vp[k][1]+5.*Vp[k][0])/12.;
-    theta[k][2] = theta[k][1] + dt*(23.*Omega_p[k][2]-16.*Omega_p[k][1]+5.*Omega_p[k][0])/12.;
+        xg[k][2] = xg[k][1] + dt * (23. * Up[k][2] - 16. * Up[k][1] + 5. * Up[k][0]) / 12.;
+        yg[k][2] = yg[k][1] + dt * (23. * Vp[k][2] - 16. * Vp[k][1] + 5. * Vp[k][0]) / 12.;
+        theta[k][2] = theta[k][1] + dt * (23. * Omega_p[k][2] - 16. * Omega_p[k][1] + 5. * Omega_p[k][0]) / 12.;
 
-//    xg[k][2] = xg[k][1] + dt*Up[k][2];
-//    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-//    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
 #ifdef EE
-    xg[k][2] = xg[k][1] + dt*Up[k][2];
-    yg[k][2] = yg[k][1] + dt*Vp[k][2];
-    theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
+        xg[k][2] = xg[k][1] + dt*Up[k][2];
+        yg[k][2] = yg[k][1] + dt*Vp[k][2];
+        theta[k][2] = theta[k][1] + dt*Omega_p[k][2];
 #endif
 
+    }
 }
 
 void update_Up(Data* data, int k)
@@ -122,23 +128,23 @@ void update_Up(Data* data, int k)
 #endif
 
 #ifdef AB3
-//        dudt = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
-//                (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f));// - g;
-//        dvdt = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
-//                (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
-//        domegadt = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
+        dudt = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
+                (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
+        dvdt = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) +
+                (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f));
+        domegadt = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
 
-        dudt = (1./rho_r)*ax[k][2]
-               + (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*rho_r)
-               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_p)
-               - (1 - 1/rho_r)*g;
-
-        dvdt = (1./rho_r)*ay[k][2]
-               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
-               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
-
-        domegadt = (1./rho_r)*aomega[k][2]
-                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
+//        dudt = (1./rho_r)*ax[k][2]
+//               + (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*rho_r)
+//               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_p)
+//               - (1 - 1/rho_r)*g;
+//
+//        dvdt = (1./rho_r)*ay[k][2]
+//               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
+//               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
+//
+//        domegadt = (1./rho_r)*aomega[k][2]
+//                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
 
         Up[k][2] = Up[k][1] + dt*dudt;
         Vp[k][2] = Vp[k][1] + dt*dvdt;

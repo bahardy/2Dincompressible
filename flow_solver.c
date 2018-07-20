@@ -618,7 +618,8 @@ void update_scalars(Data* data)
     data->C_n = C_new;
 }
 
-void get_vorticity(Data* data){
+void get_vorticity(Data* data)
+{
     int m = data->m;
     int n = data->n;
     double h = data->h;
