@@ -93,7 +93,8 @@ int main(int argc, char *argv[]){
     /** ------------------------------- FIELDS INITIALIZATION ------------------------------- **/
     allocate_fields(&data);
     initialize_fields(&data);
-    //get_masks(&data);
+    get_masks(&data);
+    get_normal(&data);
 
     /** ----- BOUNDARY CONDITION -----------**/
     get_ghosts(&data, data.T0, data.C0);
@@ -187,8 +188,8 @@ int main(int argc, char *argv[]){
 #ifndef INTRAPARTICLE
             if(t > data.t_transfer)
             {
-                update_Tp(&data, k);
-                update_Cp(&data, k);
+                //update_Tp(&data, k);
+                //update_Cp(&data, k);
             }
 #endif
 #endif
@@ -202,6 +203,7 @@ int main(int argc, char *argv[]){
 #ifdef  MOVE
         /*Compute the mask functions */
         get_masks(&data);
+        get_normal(&data);
         get_Us_Vs(&data);
 #endif
 

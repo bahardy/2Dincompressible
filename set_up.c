@@ -53,7 +53,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->T0 = 1; // cup-mixing temperature at the inlet
+    data->T0 = 1; //  temperature at the inlet
     data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
@@ -67,7 +67,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 //    data->Df[0] = data->nu/data->Sc;
 //    data->Df[1] = data->nu/data->Sc;
     data->dH = 0;
-    data->CA0 = 1.;
+    data->CA0 = 0.;
     data->CB0 = 0.;
 
     /* GRID */
@@ -166,7 +166,7 @@ void initialize_fields(Data* data)
     data->theta[0][1] = data->theta[0][0];
     data->theta[0][2] = data->theta[0][1];
 
-//    data->xg[1][0] = 5;
+//    data->xg[1][0] = 3;
 //    data->xg[1][1] = data->xg[1][0];
 //    data->xg[1][2] = data->xg[1][1];
 //
@@ -190,8 +190,6 @@ void initialize_fields(Data* data)
 //    data->theta[2][1] = data->theta[2][0];
 //    data->theta[2][2] = data->theta[2][1];
 
-    /* DEDUCE MASK */
-    get_masks(data);
 
     /*Initialization of particles velocities */
     for (int k = 0; k < data->Np; k++) {
@@ -199,7 +197,7 @@ void initialize_fields(Data* data)
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = 1 * data->u_m;
+        data->Vp[k][2] = 0 * data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 
@@ -209,7 +207,7 @@ void initialize_fields(Data* data)
     /* VELOCITY : horizontal flow Um  */
     for (int i = 0; i < data->m; i++) {
         for (int j = 0; j < data->n; j++) {
-            data->u_n[i][j] = 0*data->u_m;
+            data->u_n[i][j] = 1*data->u_m;
             data->u_n_1[i][j] = data->u_n[i][j];
             data->u_star[i][j] = data->u_n[i][j];
             data->T_n[i][j] = 0;
@@ -224,7 +222,7 @@ void initialize_fields(Data* data)
 
     /*INLET BC*/
     for (int j = 0; j < data->n; j++) {
-        data->u_n[0][j] = 0*data->u_m;
+        data->u_n[0][j] = 1*data->u_m;
         data->u_n_1[0][j] = data->u_n[0][j];
         data->u_star[0][j] = data->u_n[0][j];
     }

@@ -6,8 +6,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-//#define TEMP
-#define MOVE
+#define TEMP
+//#define MOVE
 #define TWO_WAY
 //#define RAMPING
 #define WRITE
@@ -15,7 +15,7 @@
 #define SLIP
 #define EXPLICIT
 //#define GRAVITY
-#define SMOOTHING
+//#define SMOOTHING
 #define AB3
 //#define INTRAPARTICLE
 //#define ITERATIVE
@@ -147,7 +147,8 @@ struct Data{
     double** I_S;
     double** I_U;
     double** I_V;
-
+    double** nSx;
+    double** nSy;
 
     double** P;
     double** phi;

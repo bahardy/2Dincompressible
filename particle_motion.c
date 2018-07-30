@@ -212,9 +212,9 @@ void update_Cp(Data* data, int k)
     double*** PP = data->PP;
     double dt = data->dt;
 
-    dCdt[k][1] = (23.*(PP[k][0][2]+PP[k][1][2])-16.*(PP[k][0][1]+PP[k][1][1])+5.*(PP[k][0][0]+PP[k][1][0]))/12.;
+    //dCdt[k][1] = (23.*(PP[k][0][2]+PP[k][1][2])-16.*(PP[k][0][1]+PP[k][1][1])+5.*(PP[k][0][0]+PP[k][1][0]))/12.;
     Cp[k][0] = 0.;
-    Cp[k][1] += dt*dCdt[k][1];
+    //Cp[k][1] += dt*dCdt[k][1];
 }
 
 void compute_Qr(double** Qr, double rate, double dH, int k)

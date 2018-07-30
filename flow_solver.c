@@ -491,18 +491,27 @@ void update_scalars(Data* data)
     double ***C_n_1 = data->C_n_1;
     double ***Cs = data->Cs;
 
+    double eta_c = 0.001;
+    double q = 0;
+
     double alpha_f = data->alpha_f;
     double** alpha = data->alpha;
     double *Df = data->Df;
     double ***D = data->D;
 
     double **I_S = data->I_S;
+    double **nSx = data->nSx;
+    double **nSy = data->nSy;
 
     double q_left, q_right, q_top, q_bottom;
     double j_left, j_right, j_top, j_bottom;
 
+    double dTdx, dTdy;
     double H_T_n, H_T_n_1, lapT;
     double H_C_n, H_C_n_1, lapC;
+    double RHS;
+    double x, y, xG, yG;
+    double d;
 
     double* rate = make1DDoubleArray(Ns);
 
@@ -514,14 +523,17 @@ void update_scalars(Data* data)
             get_rate(data, rate, C_n, T_n, i, j);
 
             // ADVECTIVE TERMS
-            H_T_n = .5*(u_n[i][j]*(T_n[i+1][j]-T_n[i][j])/h + u_n[i-1][j]*(T_n[i][j]-T_n[i-1][j])/h)
-                  + .5*(v_n[i][j]*(T_n[i][j+1]-T_n[i][j])/h + v_n[i][j-1]*(T_n[i][j]-T_n[i][j-1])/h);
 
-            if(data->iter == 1)
-            {
+            dTdx = (T_n[i + 1][j] - T_n[i - 1][j]) / (2 * h);
+            dTdy = (T_n[i][j + 1] - T_n[i][j - 1]) / (2 * h);
+
+            H_T_n = .5 * (u_n[i][j] * (T_n[i + 1][j] - T_n[i][j]) / h + u_n[i - 1][j] * (T_n[i][j] - T_n[i - 1][j]) / h)
+                    + .5 *
+                      (v_n[i][j] * (T_n[i][j + 1] - T_n[i][j]) / h + v_n[i][j - 1] * (T_n[i][j] - T_n[i][j - 1]) / h);
+
+            if (data->iter == 1) {
                 H_T_n_1 = H_T_n;
-            }
-            else{
+            } else {
                 H_T_n_1 = data->H_T_n_1[i][j];
             }
 
@@ -543,9 +555,22 @@ void update_scalars(Data* data)
 
 #ifdef EXPLICIT
             // EXPLICIT VERSION
-            T_new[i][j] = T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
-                                            + alpha_f * lapT)
-                                    - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j] - Ts[i][j]);
+            RHS = (-1.5 * H_T_n + 0.5 * H_T_n_1) + alpha_f * lapT;
+
+            xG = data->xg[0][2];
+            yG = data->yg[0][2];
+            x = (i - 0.5) * h;
+            y = (j - 0.5) * h;
+
+            d = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
+
+            if (d > 0.9 * data->rp[0])
+            {
+                T_new[i][j] = T_n[i][j] + dt * (RHS - (I_S[i][j] / eta_c) * (nSx[i][j] * dTdx + nSy[i][j] * dTdy - q));
+            } else
+            {
+                T_new[i][j] = T_n[i][j] + dt * RHS;
+            }
 #else
             // IMPLICIT VERSION
             T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
@@ -616,6 +641,43 @@ void update_scalars(Data* data)
 
     data->C_n_1 = C_n;
     data->C_n = C_new;
+}
+
+void get_normal(Data* data){
+
+    double h = data->h;
+    double m = data->m;
+    double n = data->n;
+    double Np = data->Np;
+
+    double nSx_p;
+    double nSy_p;
+    double** nSx = data->nSx;
+    double** nSy = data->nSy;
+    double*** chi_S = data->chi_S;
+
+    double x, y, xG, yG, d;
+
+    int i, j, k;
+
+    for(i = 0; i<m; i++){
+        x = (i-0.5)*h;
+        for(j = 0; j<n; j++){
+            y = (j-0.5)*h;
+            for(k = 0; k<Np; k++){
+                xG = data->xg[k][2];
+                yG = data->yg[k][2];
+
+                d = sqrt((x-xG)*(x-xG) + (y-yG)*(y-yG));
+                nSx_p = -(x-xG)/d;
+                nSy_p = -(y-yG)/d;
+
+                nSx[i][j] += chi_S[k][i][j]*nSx_p;
+                nSy[i][j] += chi_S[k][i][j]*nSy_p;
+
+            }
+        }
+    }
 }
 
 void get_vorticity(Data* data)

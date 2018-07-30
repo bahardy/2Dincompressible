@@ -44,6 +44,9 @@ void allocate_fields(Data* data)
     data->Ip_S = make3DDoubleArray(Np,m,n);
     data->Ip_U = make3DDoubleArray(Np,m,n);
     data->Ip_V = make3DDoubleArray(Np,m,n);
+    data->nSx = make2DDoubleArray(m,n);
+    data->nSy = make2DDoubleArray(m,n);
+
     data->I_S = make2DDoubleArray(m,n);
     data->I_U = make2DDoubleArray(m,n);
     data->I_V = make2DDoubleArray(m,n);
@@ -124,6 +127,7 @@ void free_fields(Data* data)
     free2Darray(data->Up,Np), free2Darray(data->Vp, Np), free2Darray(data->Omega_p,Np), free(data->Tp), free2Darray(data->Cp, Np);
     free2Darray(data->F, Np), free2Darray(data->G, Np), free2Darray(data->Mz, Np), free2Darray(data->QQ, Np), free3Darray(data->PP, Np,Ns), free2Darray(data->Qr, Np);
     free2Darray(data->I_S, m), free2Darray(data->I_U, m), free2Darray(data->I_V, m), free2Darray(data->coloring, m);
+    free2Darray(data->nSx, m), free2Darray(data->nSy, m);
     free3Darray(data->Ip_S, Np,m), free3Darray(data->Ip_U, Np,m), free3Darray(data->Ip_V, Np, m);
     free3Darray(data->chi_S, Np, m), free3Darray(data->chi_U, Np, m), free3Darray(data->chi_V, Np, m);
     free2Darray(data->tau_xx, m), free2Darray(data->tau_yy, m),free2Darray(data->tau_xy, m);

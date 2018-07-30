@@ -7,6 +7,7 @@
 
 void get_ghosts(Data* data, double T0, double* C0);
 void get_masks(Data* data);
+void get_normal(Data* data);
 void get_Cs(Data* data);
 void get_Ts(Data* data);
 void get_Us_Vs(Data* data);
