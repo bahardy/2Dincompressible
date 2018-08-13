@@ -2,7 +2,6 @@
 // Created by Baptiste Hardy on 5/07/18.
 //
 
-#include "main.h"
 #include "flow_solver_periodic.h"
 
 

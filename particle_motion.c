@@ -79,7 +79,7 @@ void update_Up(Data* data, int k)
     double dudt, dvdt, domegadt;
     double** ax = data->dudt;
     double** ay = data->dvdt;
-    double** aomega = data->domegadt;
+    double** atheta = data->domegadt;
 
     double dt = data->dt;
 
@@ -143,7 +143,7 @@ void update_Up(Data* data, int k)
 //               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
 //               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
 //
-//        domegadt = (1./rho_r)*aomega[k][2]
+//        domegadt = (1./rho_r)*atheta[k][2]
 //                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
 
         Up[k][2] = Up[k][1] + dt*dudt;

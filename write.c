@@ -60,6 +60,7 @@ void writeData(FILE* fichier_data, Data data)
         fprintf(fichier_data, "Ep \t %f \n", data.Ep);
         fprintf(fichier_data, "ew \t %f \n", data.ew);
         fprintf(fichier_data, "Ew \t %f \n", data.Ew);
+        fprintf(fichier_data," Da \t %f\n",data.Da);
         fflush(fichier_data);
     }
     else{\

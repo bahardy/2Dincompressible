@@ -169,9 +169,9 @@ int main(int argc, char *argv[]){
 #endif
 #ifdef AB3
                 update_Xp(&data, k);
-                if(t > data.t_coupling) {
-                    update_Up(&data, k);
-                }
+                //if(t > data.t_coupling) {
+                //    update_Up(&data, k);
+                //}
 
 #endif
 #ifdef LF

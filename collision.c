@@ -24,12 +24,15 @@ void collision(Data* data)
     double* rp = data->rp;
     double** Fx_coll = data->Fx_coll;
     double** Fy_coll = data->Fy_coll;
+
     int Np = data->Np;
     double rho_s = data->rho_p;
     double rho_f = data->rho_f;
     double g = data->g;
     double S = data->Sp[0];
     double L = data->L;
+
+    double** Up = data->Up;
 
     double c11 = S*(rho_s - rho_f)*g;
     double c12 = c11;
@@ -61,6 +64,8 @@ void collision(Data* data)
                 Fy_coll[k1][2] += ((c12/ep)*pow((d12 - (R1 + R2 + z))/z , 2.) + (c12/Ep)*(R1+R2-d12)/z)*(y1 - y2)/d12;
                 Fy_coll[k2][2] += -Fy_coll[k1][2];
             }
+
+
         }
         /** Check for wall collisions **/
 

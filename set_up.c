@@ -9,10 +9,10 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1;
-    data->d = 4.;
+    data->d = 3.;
     data->H = 0.5*data->d;
-    data->L = 6.;
-    data->h = data->Dp/30;
+    data->L = 5.;
+    data->h = data->Dp/40;
     data->eps = 0;
 #ifdef SMOOTHING
     data->eps = data->h;
@@ -53,7 +53,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->T0 = 1; // cup-mixing temperature at the inlet
+    data->T0 = 0; // cup-mixing temperature at the inlet
     data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
@@ -87,7 +87,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ratio_dtau_dt = 1;
 #endif
 #ifndef EXPLICIT
-    data->ratio_dtau_dt = 1e-4;
+    data->ratio_dtau_dt = 1e-3;
 #endif
     data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
@@ -199,23 +199,31 @@ void initialize_fields(Data* data)
         data->Up[k][1] = data->Up[k][2];
         data->Up[k][0] = data->Up[k][2];
 
-        data->Vp[k][2] = 1 * data->u_m;
+        data->Vp[k][2] = 0 * data->u_m;
         data->Vp[k][1] = data->Vp[k][2];
         data->Vp[k][0] = data->Vp[k][2];
 
+        data->Omega_p[k][2] = 0 * data->u_m;
+        data->Omega_p[k][1] = data->Omega_p[k][2];
+        data->Omega_p[k][0] = data->Omega_p[k][2];
+
     }
 
+    /*Initialization of particles temperatures */
+    for (int k = 0; k < data->Np; k++) {
+        data->Tp[k] = data->Tp0;
+    }
 
     /* VELOCITY : horizontal flow Um  */
     for (int i = 0; i < data->m; i++) {
         for (int j = 0; j < data->n; j++) {
-            data->u_n[i][j] = 0*data->u_m;
+            data->u_n[i][j] = 1*data->u_m;
             data->u_n_1[i][j] = data->u_n[i][j];
             data->u_star[i][j] = data->u_n[i][j];
             data->T_n[i][j] = 0;
             data->T_n_1[i][j] = data->T_n[i][j];
             for (int s = 0; s < data->Ns; s++) {
-                data->C_n[s][i][j] = 0;
+                data->C_n[s][i][j] = 1;
                 data->C_n_1[s][i][j] = data->C_n[s][i][j];
             }
             /* v_n is initially at zero */
@@ -224,14 +232,9 @@ void initialize_fields(Data* data)
 
     /*INLET BC*/
     for (int j = 0; j < data->n; j++) {
-        data->u_n[0][j] = 0*data->u_m;
+        data->u_n[0][j] = 1*data->u_m;
         data->u_n_1[0][j] = data->u_n[0][j];
         data->u_star[0][j] = data->u_n[0][j];
-    }
-
-    /*Initialization of particles temperatures */
-    for (int k = 0; k < data->Np; k++) {
-        data->Tp[k] = data->Tp0;
     }
 
     /* Inlet concentration */

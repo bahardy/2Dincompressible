@@ -584,7 +584,7 @@ void update_scalars(Data* data)
 
                 lapC = -( (j_right-j_left)/dx + (j_top-j_bottom)/dy );
 
-                C_new[s][i][j] = C_n[s][i][j] + dt*((1 - I_S[i][j])*(-1.5*H_C_n + 0.5*H_C_n_1) + lapC + I_S[i][j]*rate[s]);
+                C_new[s][i][j] = C_n[s][i][j] + dt*((-1.5*H_C_n + 0.5*H_C_n_1) + lapC + I_S[i][j]*rate[s]);
 
 #else
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
@@ -637,10 +637,10 @@ void get_vorticity(Data* data)
     }
 }
 
-void get_rate(Data* data, double* r, double*** Cs, double** Ts, int i, int j)
+void get_rate(Data* data, double* r, double*** C, double** Ts, int i, int j)
 {
     double k = data->Da;
-    r[0] = -k*Cs[0][i][j];
+    r[0] = -k*C[0][i][j];
     //r[1] = -r[0];
 }
 
