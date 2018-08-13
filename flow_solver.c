@@ -526,7 +526,6 @@ void update_scalars(Data* data)
             }
 
             // DIFFUSION TERM
-
 #ifdef INTRAPARTICLE
 
             q_left = -.5*(alpha[i][j] + alpha[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
@@ -536,7 +535,7 @@ void update_scalars(Data* data)
 
             lapT = -((q_right-q_left)/dx + (q_top-q_bottom)/dy);
 
-            T_new[i][j] = T_n[i][j] + dt*((1 - I_S[i][j])*(-1.5*H_T_n_1 + 0.5*H_T_n_1)
+            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1)
                                           + lapT + I_S[i][j]*fabs(rate[0])*(-dH)/(rho_p*c_p));
 #else
             lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
