@@ -7,7 +7,10 @@
 
 int integrate_penalization(Data *data, double* surf, int k)
 {
-    // Integral terms
+
+    double Gr = data->Gr;
+    double Re_p = data->Re_p;
+
     double** F = data->F;
     double** G = data->G;
     double** M = data->Mz;
@@ -17,6 +20,7 @@ int integrate_penalization(Data *data, double* surf, int k)
     double*** Ip_U = data->Ip_U;
     double*** Ip_V = data->Ip_V;
     double*** Ip_S = data->Ip_S;
+
     double** u_n = data->u_star;
     double** v_n = data->v_star;
     double*** C_n = data->C_n;
@@ -25,9 +29,11 @@ int integrate_penalization(Data *data, double* surf, int k)
     double** v_s = data->v_s;
     double** Ts = data->Ts;
     double*** Cs = data->Cs;
+
     double** xg = data->xg;
     double** yg = data->yg;
     double* rp = data->rp;
+
     int Ns = data->Ns;
     int m = data->m;
     int n = data->n;
@@ -68,6 +74,7 @@ int integrate_penalization(Data *data, double* surf, int k)
 //    }
 
     double Fint, Gint, Mint, Qint, *Qmint, sint;
+    double Fbuoy = 0;
     Fint = 0.;
     Gint = 0.;
     Mint = 0.;
@@ -77,38 +84,39 @@ int integrate_penalization(Data *data, double* surf, int k)
 
     double h2;
     h2 = h*h;
-    double yU, xV, f, g, q, qm;
+    double yU, xV, f, g, q, qm, T_u, f_buoy;
 
 
     //for(int i=startX; i<=endX; i++){//
-    for(int i = 0; i<m; i++){
+    for(int i = 1; i<m-1; i++){
         xV = (i-0.5)*h;
         //for(int j=startY; j<=endY; j++){
         for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
-            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j]);
-            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j]);
+            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j])*h2/dtau;
+            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j])*h2/dtau;
 #ifdef TEMP
-            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j]);
+            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j])*h2/dtau;
             Qint += q;
+
+            T_u = .5*(T_n[i][j] + T_n[i+1][j]);
+            f_buoy = Ip_U[k][i][j]*(Gr/pow(Re_p,2))*T_u;
+            Fbuoy += f_buoy*h2;
+
             for(int s=0; s<Ns; s++){
-                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j]);
+                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j])*h2/dtau;
                 Qmint[s] += qm;
             }
 #endif
             sint += Ip_S[k][i][j]*h*h;
 
-            Fint += f; /* units : m/s */
+            Fint += f ; /* units : m/s */
             Gint += g; /* units : m/s */
             Mint += ((xV-xg[k][2])*g-(yU-yg[k][2])*f);/* units: m^2/s */
         }
     }
-    Fint *= h2/dtau; /* units : m^3/s; */
-    Gint *= h2/dtau;
-    Mint *= h2/dtau;
-    Qint *= h2/dtau; /* units : K*m^2/s */
 
-    F[k][2] = -Fint;
+    F[k][2] = -Fint - Fbuoy;
     G[k][2] = -Gint;
     M[k][2] = -Mint;
     QQ[k][2] = -Qint;
@@ -120,9 +128,9 @@ int integrate_penalization(Data *data, double* surf, int k)
     }
 #endif
     free(Qmint);
-    PetscPrintf(PETSC_COMM_WORLD, "Particle surface is %f\n", *surf);
     return 0;
 }
+
 
 void integrate_penalization_periodic(Data *data, double* surf, int k)
 {
@@ -262,10 +270,10 @@ void compute_forces_fluxes(Data* data, int k)
     double* J = data->J;
 
     double rho_f = data->rho_f;
-    double rho_p = data->rho_p;
+    double rho_p = data->rho_s;
     double rho_r = data->rho_r;
 
-    double cf = data->cf;
+    double cf = data->cp_f;
 
     dudt[k][0] = dudt[k][1];
     dudt[k][1] = dudt[k][2];
@@ -289,7 +297,7 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k][2]);
 
     Fx[k] = rho_f*(Sp[k]*dudt[k][2] + F[k][2]);
-//    Fbis = rho_p*Sp[k]*dudt[k];
+//    Fbis = rho_s*Sp[k]*dudt[k];
 //    Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
     Fy[k] = rho_f*(Sp[k]*dvdt[k][2]  + G[k][2]);
     Tz[k] = rho_f*(J[k]*domegadt[k][2]  + M[k][2]);

@@ -59,7 +59,7 @@ void update_Up(Data* data, int k)
 {
     double rho_r = data->rho_r;
     double rho_f = data->rho_f;
-    double rho_p = data->rho_p;
+    double rho_p = data->rho_s;
     double* Sp = data->Sp;
     double* J = data->J; //m^4
     double** F = data->F;
@@ -97,8 +97,8 @@ void update_Up(Data* data, int k)
 #endif
 
 #ifdef ITERATIVE
-    dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f)) -g;
-    dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+    dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_s - rho_f)) -g;
+    dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_s - rho_f));
     domegadt = M[k][2]/(J[k]*(rho_r-1));
 
     Up[k][2] = Up[k][1] + dt*dudt;
@@ -118,8 +118,8 @@ void update_Up(Data* data, int k)
     else
     {
 #ifdef LF
-        dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f));
-        dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+        dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_s - rho_f));
+        dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_s - rho_f));
         domegadt = M[k][2]/(J[k]*(rho_r-1));
 
         Up[k][2] = Up[k][0] + 2*dt*dudt;
@@ -136,12 +136,12 @@ void update_Up(Data* data, int k)
 
 //        dudt = (1./rho_r)*ax[k][2]
 //               + (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*rho_r)
-//               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_p)
+//               + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*rho_s)
 //               - (1 - 1/rho_r)*g;
 //
 //        dvdt = (1./rho_r)*ay[k][2]
 //               + (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*rho_r)
-//               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_p);
+//               + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*rho_s);
 //
 //        domegadt = (1./rho_r)*atheta[k][2]
 //                   + (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*rho_r);
@@ -152,15 +152,15 @@ void update_Up(Data* data, int k)
 #endif
 
 #ifdef EE
-//        dudt = (1./rho_r)*ax[k][2] + F[k][2]/(Sp[k]*rho_r) + Fx_coll[k][2]/(Sp[k]*rho_p)
+//        dudt = (1./rho_r)*ax[k][2] + F[k][2]/(Sp[k]*rho_r) + Fx_coll[k][2]/(Sp[k]*rho_s)
 //               -(1 - 1./rho_r)*g;
 //
-//        dvdt = (1./rho_r)*ay[k][2] + G[k][2]/(Sp[k]*rho_r) + Fy_coll[k][2]/(Sp[k]*rho_p);
+//        dvdt = (1./rho_r)*ay[k][2] + G[k][2]/(Sp[k]*rho_r) + Fy_coll[k][2]/(Sp[k]*rho_s);
 //
 //        domegadt = (1./rho_r)*aomega[k][2] + M[k][2]/(J[k]*rho_r);
 
-	dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_p - rho_f));
-	dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_p - rho_f));
+	dudt = F[k][2]/(Sp[k]*(rho_r-1)) + Fx_coll[k][2]/(Sp[k]*(rho_s - rho_f));
+	dvdt = G[k][2]/(Sp[k]*(rho_r-1)) + Fy_coll[k][2]/(Sp[k]*(rho_s - rho_f));
 	domegadt = M[k][2]/(J[k]*(rho_r-1));
 
         Up[k][2] = Up[k][1] + dt*dudt;
@@ -190,11 +190,11 @@ void update_Tp(Data* data, int k)
     double*** PP = data->PP;
     double** Qr = data->Qr;
     double rho_r = data->rho_r;
-    double rho_p = data->rho_p;
+    double rho_p = data->rho_s;
     double rho_f = data->rho_f;
     double cr = data->cr;
-    double cp = data->cp;
-    double cf = data->cf;
+    double cp = data->cp_s;
+    double cf = data->cp_f;
     double dt = data->dt;
     double dH = data->dH;
 
@@ -212,9 +212,9 @@ void update_Cp(Data* data, int k)
     double*** PP = data->PP;
     double dt = data->dt;
 
-    dCdt[k][1] = (23.*(PP[k][0][2]+PP[k][1][2])-16.*(PP[k][0][1]+PP[k][1][1])+5.*(PP[k][0][0]+PP[k][1][0]))/12.;
+    //dCdt[k][1] = (23.*(PP[k][0][2]+PP[k][1][2])-16.*(PP[k][0][1]+PP[k][1][1])+5.*(PP[k][0][0]+PP[k][1][0]))/12.;
     Cp[k][0] = 0.;
-    Cp[k][1] += dt*dCdt[k][1];
+    //Cp[k][1] += dt*dCdt[k][1];
 }
 
 void compute_Qr(double** Qr, double rate, double dH, int k)

@@ -19,29 +19,29 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 100;
-    data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
+    data->rho_s = 100;
+    data->rho_r = data->rho_s/data->rho_f;
+    data->cp_s = 1000.;
+    data->cp_f = 1000.;
+    data->cr = data->cp_s/data->cp_f;
     data->g = 0;
 
     /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
-    data->Rep = 40.;
+    data->Re_p = 40.;
     data->Fr = sqrt(1e3);
 
 #ifdef SEDIMENTATION
     data->Ga = 100*sqrt(data->rho_r -1);
-    data->Rep = data->Ga;
+    data->Re_p = data->Ga;
     data->g = 1./(data->rho_r -1);
 #endif
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->nu = data->u_m*data->Dp/data->Re_p;
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
@@ -87,7 +87,7 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
     data->SORtol = 1e-6;
 
     if(rank == 0){
-        printf("Rep = %f\n", data->Rep);
+        printf("Re_p = %f\n", data->Re_p);
         printf("ratio L/d = %f \n", data->L/data->d);
         printf("Um = %f\n", data->u_m);
         printf("dt_CFL = %f\n", dt_CFL);

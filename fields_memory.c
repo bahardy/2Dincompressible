@@ -49,7 +49,7 @@ void allocate_fields(Data* data)
     data->I_V = make2DDoubleArray(m,n);
 
     data->D = make3DDoubleArray(Ns,m,n);
-    data->alpha = make2DDoubleArray(m,n);
+    data->kappa = make2DDoubleArray(m,n);
 
     data->J = make1DDoubleArray(Np);
     data->phi = make2DDoubleArray(m,n);
@@ -108,7 +108,7 @@ void free_fields(Data* data)
     int Ns = data->Ns;
 
     /* Free memory */
-    free2Darray(data->alpha,m), free3Darray(data->D, Ns, m);
+    free2Darray(data->kappa,m), free3Darray(data->D, Ns, m);
     free2Darray(data->xg,Np), free2Darray(data->yg,Np), free2Darray(data->theta,Np);
     free(data->dp), free(data->rp), free(data->Sp), free(data->J);
     free2Darray(data->dudt, Np), free2Darray(data->dvdt,Np), free2Darray(data->domegadt,Np), free(data->dTdt); free2Darray(data->dCdt, Np);

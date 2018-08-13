@@ -5,7 +5,6 @@
 #ifndef INC_2DINCOMP_FLOW_SOLVER_H
 #define INC_2DINCOMP_FLOW_SOLVER_H
 
-void get_ghosts(Data* data, double T0, double* C0);
 void get_masks(Data* data);
 void get_Cs(Data* data);
 void get_Ts(Data* data);

@@ -15,13 +15,13 @@ void writeData(FILE* fichier_data, Data data)
         fprintf(fichier_data, "ratio L/d \t %f\n", data.L/data.d);
         fprintf(fichier_data,"d\t %f\n",data.d);
         fprintf(fichier_data,"H\t %f\n",data.H);
-        fprintf(fichier_data,"rho_p\t %f\n",data.rho_p);
+        fprintf(fichier_data,"rho_s\t %f\n",data.rho_s);
         fprintf(fichier_data,"rho_f\t %f\n",data.rho_f);
         fprintf(fichier_data,"rho_r\t %f\n",data.rho_r);
-        fprintf(fichier_data,"cp\t %f\n",data.cp);
-        fprintf(fichier_data,"cf\t %f\n",data.cf);
+        fprintf(fichier_data,"cp_s\t %f\n",data.cp_s);
+        fprintf(fichier_data,"cp_f\t %f\n",data.cp_f);
         fprintf(fichier_data,"cr\t %f\n",data.cr);
-        fprintf(fichier_data,"Rep\t %f\n",data.Rep);
+        fprintf(fichier_data,"Re_p\t %f\n",data.Re_p);
         fprintf(fichier_data,"Pr\t %f\n",data.Pr);
         fprintf(fichier_data,"Sc\t %f\n",data.Sc);
         fprintf(fichier_data,"Le\t %f\n",data.Le);

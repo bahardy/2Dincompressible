@@ -190,6 +190,7 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         if(ii<M-1){
             MatSetValue(A, r, r+N, -1., INSERT_VALUES);
         }
+#ifndef CAVITY
         if(ii == 0 || jj == 0 || jj == N-1)
         {
             MatSetValue(A, r, r, 3., INSERT_VALUES);
@@ -206,6 +207,16 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         {
             MatSetValue(A, r, r, 4., INSERT_VALUES);
         }
+#else
+        if(ii == 0 || ii == M-1 || jj == 0 || jj == N-1 )
+        {
+            MatSetValue(A, r, r, 3., INSERT_VALUES);
+        }
+        if((ii == 0 || ii == M-1)  && (jj==0 || jj == N-1) )
+        {
+            MatSetValue(A, r, r, 2., INSERT_VALUES);
+        }
+#endif
     }
     PetscErrorCode  ierr;
     ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
@@ -258,9 +269,12 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
+#ifndef CAVITY
             /*outflow : zero pressure at outlet */
             phi[m-1][jj] = -phi[m-2][jj];
-
+#else
+            phi[m-1][jj] = phi[m-2][jj];
+#endif
         }
     }
     else{
@@ -302,8 +316,12 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
         for(jj=0; jj<n; jj++){
             /*inflow : continuity of pressure gradient  */
             phi[0][jj] = phi[1][jj];
+#ifndef CAVITY
             /*outflow : zero pressure at outlet */
             phi[m-1][jj] = -phi[m-2][jj];
+#else
+            phi[m-1][jj] = phi[m-2][jj];
+#endif
         }
     }
     VecRestoreArray(x, &my_array);

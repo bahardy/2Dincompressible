@@ -12,7 +12,7 @@
 //#define RAMPING
 #define WRITE
 #define DISK
-#define SLIP
+//#define SLIP
 //#define EXPLICIT
 //#define GRAVITY
 //#define SMOOTHING
@@ -20,6 +20,7 @@
 #define INTRAPARTICLE
 //#define ITERATIVE
 //#define SEDIMENTATION
+#define CAVITY
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -51,17 +52,19 @@ struct Data{
     /*Physical parameters */
     double nu;
     double g;
-    double rho_p, rho_f, rho_r;
-    double cp, cf, cr;
-    double Rep;
+    double rho_s, rho_f, rho_r;
+    double cp_s, cp_f, cr;
+    double kappa_f, kappa_s;
+    double Re_p;
     double Pr;
     double Sc;
     double Le;
     double Fr;
     double Ga;
     double Da;
+    double Gr;
     double alpha_f;
-    double** alpha;
+    double **kappa;
     double* Df;
     double*** D;
     double dH; // kJ/mol

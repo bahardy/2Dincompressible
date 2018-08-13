@@ -24,7 +24,7 @@ void collision(Data* data)
     double** Fx_coll = data->Fx_coll;
     double** Fy_coll = data->Fy_coll;
     int Np = data->Np;
-    double rho_s = data->rho_p;
+    double rho_s = data->rho_s;
     double rho_f = data->rho_f;
     double g = data->g;
     double S = data->Sp[0];

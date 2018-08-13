@@ -15,6 +15,7 @@
 #include "particle_motion.h"
 #include "set_up.h"
 #include "flow_solver.h"
+#include "ghost_points.h"
 
 
 int main(int argc, char *argv[]){
@@ -185,11 +186,11 @@ int main(int argc, char *argv[]){
 #ifdef  TEMP
             /*Temperature - Species - Fluxes */
 #ifndef INTRAPARTICLE
-            if(t > data.t_transfer)
-            {
-                update_Tp(&data, k);
-                update_Cp(&data, k);
-            }
+//            if(t > data.t_transfer)
+//            {
+//                update_Tp(&data, k);
+//                update_Cp(&data, k);
+//            }
 #endif
 #endif
             compute_forces_fluxes(&data, k);
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]){
 
 #ifdef TEMP
 #ifndef INTRAPARTICLE
-        //get_Ts(&data);
+        get_Ts(&data);
         //get_Cs(&data);
 #else
         get_conductivity(&data);
@@ -216,7 +217,6 @@ int main(int argc, char *argv[]){
 
 #endif
         get_Ustar_Vstar(&data, data.ramp);
-
         clock_t t_init = clock();
         poisson_solver(&data, rank, nbproc);
         clock_t t_final = clock();
@@ -387,7 +387,7 @@ void update_Up(Data* data, int k)
     double* domegadt = data->domegadt;
     double rho_r = data->rho_r;
     double rho_f = data->rho_f;
-    double rho_p = data->rho_p;
+    double rho_s = data->rho_s;
     double* Sp = data->Sp;
     double* J = data->J; //m^4
     double** F = data->F;
@@ -403,9 +403,9 @@ void update_Up(Data* data, int k)
     double dt = data->dt;
 
 
-    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) - g;
+    dudt[k] = (23.*F[k][2]-16.*F[k][1]+5.*F[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fx_coll[k][2]-16.*Fx_coll[k][1]+5.*Fx_coll[k][0])/(12.*Sp[k]*(rho_s - rho_f)) - g;
     Up[k][3] = Up[k][2] + dt*dudt[k];
-    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_p - rho_f)) ;
+    dvdt[k] = (23.*G[k][2]-16.*G[k][1]+5.*G[k][0])/(12.*Sp[k]*(rho_r - 1.)) + (23.*Fy_coll[k][2]-16.*Fy_coll[k][1]+5.*Fy_coll[k][0])/(12.*Sp[k]*(rho_s - rho_f)) ;
     Vp[k][3] = Vp[k][2] + dt*dvdt[k];
     domegadt[k] = (23.*M[k][2]-16.*M[k][1]+5.*M[k][0])/(12.*J[k]*(rho_r - 1.));
     Omega_p[k][3] = Omega_p[k][2] + dt*domegadt[k];
@@ -426,17 +426,17 @@ void update_Tp(Data* data, int k)
     double*** PP = data->PP;
     double** Qr = data->Qr;
     double rho_r = data->rho_r;
-    double rho_p = data->rho_p;
+    double rho_s = data->rho_s;
     double rho_f = data->rho_f;
     double cr = data->cr;
-    double cp = data->cp;
-    double cf = data->cf;
+    double cp_s = data->cp_s;
+    double cp_f = data->cp_f;
     double dt = data->dt;
     double dH = data->dH;
 
     //compute_Qr(Qr, PP[0][k][2], dH, k);
 
-    dTdt[k] = (23.*QQ[k][2]-16.*QQ[k][1]+5.*QQ[k][0])/(12.*Sp[k]*(rho_r*cr - 1.)) + (23.*Qr[k][2]-16.*Qr[k][1]+5.*Qr[k][0])/(12.*Sp[k]*(rho_p*cp - rho_f*cf));
+    dTdt[k] = (23.*QQ[k][2]-16.*QQ[k][1]+5.*QQ[k][0])/(12.*Sp[k]*(rho_r*cr - 1.)) + (23.*Qr[k][2]-16.*Qr[k][1]+5.*Qr[k][0])/(12.*Sp[k]*(rho_s*cp_s - rho_f*cp_f));
     Tp[k] += dt*dTdt[k];
     PetscPrintf(PETSC_COMM_WORLD,"Temperature of particle %d: Tp = %f[K] \n", k+1, Tp[k]);
 }

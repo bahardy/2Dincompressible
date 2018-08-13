@@ -8,10 +8,13 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Dp = 1;
-    data->d = 3.;
+    data->Np = 4;
+    double phi_f = 0.84; //void fraction
+    double phi_s = 1 - phi_f;
+    data->Dp = sqrt(4.*phi_s/(M_PI*data->Np));
+    data->d = 1;
     data->H = 0.5*data->d;
-    data->L = 5.;
+    data->L = 1;
     data->h = data->Dp/40;
     data->eps = 0;
 #ifdef SMOOTHING
@@ -25,40 +28,42 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* PHYSICAL PARAMETERS */
     data->rho_f = 1.;
-    data->rho_p = 100;
-    data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
+    data->rho_s = 100;
+    data->rho_r = data->rho_s/data->rho_f;
+    data->cp_s = 1.;
+    data->cp_f = 1.;
+    data->cr = data->cp_s/data->cp_f;
 
     // /* NON-DIMENSIONAL NUMBERS */
-    data->Pr = 0.7;
+    data->Pr = 1;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
-    data->Rep = 40.;
+    data->Gr = 1221300;
+    data->Re_p = sqrt(data->Gr); //40.;
     data->Fr = sqrt(1e3);
-    data->Da = 0.2;
+    data->Da = 0;
 
     data->g =  1/pow((data->Fr),2);
 
 #ifdef SEDIMENTATION
     data->Ga = 100*sqrt(data->rho_r -1);//39.15*sqrt(data->rho_r-1); //usually:100
-    data->Rep = data->Ga;
+    data->Re_p = data->Ga;
     data->g = 1./(data->rho_r -1);
 #endif
 
     /* FLOW */
     data->u_m = 1.;
-    data->nu = data->u_m*data->Dp/data->Rep;
+    data->nu = data->u_m*data->Dp/data->Re_p;
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
+    data->kappa_f = data->alpha_f;
+
     data->T0 = 0; // cup-mixing temperature at the inlet
-    data->Tp0 = 0; // initial particle temperature
+    data->Tp0 = 1; // initial particle temperature
 
     /* SPECIES */
     data->Ns = 1;
-    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -78,7 +83,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = 0.2; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -154,41 +159,20 @@ void initialize_fields(Data* data)
     }
 
     /* Initialization of particles position */
-    data->xg[0][0] = 2;
-    data->xg[0][1] = data->xg[0][0];
-    data->xg[0][2] = data->xg[0][1];
+    data->xg[0][0] = 0.25; data->yg[0][0] = 0.25;
+    data->xg[1][0] = 0.75; data->yg[1][0] = 0.25;
+    data->xg[2][0] = 0.25; data->yg[2][0] = 0.75;
+    data->xg[3][0] = 0.75; data->yg[3][0] = 0.75;
 
-    data->yg[0][0] = data->H;
-    data->yg[0][1] = data->yg[0][0];
-    data->yg[0][2] = data->yg[0][1];
-
-    data->theta[0][0] = 0;
-    data->theta[0][1] = data->theta[0][0];
-    data->theta[0][2] = data->theta[0][1];
-
-//    data->xg[1][0] = 5;
-//    data->xg[1][1] = data->xg[1][0];
-//    data->xg[1][2] = data->xg[1][1];
-//
-//    data->yg[1][0] = data->H;
-//    data->yg[1][1] = data->yg[1][0];
-//    data->yg[1][2] = data->yg[1][1];
-//
-//    data->theta[1][0] = 0;
-//    data->theta[1][1] = data->theta[1][0];
-//    data->theta[1][2] = data->theta[1][1];
-//
-//    data->xg[2][0] = 7.5;
-//    data->xg[2][1] = data->xg[2][0];
-//    data->xg[2][2] = data->xg[2][1];
-//
-//    data->yg[2][0] = data->H;
-//    data->yg[2][1] = data->yg[2][0];
-//    data->yg[2][2] = data->yg[2][1];
-//
-//    data->theta[2][0] = 0;
-//    data->theta[2][1] = data->theta[2][0];
-//    data->theta[2][2] = data->theta[2][1];
+    for (int k = 0; k<data->Np; k++)
+    {
+        data->xg[k][1] = data->xg[k][0];
+        data->xg[k][2] = data->xg[k][0];
+        data->yg[k][1] = data->yg[k][0];
+        data->yg[k][2] = data->yg[k][0];
+        data->theta[k][1] = data->theta[k][0];
+        data->theta[k][2] = data->theta[k][0];
+    }
 
     /* DEDUCE MASK */
     get_masks(data);
@@ -217,13 +201,13 @@ void initialize_fields(Data* data)
     /* VELOCITY : horizontal flow Um  */
     for (int i = 0; i < data->m; i++) {
         for (int j = 0; j < data->n; j++) {
-            data->u_n[i][j] = 1*data->u_m;
+            data->u_n[i][j] = 0*data->u_m;
             data->u_n_1[i][j] = data->u_n[i][j];
             data->u_star[i][j] = data->u_n[i][j];
             data->T_n[i][j] = 0;
             data->T_n_1[i][j] = data->T_n[i][j];
             for (int s = 0; s < data->Ns; s++) {
-                data->C_n[s][i][j] = 1;
+                data->C_n[s][i][j] = 0;
                 data->C_n_1[s][i][j] = data->C_n[s][i][j];
             }
             /* v_n is initially at zero */
@@ -232,7 +216,7 @@ void initialize_fields(Data* data)
 
     /*INLET BC*/
     for (int j = 0; j < data->n; j++) {
-        data->u_n[0][j] = 1*data->u_m;
+        data->u_n[0][j] = 0*data->u_m;
         data->u_n_1[0][j] = data->u_n[0][j];
         data->u_star[0][j] = data->u_n[0][j];
     }
