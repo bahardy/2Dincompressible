@@ -10,6 +10,8 @@ int integrate_penalization(Data *data, double* surf, int k)
 
     double Gr = data->Gr;
     double Re_p = data->Re_p;
+    double rho_r = data->rho_r;
+    double beta_r = 0;
 
     double** F = data->F;
     double** G = data->G;
@@ -53,72 +55,61 @@ int integrate_penalization(Data *data, double* surf, int k)
     }
 #endif
 
-//    int startX = (int) floor((xg[k] - rp[k]) / h);
-//    PetscPrintf(PETSC_COMM_WORLD, "startX = %d \t", startX);
-//    int endX = (int) ceil((xg[k]+rp[k])/h);
-//    PetscPrintf(PETSC_COMM_WORLD,"endX = %d \t", endX);
-//
-//    int startY = (int) floor((yg[k]-rp[k])/h);
-//    PetscPrintf(PETSC_COMM_WORLD,"startY = %d \t", startY);
-//    int endY = (int) ceil((yg[k]+rp[k])/h);
-//    PetscPrintf(PETSC_COMM_WORLD,"endY = %d \t \n", endY);
+    int startX = (int) floor((xg[k][2] - rp[k]) / h);
+    int endX = (int) ceil((xg[k][2]+rp[k])/h);
+    int startY = (int) floor((yg[k][2]-rp[k])/h);
+    int endY = (int) ceil((yg[k][2]+rp[k])/h);
 
-//    if(startY <= 1||endY >= n-1){
-//        PetscPrintf(PETSC_COMM_WORLD,"Wall collision! \n");
-//        return 1;
-//    }
+    double Fint, Gint, Mint, Qint, *Qmint, sint, Mbuoy, Fbuoy;
 
-//    if(endX >= m-1){
-//        PetscPrintf(PETSC_COMM_WORLD,"Particle leaves the channel! \n");
-//        return 1;
-//    }
-
-    double Fint, Gint, Mint, Qint, *Qmint, sint;
-    double Fbuoy = 0;
     Fint = 0.;
     Gint = 0.;
     Mint = 0.;
     Qint = 0.;
     Qmint = make1DDoubleArray(Ns);
     sint = 0.;
+    Fbuoy = 0.;
+    Mbuoy = 0.;
 
     double h2;
     h2 = h*h;
     double yU, xV, f, g, q, qm, T_u, f_buoy;
 
 
-    //for(int i=startX; i<=endX; i++){//
-    for(int i = 1; i<m-1; i++){
+    for(int i=startX; i<=endX; i++){//
+    //for(int i = 1; i<m-1; i++){
         xV = (i-0.5)*h;
-        //for(int j=startY; j<=endY; j++){
-        for(int j=1; j<n-1; j++) {
+        for(int j=startY; j<=endY; j++){
+        //for(int j=1; j<n-1; j++) {
             yU = (j-0.5)*h;
-            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j])*h2/dtau;
-            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j])*h2/dtau;
+            f = -Ip_U[k][i][j]*(u_n[i][j]-u_s[i][j])/dtau;
+            g = -Ip_V[k][i][j]*(v_n[i][j]-v_s[i][j])/dtau;
+
+            sint += Ip_S[k][i][j]*h2;
+            Fint += f*h2 ; /* units : m/s */
+            Gint += g*h2; /* units : m/s */
+            Mint += ((xV-xg[k][2])*g-(yU-yg[k][2])*f)*h2;/* units: m^2/s */
+
 #ifdef TEMP
-            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j])*h2/dtau;
-            Qint += q;
+            q = -Ip_S[k][i][j]*(T_n[i][j]-Ts[i][j])/dtau;
+            Qint += q*h2;
 
             T_u = .5*(T_n[i][j] + T_n[i+1][j]);
-            f_buoy = Ip_U[k][i][j]*(Gr/pow(Re_p,2))*T_u;
+            f_buoy = Ip_U[k][i][j]*(rho_r*beta_r - 1)*(Gr/pow(Re_p,2))*T_u*(-1);
             Fbuoy += f_buoy*h2;
-
+            Mbuoy += -(yU-yg[k][2])*f_buoy*h2;
             for(int s=0; s<Ns; s++){
-                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j])*h2/dtau;
-                Qmint[s] += qm;
+                qm = -Ip_S[k][i][j]*(C_n[s][i][j]-Cs[s][i][j])/dtau;
+                Qmint[s] += qm*h2;
             }
 #endif
-            sint += Ip_S[k][i][j]*h*h;
 
-            Fint += f ; /* units : m/s */
-            Gint += g; /* units : m/s */
-            Mint += ((xV-xg[k][2])*g-(yU-yg[k][2])*f);/* units: m^2/s */
         }
     }
 
     F[k][2] = -Fint - Fbuoy;
     G[k][2] = -Gint;
-    M[k][2] = -Mint;
+    M[k][2] = -Mint - Mbuoy;
     QQ[k][2] = -Qint;
     *surf = sint;
 
