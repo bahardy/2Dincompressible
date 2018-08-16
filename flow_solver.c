@@ -403,10 +403,11 @@ void update_scalars(Data* data)
 
     int m = data->m;
     int n = data->n;
+    int Np = data->Np;
     double h = data->h;
     double dx = data->h;
     double dy = data->h;
-    int i,j;
+    int i,j, k;
 
     double ramp = data->ramp;
     double dtau = data->dtau;
@@ -439,7 +440,6 @@ void update_scalars(Data* data)
     double rho_star, cp_star;
 
     double **I_S = data->I_S;
-
     double q_left, q_right, q_top, q_bottom;
     double j_left, j_right, j_top, j_bottom;
 
@@ -452,6 +452,7 @@ void update_scalars(Data* data)
 
     for (i = 1; i < m - 1; i++) {
         for (j = 1; j < n - 1; j++) {
+
 
             get_rate(data, rate, C_n, T_n, i, j);
 
@@ -470,9 +471,17 @@ void update_scalars(Data* data)
             // DIFFUSION TERM
 #ifdef INTRAPARTICLE
 
+            int right = 0;
+            int left = 0;
+            int K;
+            K = track_interface(data, &right, &left, i, j);
+
             rho_star = 1; // (1-I_S[i][j])*rho_f + I_S[i][j]*rho_s;
             cp_star = 1; //(1-I_S[i][j])*cp_f + I_S[i][j]*cp_s;
 
+            if (right) { // interface is on the right
+
+            }
             q_left = -.5*(kappa[i][j] + kappa[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
             q_right = -.5*(kappa[i+1][j] + kappa[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
             q_top = -.5*(kappa[i][j+1] + kappa[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
@@ -626,5 +635,53 @@ void get_conductivity(Data* data)
         for(j=0; j<n; j++){
             kappa[i][j] = (1-I_S[i][j])*kappa_f + I_S[i][j]*kappa_s;
         }
+    }
+}
+
+void track_interface(Data* data, int* K, int* right, int* left, int* above, int* below, int i, int j)
+{
+    int k;
+    int Np = data->Np;
+    double h = data->h;
+
+    double** xg = data->xg;
+    double** yg = data->yg;
+    double* rp = data->rp;
+
+    double xi, yj, X_I_1, X_I_2, Y_I_1, Y_I_2, dx1, dx2, dy1, dy2;
+
+    for (k=0; k<Np; k++){
+        yj = j * h;
+        xi = i * h;
+
+        X_I_1 = xg[0][2] - sqrt(pow(rp[k],2) - pow(yj - yg[k][2],2) );
+        X_I_2 = xg[0][2] + sqrt(pow(rp[k],2) - pow(yj - yg[k][2],2) );
+
+        Y_I_1 = yg[0][2] - sqrt(pow(rp[k],2) - pow(xi - xg[k][2],2) );
+        Y_I_2 = yg[0][2] + sqrt(pow(rp[k],2) - pow(xi - xg[k][2],2) );
+
+        dx1 = X_I_1 - xi;
+        dx2 = X_I_2 - xi;
+
+        dy1 = Y_I_1 - yj;
+        dy2 = Y_I_2 - yj;
+
+        if ( (dx1 >= 0 && dx1 <= h) || (dx2 >= 0 && dx2 <= h) ){
+            *right = 1;
+            K[0] = k;
+        }
+        if ( (dx1 < 0 && dx1 >= -h) || (dx2 < 0 && dx2 >= -h) ){
+            *left = 1;
+            K[1] = k;
+        }
+        if ( (dy1 >= 0 && dy1 <= h) || (dy2 >= 0 && dy2 <= h) ){
+            *above = 1;
+            K[2] = k;
+        }
+        if ( (dy1 < 0 && dy1 >= -h) || (dy2 < 0 && dy2 >= -h) ){
+            *below = 1;
+            K[1] = k;
+        }
+
     }
 }
