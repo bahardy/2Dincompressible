@@ -473,19 +473,37 @@ void update_scalars(Data* data)
 
             int right = 0;
             int left = 0;
-            int K;
-            K = track_interface(data, &right, &left, i, j);
-
-            rho_star = 1; // (1-I_S[i][j])*rho_f + I_S[i][j]*rho_s;
-            cp_star = 1; //(1-I_S[i][j])*cp_f + I_S[i][j]*cp_s;
+            int above = 0;
+            int bottom = 0;
+            int K[4] = {-1, -1, -1, -1};
+            double THETA[4] = {0., 0., 0., 0.};
+            double theta;
+            double kappa_right, kappa_left, kappa_top, kappa_bottom;
+            double T_I;
+            double a_I = 0;
+            track_interface(data, K, THETA, &right, &left, &above, &bottom, i, j);
 
             if (right) { // interface is on the right
+                kappa_right = kappa[i+1][j];
+                kappa_left = kappa[i][j];
+                theta = THETA[0];
+                k = K[0];
+                dTdx = get_tg_gradient(data, k, i, j);
+                dTdtg = -sin(alpha)*dTdx + cos(alpha)*dTdy;
+                b_Ix =
+
+                T_I = (kappa_right*(T_n[i+1][j] - a_I)*theta + kappa_left*T_n[i][j]*(1-theta)
+                      - b_Ix*theta*(1-theta)*h)/(kappa_right*theta + kappa_left*(1-theta));
+
 
             }
             q_left = -.5*(kappa[i][j] + kappa[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
             q_right = -.5*(kappa[i+1][j] + kappa[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
             q_top = -.5*(kappa[i][j+1] + kappa[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
             q_bottom = -.5*(kappa[i][j] + kappa[i][j-1])*(T_n[i][j] - T_n[i][j-1])/dy;
+
+            rho_star = 1; // (1-I_S[i][j])*rho_f + I_S[i][j]*rho_s;
+            cp_star = 1; //(1-I_S[i][j])*cp_f + I_S[i][j]*cp_s;
 
             diff_T = -((q_right-q_left)/dx + (q_top-q_bottom)/dy)/(rho_star*cp_star);
 
@@ -638,7 +656,7 @@ void get_conductivity(Data* data)
     }
 }
 
-void track_interface(Data* data, int* K, int* right, int* left, int* above, int* below, int i, int j)
+void track_interface(Data* data, int* K, double* THETA, int* right, int* left, int* above, int* below, int i, int j)
 {
     int k;
     int Np = data->Np;
@@ -669,19 +687,32 @@ void track_interface(Data* data, int* K, int* right, int* left, int* above, int*
         if ( (dx1 >= 0 && dx1 <= h) || (dx2 >= 0 && dx2 <= h) ){
             *right = 1;
             K[0] = k;
+            THETA[0] = fmin(dx1, dx2)/h;
         }
         if ( (dx1 < 0 && dx1 >= -h) || (dx2 < 0 && dx2 >= -h) ){
             *left = 1;
             K[1] = k;
+            THETA[1] = fmin(fabs(dx1), fabs(dx2))/h;
         }
         if ( (dy1 >= 0 && dy1 <= h) || (dy2 >= 0 && dy2 <= h) ){
             *above = 1;
             K[2] = k;
+            THETA[2] = fmin(dy1, dy2)/h;
         }
         if ( (dy1 < 0 && dy1 >= -h) || (dy2 < 0 && dy2 >= -h) ){
             *below = 1;
-            K[1] = k;
+            K[3] = k;
+            THETA[3] = fmin(fabs(dy1), fabs(dy2))/h;
         }
 
     }
+}
+
+
+double get_tg_gradient(Data* data, int i, int j, int k)
+{
+    double X = data->xg[k][2];
+    double Y = data->yg[k][2];
+
+
 }
