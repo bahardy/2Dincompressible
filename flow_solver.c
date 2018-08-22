@@ -471,36 +471,20 @@ void update_scalars(Data* data)
             // DIFFUSION TERM
 #ifdef INTRAPARTICLE
 
-            int right = 0;
-            int left = 0;
-            int above = 0;
-            int bottom = 0;
             int K[4] = {-1, -1, -1, -1};
             double THETA[4] = {0., 0., 0., 0.};
-            double theta;
             double kappa_right, kappa_left, kappa_top, kappa_bottom;
-            double T_I;
-            double a_I = 0;
-            track_interface(data, K, THETA, &right, &left, &above, &bottom, i, j);
+            track_interface(data, K, THETA, i, j);
 
-            if (right) { // interface is on the right
-                kappa_right = kappa[i+1][j];
-                kappa_left = kappa[i][j];
-                theta = THETA[0];
-                k = K[0];
-                dTdx = get_tg_gradient(data, k, i, j);
-                dTdtg = -sin(alpha)*dTdx + cos(alpha)*dTdy;
-                b_Ix =
+            kappa_right = kappa[i][j]*kappa[i+1][j]/(kappa[i+1][j]*THETA[0] + kappa[i][j]*(1.-THETA[0]));
+            kappa_left = kappa[i][j]*kappa[i-1][j]/(kappa[i-1][j]*THETA[1] + kappa[i][j]*(1.-THETA[1]));
+            kappa_top = kappa[i][j]*kappa[i][j+1]/(kappa[i][j+1]*THETA[2] + kappa[i][j]*(1.-THETA[2]));
+            kappa_bottom = kappa[i][j]*kappa[i][j-1]/(kappa[i][j-1]*THETA[3] + kappa[i][j]*(1.-THETA[3]));
 
-                T_I = (kappa_right*(T_n[i+1][j] - a_I)*theta + kappa_left*T_n[i][j]*(1-theta)
-                      - b_Ix*theta*(1-theta)*h)/(kappa_right*theta + kappa_left*(1-theta));
-
-
-            }
-            q_left = -.5*(kappa[i][j] + kappa[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
-            q_right = -.5*(kappa[i+1][j] + kappa[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
-            q_top = -.5*(kappa[i][j+1] + kappa[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
-            q_bottom = -.5*(kappa[i][j] + kappa[i][j-1])*(T_n[i][j] - T_n[i][j-1])/dy;
+            q_right = -kappa_right*(T_n[i+1][j] - T_n[i][j])/dx;
+            q_left = -kappa_left*(T_n[i][j] - T_n[i-1][j])/dx;
+            q_top = -kappa_top*(T_n[i][j+1] - T_n[i][j])/dy;
+            q_bottom = -kappa_bottom*(T_n[i][j] - T_n[i][j-1])/dy;
 
             rho_star = 1; // (1-I_S[i][j])*rho_f + I_S[i][j]*rho_s;
             cp_star = 1; //(1-I_S[i][j])*cp_f + I_S[i][j]*cp_s;
@@ -508,8 +492,7 @@ void update_scalars(Data* data)
             diff_T = -((q_right-q_left)/dx + (q_top-q_bottom)/dy)/(rho_star*cp_star);
 
             S_T = fabs(rate[0])*(-dH)/(rho_star*cp_star);
-            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1)
-                                          + diff_T + I_S[i][j]*S_T);
+            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1) + diff_T + I_S[i][j]*S_T);
 #else
             diff_T = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
@@ -656,7 +639,7 @@ void get_conductivity(Data* data)
     }
 }
 
-void track_interface(Data* data, int* K, double* THETA, int* right, int* left, int* above, int* below, int i, int j)
+void track_interface(Data* data, int* K, double* THETA, int i, int j)
 {
     int k;
     int Np = data->Np;
@@ -665,48 +648,134 @@ void track_interface(Data* data, int* K, double* THETA, int* right, int* left, i
     double** xg = data->xg;
     double** yg = data->yg;
     double* rp = data->rp;
+    double** I_S = data->I_S;
+    double*** Ip_S = data->Ip_S;
 
-    double xi, yj, X_I_1, X_I_2, Y_I_1, Y_I_2, dx1, dx2, dy1, dy2;
+    double xi, yj, X_I_1, X_I_2, Y_I_1, Y_I_2, dx1, dx2, dy1, dy2, d;
 
-    for (k=0; k<Np; k++){
-        yj = j * h;
-        xi = i * h;
+    yj = (j-0.5) * h;
+    xi = (i-0.5) * h;
 
-        X_I_1 = xg[0][2] - sqrt(pow(rp[k],2) - pow(yj - yg[k][2],2) );
-        X_I_2 = xg[0][2] + sqrt(pow(rp[k],2) - pow(yj - yg[k][2],2) );
-
-        Y_I_1 = yg[0][2] - sqrt(pow(rp[k],2) - pow(xi - xg[k][2],2) );
-        Y_I_2 = yg[0][2] + sqrt(pow(rp[k],2) - pow(xi - xg[k][2],2) );
-
-        dx1 = X_I_1 - xi;
-        dx2 = X_I_2 - xi;
-
-        dy1 = Y_I_1 - yj;
-        dy2 = Y_I_2 - yj;
-
-        if ( (dx1 >= 0 && dx1 <= h) || (dx2 >= 0 && dx2 <= h) ){
-            *right = 1;
-            K[0] = k;
-            THETA[0] = fmin(dx1, dx2)/h;
-        }
-        if ( (dx1 < 0 && dx1 >= -h) || (dx2 < 0 && dx2 >= -h) ){
-            *left = 1;
-            K[1] = k;
-            THETA[1] = fmin(fabs(dx1), fabs(dx2))/h;
-        }
-        if ( (dy1 >= 0 && dy1 <= h) || (dy2 >= 0 && dy2 <= h) ){
-            *above = 1;
-            K[2] = k;
-            THETA[2] = fmin(dy1, dy2)/h;
-        }
-        if ( (dy1 < 0 && dy1 >= -h) || (dy2 < 0 && dy2 >= -h) ){
-            *below = 1;
-            K[3] = k;
-            THETA[3] = fmin(fabs(dy1), fabs(dy2))/h;
-        }
-
+    /** RIGHT ARM **/
+    if (I_S[i][j] == I_S[i+1][j])
+    {
+        // NO INTERFACE BETWEEN i and i+1
+        THETA[0] = 0.5;
     }
+    else {
+        for (k = 0; k < Np; k++) {
+            if (Ip_S[k][i][j] != Ip_S[k][i+1][j])
+            {
+                X_I_1 = xg[0][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_2 = xg[0][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+
+                dx1 = X_I_1 - xi;
+                dx2 = X_I_2 - xi;
+
+                d = fmin(fabs(dx1), fabs(dx2));
+                THETA[0] = d/h;
+
+                break;
+            }
+        }
+    }
+
+    /** LEFT ARM **/
+    if (I_S[i][j] == I_S[i-1][j])
+    {
+        // NO INTERFACE BETWEEN i and i-1
+        THETA[1] = 0.5;
+    }
+    else {
+        for (k = 0; k < Np; k++) {
+            if (Ip_S[k][i][j] != Ip_S[k][i-1][j])
+            {
+                X_I_1 = xg[0][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_2 = xg[0][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+
+                dx1 = X_I_1 - xi;
+                dx2 = X_I_2 - xi;
+
+                d = fmin(fabs(dx1), fabs(dx2));
+                THETA[1] = d/h;
+
+                break;
+            }
+        }
+    }
+
+    /** TOP ARM **/
+    if (I_S[i][j] == I_S[i][j+1])
+    {
+        // NO INTERFACE BETWEEN j and j+1
+        THETA[2] = 0.5;
+    }
+    else {
+        for (k = 0; k < Np; k++) {
+            if (Ip_S[k][i][j] != Ip_S[k][i][j+1])
+            {
+                Y_I_1 = yg[0][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_2 = yg[0][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+
+                dy1 = Y_I_1 - yj;
+                dy2 = Y_I_2 - yj;
+
+                d = fmin(fabs(dy1), fabs(dy2));
+                THETA[2] = d/h;
+                break;
+            }
+        }
+    }
+
+    /** BOTTOM ARM **/
+    if (I_S[i][j] == I_S[i][j-1])
+    {
+        // NO INTERFACE BETWEEN j and j-1
+        THETA[3] = 0.5;
+    }
+    else {
+        for (k = 0; k < Np; k++) {
+            if (Ip_S[k][i][j] != Ip_S[k][i][j-1])
+            {
+                Y_I_1 = yg[0][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_2 = yg[0][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+
+                dy1 = Y_I_1 - yj;
+                dy2 = Y_I_2 - yj;
+
+                d = fmin(fabs(dy1), fabs(dy2));
+                THETA[3] = d/h;
+
+                break;
+            }
+        }
+    }
+
+
+//
+//        if ( (dx1 >= 0 && dx1 < h) || (dx2 >= 0 && dx2 < h) ){
+//            *right = 1;
+//            K[0] = k;
+//            THETA[0] = fmin(dx1, dx2)/h;
+//        }
+//        if ( (dx1 < 0 && dx1 >= -h) || (dx2 < 0 && dx2 >= -h) ){
+//            *left = 1;
+//            K[1] = k;
+//            THETA[1] = fmin(fabs(dx1), fabs(dx2))/h;
+//        }
+//        if ( (dy1 >= 0 && dy1 < h) || (dy2 >= 0 && dy2 < h) ){
+//            *above = 1;
+//            K[2] = k;
+//            THETA[2] = fmin(dy1, dy2)/h;
+//        }
+//        if ( (dy1 < 0 && dy1 >= -h) || (dy2 < 0 && dy2 >= -h) ){
+//            *below = 1;
+//            K[3] = k;
+//            THETA[3] = fmin(fabs(dy1), fabs(dy2))/h;
+//        }
+
 }
+
 
 
 double get_tg_gradient(Data* data, int i, int j, int k)
