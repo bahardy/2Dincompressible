@@ -72,7 +72,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 //    data->Df[0] = data->nu/data->Sc;
 //    data->Df[1] = data->nu/data->Sc;
     data->dH = 0;
-    data->CA0 = 1.;
+    data->CA0 = 0.;
     data->CB0 = 0.;
 
     /* GRID */
@@ -222,7 +222,7 @@ void initialize_fields(Data* data)
     }
 
     /* Inlet concentration */
-    data->C0[0] = data->CA0;
+    //data->C0[0] = data->CA0;
 
 }
 

@@ -144,11 +144,11 @@ int main(int argc, char *argv[]){
     while(t < data.Tf){
 
         PetscPrintf(PETSC_COMM_WORLD, "\n \n BEGIN iter %d : t = %f \n", data.iter, t);
-        for (k = 0; k<data.Np; k++) {
-            PetscPrintf(PETSC_COMM_WORLD, "Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k + 1,
-                        data.xg[k][2], data.yg[k][2]);
-            PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k][2]);
-        }
+        //for (k = 0; k<data.Np; k++) {
+        //    PetscPrintf(PETSC_COMM_WORLD, "Position of the center of mass of particle %d: (x,y) = (%f,%f) \n", k + 1,
+        //                data.xg[k][2], data.yg[k][2]);
+        //    PetscPrintf(PETSC_COMM_WORLD, "Angle: theta  = %f \n", data.theta[k][2]);
+        //}
 
         /** --- SOLVE SOLID PHASE --- */
         int flag_out = 0;
