@@ -78,7 +78,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = 0.2; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -222,9 +222,18 @@ void initialize_fields(Data* data)
 
     /*INLET BC*/
     for (int j = 0; j < data->n; j++) {
-        data->u_n[0][j] = 1*data->u_m;
-        data->u_n_1[0][j] = data->u_n[0][j];
-        data->u_star[0][j] = data->u_n[0][j];
+        if (j > (int) (0.5/data->h))
+        {
+            data->u_n[0][j] = 1*data->u_m;
+            data->u_n_1[0][j] = data->u_n[0][j];
+            data->u_star[0][j] = data->u_n[0][j];
+        }
+        else
+        {
+            data->u_n[0][j] = 0 * data->u_m;
+            data->u_n_1[0][j] = data->u_n[0][j];
+            data->u_star[0][j] = data->u_n[0][j];
+        }
     }
 
     /*Initialization of particles temperatures */

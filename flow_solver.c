@@ -123,6 +123,19 @@ void get_masks(Data* data)
                 xG = xg[k][2];
                 yG = yg[k][2];
 
+
+#ifdef RECTANGLE
+                double y0 = 0.5;
+                double x0 = 1;
+                chi_S[k][i][j] = (yS < y0);
+                chi_U[k][i][j] = (yU < y0);
+                chi_V[k][i][j] = (yV < y0);
+
+                Ip_S[k][i][j] = chi_S[k][i][j];
+                Ip_U[k][i][j] = chi_U[k][i][j];
+                Ip_V[k][i][j] = chi_V[k][i][j];
+
+#endif
 #ifdef ELLIPSE
                 double x;
 		double y;
@@ -528,8 +541,7 @@ void update_scalars(Data* data)
             dTdy = (T_n[i][j + 1] - T_n[i][j - 1]) / (2 * h);
 
             H_T_n = .5 * (u_n[i][j] * (T_n[i + 1][j] - T_n[i][j]) / h + u_n[i - 1][j] * (T_n[i][j] - T_n[i - 1][j]) / h)
-                    + .5 *
-                      (v_n[i][j] * (T_n[i][j + 1] - T_n[i][j]) / h + v_n[i][j - 1] * (T_n[i][j] - T_n[i][j - 1]) / h);
+                    + .5 * (v_n[i][j] * (T_n[i][j + 1] - T_n[i][j]) / h + v_n[i][j - 1] * (T_n[i][j] - T_n[i][j - 1]) / h);
 
             if (data->iter == 1) {
                 H_T_n_1 = H_T_n;
@@ -540,7 +552,6 @@ void update_scalars(Data* data)
             // DIFFUSION TERM
 
 #ifdef INTRAPARTICLE
-
             q_left = -.5*(alpha[i][j] + alpha[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
             q_right = -.5*(alpha[i+1][j] + alpha[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
             q_top = -.5*(alpha[i][j+1] + alpha[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
@@ -555,7 +566,7 @@ void update_scalars(Data* data)
 
 #ifdef EXPLICIT
             // EXPLICIT VERSION
-            RHS = (-1.5 * H_T_n + 0.5 * H_T_n_1) + alpha_f * lapT;
+            RHS = (-1.5 * H_T_n + 0.5*H_T_n_1) + alpha_f * lapT;
 
             xG = data->xg[0][2];
             yG = data->yg[0][2];
@@ -563,14 +574,16 @@ void update_scalars(Data* data)
             y = (j - 0.5) * h;
 
             d = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
+//
+//            if (d > 0.9*data->rp[0])
+//            {
 
-            if (d > 0.9 * data->rp[0])
-            {
-                T_new[i][j] = T_n[i][j] + dt * (RHS - (I_S[i][j] / eta_c) * (nSx[i][j] * dTdx + nSy[i][j] * dTdy - q));
-            } else
-            {
-                T_new[i][j] = T_n[i][j] + dt * RHS;
-            }
+            T_new[i][j] = T_n[i][j] + dt * ((1.-I_S[i][j])*RHS - (I_S[i][j]/eta_c)*(nSx[i][j] * dTdx + nSy[i][j] * dTdy - q));
+
+//            } else
+//            {
+//                T_new[i][j] = T_n[i][j] + dt * ((1 - I_S[i][j])*RHS + I_S[i][j]*alpha_f*lapT) ;
+//            }
 #else
             // IMPLICIT VERSION
             T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
@@ -665,15 +678,17 @@ void get_normal(Data* data){
         for(j = 0; j<n; j++){
             y = (j-0.5)*h;
             for(k = 0; k<Np; k++){
-                xG = data->xg[k][2];
-                yG = data->yg[k][2];
-
-                d = sqrt((x-xG)*(x-xG) + (y-yG)*(y-yG));
-                nSx_p = -(x-xG)/d;
-                nSy_p = -(y-yG)/d;
-
-                nSx[i][j] += chi_S[k][i][j]*nSx_p;
-                nSy[i][j] += chi_S[k][i][j]*nSy_p;
+//                xG = data->xg[k][2];
+//                yG = data->yg[k][2];
+//
+//                d = sqrt((x-xG)*(x-xG) + (y-yG)*(y-yG));
+//                nSx_p = -(x-xG)/d;
+//                nSy_p = -(y-yG)/d;
+//
+//                nSx[i][j] += chi_S[k][i][j]*nSx_p;
+//                nSy[i][j] += chi_S[k][i][j]*nSy_p;
+                nSx[i][j] = 0;
+                nSy[i][j] += -chi_S[k][i][j];
 
             }
         }
