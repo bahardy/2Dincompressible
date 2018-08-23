@@ -15,7 +15,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->d = 1;
     data->H = 0.5*data->d;
     data->L = 1;
-    data->h = data->Dp/40;
+    data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
     data->eps = data->h;
@@ -57,7 +57,8 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->kappa_f = data->alpha_f;
+    data->kappa_f = 1;
+    data->kappa_s = 10;
 
     data->T0 = 0; // cup-mixing temperature at the inlet
     data->Tp0 = 1; // initial particle temperature
