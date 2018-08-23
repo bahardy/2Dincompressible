@@ -173,7 +173,7 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
     //MatSetFromOptions(A);
     //MatSetOption(A, MAT_NEW_NONZERO_LOCATION_ERR, PETSC_FALSE);
     MatGetOwnershipRange(A, &rowStart, &rowEnd);
-    PetscPrintf(PETSC_COMM_WORLD, "End row is %d \n", rowEnd);
+    //PetscPrintf(PETSC_COMM_WORLD, "End row is %d \n", rowEnd);
 
     for(r = rowStart; r<rowEnd; r++){
         ii = r/N; jj=r%N;
@@ -208,11 +208,11 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
             MatSetValue(A, r, r, 4., INSERT_VALUES);
         }
 #else
-        if(ii == 0 || ii == M-1 || jj == 0 || jj == N-1 )
+        if(ii == 0 || ii == M-1 || jj == 0 || jj == N-1)
         {
             MatSetValue(A, r, r, 3., INSERT_VALUES);
         }
-        if((ii == 0 || ii == M-1)  && (jj==0 || jj == N-1) )
+        if((ii == 0 || ii == M-1)  && (jj==0 || jj == N-1))
         {
             MatSetValue(A, r, r, 2., INSERT_VALUES);
         }
@@ -224,7 +224,7 @@ PetscErrorCode poisson_solver(Data* data, int myrank, int nbproc)
 
 
     /* Create the right-hand-side vector : b */
-    VecCreate (PETSC_COMM_WORLD, &b );
+    VecCreate(PETSC_COMM_WORLD, &b );
     VecSetSizes(b, PETSC_DECIDE, M*N);
     VecSetFromOptions(b);
     VecGetOwnershipRange( b, &rowStart, &rowEnd );
