@@ -434,6 +434,8 @@ void update_scalars(Data* data)
     double ***Cs = data->Cs;
 
     double alpha_f = data->alpha_f;
+    double Re = data->Re_p;
+    double Pr = data->Pr;
     double** kappa = data->kappa;
     double *Df = data->Df;
     double ***D = data->D;
@@ -492,7 +494,7 @@ void update_scalars(Data* data)
             diff_T = -((q_right-q_left)/dx + (q_top-q_bottom)/dy)/(rho_star*cp_star);
 
             S_T = fabs(rate[0])*(-dH)/(rho_star*cp_star);
-            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1) + diff_T + I_S[i][j]*S_T);
+            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1) + (1./(Re*Pr))*diff_T + I_S[i][j]*S_T);
 #else
             diff_T = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
@@ -626,7 +628,7 @@ void get_conductivity(Data* data)
     double** I_S = data->I_S;
     double** kappa = data->kappa;
     double kappa_f = data->kappa_f;
-    double kappa_s = kappa_f;
+    double kappa_s = data->kappa_s;
 
     int i, j;
     int m = data->m;
@@ -666,8 +668,8 @@ void track_interface(Data* data, int* K, double* THETA, int i, int j)
         for (k = 0; k < Np; k++) {
             if (Ip_S[k][i][j] != Ip_S[k][i+1][j])
             {
-                X_I_1 = xg[0][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
-                X_I_2 = xg[0][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_1 = xg[k][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_2 = xg[k][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
 
                 dx1 = X_I_1 - xi;
                 dx2 = X_I_2 - xi;
@@ -690,8 +692,8 @@ void track_interface(Data* data, int* K, double* THETA, int i, int j)
         for (k = 0; k < Np; k++) {
             if (Ip_S[k][i][j] != Ip_S[k][i-1][j])
             {
-                X_I_1 = xg[0][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
-                X_I_2 = xg[0][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_1 = xg[k][2] - sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
+                X_I_2 = xg[k][2] + sqrt(pow(rp[k], 2) - pow(yj - yg[k][2], 2));
 
                 dx1 = X_I_1 - xi;
                 dx2 = X_I_2 - xi;
@@ -714,8 +716,8 @@ void track_interface(Data* data, int* K, double* THETA, int i, int j)
         for (k = 0; k < Np; k++) {
             if (Ip_S[k][i][j] != Ip_S[k][i][j+1])
             {
-                Y_I_1 = yg[0][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
-                Y_I_2 = yg[0][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_1 = yg[k][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_2 = yg[k][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
 
                 dy1 = Y_I_1 - yj;
                 dy2 = Y_I_2 - yj;
@@ -737,8 +739,8 @@ void track_interface(Data* data, int* K, double* THETA, int i, int j)
         for (k = 0; k < Np; k++) {
             if (Ip_S[k][i][j] != Ip_S[k][i][j-1])
             {
-                Y_I_1 = yg[0][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
-                Y_I_2 = yg[0][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_1 = yg[k][2] - sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
+                Y_I_2 = yg[k][2] + sqrt(pow(rp[k], 2) - pow(xi - xg[k][2], 2));
 
                 dy1 = Y_I_1 - yj;
                 dy2 = Y_I_2 - yj;
@@ -776,12 +778,3 @@ void track_interface(Data* data, int* K, double* THETA, int i, int j)
 
 }
 
-
-
-double get_tg_gradient(Data* data, int i, int j, int k)
-{
-    double X = data->xg[k][2];
-    double Y = data->yg[k][2];
-
-
-}
