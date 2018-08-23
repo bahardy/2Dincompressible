@@ -85,7 +85,7 @@ void writeFields(Data* data, char* folder, int it) {
 
     FILE *fichier_U = NULL;
     FILE *fichier_V = NULL;
-    //FILE* fichier_P = NULL;
+    FILE* fichier_P = NULL;
     FILE *fichier_T = NULL;
     FILE *fichier_YA = NULL;
     FILE *fichier_YB = NULL;
@@ -119,13 +119,13 @@ void writeFields(Data* data, char* folder, int it) {
     strcat(fileV, ".txt");
     fichier_V = fopen(fileV, "w");
 
-//    char fileP[30];
-//    strcpy(fileP, folder);
-//    strcat(fileP, "P");
-//    strcat(fileP, "-");
-//    strcat(fileP, buffer);
-//    strcat(fileP, ".txt");
-//    fichier_P = fopen(fileP, "w");
+    char fileP[30];
+    strcpy(fileP, folder);
+    strcat(fileP, "/P");
+    strcat(fileP, "-");
+    strcat(fileP, buffer);
+    strcat(fileP, ".txt");
+    fichier_P = fopen(fileP, "w");
 
     char fileVtx[30];
     strcpy(fileVtx, folder);
@@ -165,7 +165,7 @@ void writeFields(Data* data, char* folder, int it) {
     write2Darray(fichier_U, data->u_n, 0, m - 1, 1, n - 1);
     write2Darray(fichier_V, data->v_n, 1, m - 1, 0, n - 1);
     write2Darray(fichier_Vtx, data->omega, 1, m - 1, 1, n - 1);
-    //write2Darray(fichier_P, data->P,1,m-1,1,n-1);
+    write2Darray(fichier_P, data->P,0,m,0,n);
 #ifdef TEMP
     write2Darray(fichier_T, data->T_n,1,m-1,1,n-1);
     write2Darray(fichier_YA, data->C_n[0],1,m-1,1,n-1);
@@ -177,7 +177,7 @@ void writeFields(Data* data, char* folder, int it) {
     fclose(fichier_U);
     fclose(fichier_V);
     fclose(fichier_Vtx);
-    //fclose(fichier_P);
+    fclose(fichier_P);
 
 #ifdef TEMP
     fclose(fichier_T);
