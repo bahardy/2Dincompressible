@@ -504,23 +504,27 @@ void update_scalars(Data* data)
     double ***C_n_1 = data->C_n_1;
     double ***Cs = data->Cs;
 
-    double eta_c = 0.1;
-    double q = 1;
-
     double alpha_f = data->alpha_f;
-    double** alpha = data->alpha;
     double *Df = data->Df;
-    double ***D = data->D;
 
     double **I_S = data->I_S;
     double **nSx = data->nSx;
     double **nSy = data->nSy;
 
-    //double q_left, q_right, q_top, q_bottom;
-    //double j_left, j_right, j_top, j_bottom;
-
-    double dTdx, dTdy;
-    double d2Tdx2, d2Tdy2;
+#ifdef INTRAPARTICLE
+    double** alpha = data->alpha;
+    double ***D = data->D;
+    double q_left, q_right, q_top, q_bottom;
+    double j_left, j_right, j_top, j_bottom;
+    double diffT;
+#endif
+#ifdef NEUMANN_BC
+    double eta_c = 0.1;
+    double q = 1;
+    double qC = 0;
+    double dTdx, dTdy, dCdx, dCdy;
+    double d2Tdx2, d2Tdy2, d2Cdx2, d2Cdy2;
+#endif
     double H_T_n, H_T_n_1, lapT;
     double H_C_n, H_C_n_1, lapC;
     double RHS;
@@ -547,25 +551,30 @@ void update_scalars(Data* data)
                 H_T_n_1 = data->H_T_n_1[i][j];
             }
 
+#ifdef INTRAPARTICLE
             // DIFFUSION TERM
 
-#ifdef INTRAPARTICLE
             q_left = -.5*(alpha[i][j] + alpha[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
             q_right = -.5*(alpha[i+1][j] + alpha[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
             q_top = -.5*(alpha[i][j+1] + alpha[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
             q_bottom = -.5*(alpha[i][j] + alpha[i][j-1])*(T_n[i][j] - T_n[i][j-1])/dy;
 
-            lapT = -((q_right-q_left)/dx + (q_top-q_bottom)/dy);
+            diffT = -((q_right-q_left)/dx + (q_top-q_bottom)/dy);
 
-            T_new[i][j] = T_n[i][j] + dt*((1 - I_S[i][j])*(-1.5*H_T_n_1 + 0.5*H_T_n_1)
-                                          + lapT + I_S[i][j]*fabs(rate[0])*(-dH)/(rho_p*c_p));
+            // SOURCE TERM
+
+            S_T = fabs(rate[0])*(-dH)/(rho_p*c_p);
+
+            T_new[i][j] = T_n[i][j] + dt*((-1.5*H_T_n_1 + 0.5*H_T_n_1) + diffT  + I_S[i][j]*S_T);
 #else
+            // DIFFUSION TERM
+
             lapT = (T_n[i + 1][j] + T_n[i - 1][j] + T_n[i][j + 1] + T_n[i][j - 1] - 4. * T_n[i][j]) / (h * h);
 
-#ifdef EXPLICIT
-            // EXPLICIT VERSION
-            RHS = (-1.5 * H_T_n + 0.5*H_T_n_1) + alpha_f * lapT;
+            RHS = (-1.5 * H_T_n + 0.5*H_T_n_1) + alpha_f*lapT;
 
+#ifdef NEUMANN_BC
+            /** NEUMANN OR ROBIN BC **/
             xG = data->xg[0][2];
             yG = data->yg[0][2];
             x = (i - 0.5) * h;
@@ -597,33 +606,22 @@ void update_scalars(Data* data)
             }
             else
             {
-                if (x - xG < 0) // left quadrants
-                {
-                    d2Tdx2 = (T_n[i + 2][j] - 2*T_n[i+1][j] + T_n[i][j])/(h*h);
-                }
-                else
-                {
-                    d2Tdx2 = (T_n[i][j] - 2*T_n[i-1][j] + T_n[i-2][j])/(h*h);
-                }
-
-                if (y - yG < 0) // left quadrants
-                {
-                    d2Tdy2 = (T_n[i][j+2] - 2*T_n[i][j+1] + T_n[i][j])/(h*h);
-                }
-                else
-                {
-                    d2Tdy2 = (T_n[i][j] - 2*T_n[i][j-1] + T_n[i][j-2])/(h*h);
-                }
-
+                d2Tdx2 = (T_n[i+1][j] - 2*T_n[i][j] + T_n[i-1][j])/(h*h);
+                d2Tdy2 = (T_n[i][j+1] - 2*T_n[i][j] + T_n[i][j-1])/(h*h);
                 lapT = d2Tdx2 + d2Tdy2;
+
                 T_new[i][j] = T_n[i][j] + dt * (I_S[i][j]*alpha_f*lapT) ;
             }
 #else
-            // IMPLICIT VERSION
-            T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
-                                             + alpha_f * lapT
-                                             + ramp * I_S[i][j] * Ts[i][j] / dtau)) /
+            /** DIRICHLET BC **/
+#ifdef EXPLICIT
+            /** EXPLICIT VERSION **/
+            T_new[i][j] = T_n[i][j] + dt*RHS - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j]-Ts[i][j]);
+#else
+            /** IMPLICIT VERSION **/
+            T_new[i][j] = (T_n[i][j] + dt * (RHS + ramp*I_S[i][j]*Ts[i][j]/dtau)) /
                           (1. + ramp * I_S[i][j] * dt / dtau);
+#endif
 #endif
 
 #endif
@@ -645,9 +643,9 @@ void update_scalars(Data* data)
                     H_C_n_1 = data->H_C_n_1[s][i][j];
                 }
 
-                // DIFFUSION TERM
 
 #ifdef INTRAPARTICLE
+                // DIFFUSION TERM
 
                 j_left = -.5*(D[s][i][j] + D[s][i-1][j])*(C_n[s][i][j] - C_n[s][i-1][j])/dx;
                 j_right = -.5*(D[s][i+1][j] + D[s][i][j])*(C_n[s][i+1][j] - C_n[s][i][j])/dx;
@@ -659,7 +657,52 @@ void update_scalars(Data* data)
                 C_new[s][i][j] = C_n[s][i][j] + dt*((1 - I_S[i][j])*(-1.5*H_C_n + 0.5*H_C_n_1) + lapC + I_S[i][j]*rate[s]);
 
 #else
+                // DIFFUSION TERM
                 lapC = (C_n[s][i + 1][j] + C_n[s][i - 1][j] + C_n[s][i][j + 1] + C_n[s][i][j - 1] - 4. * C_n[s][i][j]) / (h * h);
+
+                RHS = (-1.5*H_C_n + 0.5*H_C_n_1) + Df[s]*lapC;
+
+#ifdef NEUMANN_BC
+                /** NEUMANN OR ROBIN BC **/
+                xG = data->xg[0][2];
+                yG = data->yg[0][2];
+                x = (i - 0.5) * h;
+                y = (j - 0.5) * h;
+
+                r = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
+
+                if (r >= 0.8*data->rp[0]) {
+                    if (x - xG < 0) // left quadrants
+                    {
+                        dCdx = (C_n[s][i][j] - C_n[s][i - 1][j])/h;
+                    }
+                    else
+                    {
+                        dCdx = (C_n[s][i + 1][j] - C_n[s][i][j])/h;
+                    }
+
+                    if (y - yG < 0) // left quadrants
+                    {
+                        dCdy = (C_n[s][i][j] - C_n[s][i][j - 1])/h;
+                    }
+                    else
+                    {
+                        dCdy = (C_n[s][i][j + 1] - C_n[s][i][j])/h;
+                    }
+
+                    C_new[s][i][j] = C_n[s][i][j] + dt * ((1. - I_S[i][j]) * RHS -
+                                                    (I_S[i][j] / eta_c) * (nSx[i][j] * dCdx + nSy[i][j] * dCdy - qC));
+                }
+                else
+                {
+                    d2Cdx2 = (C_n[s][i+1][j] - 2*C_n[s][i][j] + C_n[s][i-1][j])/(h*h);
+                    d2Cdy2 = (C_n[s][i][j+1] - 2*C_n[s][i][j] + C_n[s][i][j-1])/(h*h);
+                    lapC = d2Cdx2 + d2Cdy2;
+
+                    C_new[s][i][j] = C_n[s][i][j] + dt * (I_S[i][j]*Df[s]*lapC) ;
+                }
+#else
+
 #ifdef EXPLICIT
                 //EXPLICIT VERSION
               C_new[s][i][j] = C_n[s][i][j] + dt * (-1.5 * H_C_n + 0.5 * H_C_n_1
@@ -672,6 +715,7 @@ void update_scalars(Data* data)
                                                        + ramp * I_S[i][j] * Cs[s][i][j] / dtau))/
                                  (1. + ramp * I_S[i][j] * dt / dtau);
 
+#endif
 #endif
 #endif
                 data->H_C_n_1[s][i][j] = H_C_n;

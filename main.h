@@ -14,6 +14,7 @@
 #define DISK
 #define SLIP
 #define EXPLICIT
+#define NEUMANN_BC
 //#define GRAVITY
 //#define SMOOTHING
 #define AB3
