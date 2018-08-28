@@ -50,18 +50,18 @@ void get_ghosts(Data* data, double T0, double* C0)
     }
 
     /* Along x = 0 and x = L */
-    for (int j = 0; j<n; j++){
+    for (int j = 0; j<n; j++) {
         /* Inflow : horizontal flow --> v_n = 0 */
-        v_n[0][j] = -0.2*(v_n[3][j] - 5.*v_n[2][j] + 15.*v_n[1][j]);
+        v_n[0][j] = -0.2 * (v_n[3][j] - 5. * v_n[2][j] + 15. * v_n[1][j]);
         /* Natural outflow : dV/dx =0 */
-        v_n[m-1][j] = v_n[m-2][j];
+        v_n[m - 1][j] = v_n[m - 2][j];
 
 #ifdef TEMP
         /* On T_n and C */
         /* Inflow : T_n uniform  */
-        /*Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
+        /* Outflow : We cancel axial dispersion d2T/dx2 = 0; d2C/dx2 = 0; */
 
-        T_n[0][j] = -0.2*(T_n[3][j]-5.*T_n[2][j]+15.*T_n[1][j]-16.*T0);
+        T_n[0][j] = -0.2 * (T_n[3][j] - 5. * T_n[2][j] + 15. * T_n[1][j] - 16. * T0);
         //T_n[m-1][j] = (T_n[m-4][j]-5.*T_n[m-3][j]+15.*T_n[m-2][j]-16.*T0);
         T_n[m-1][j] = (7.*T_n[m-2][j]-5.*T_n[m-3][j]+T_n[m-4][j])/3.;
 
@@ -70,7 +70,7 @@ void get_ghosts(Data* data, double T0, double* C0)
             C[s][m-1][j] = (7.*C[s][m-2][j]-5.*C[s][m-3][j]+C[s][m-4][j])/3.;
             //C[s][m-1][j] = -0.2*(C[s][m-4][j]-5.*C[s][m-3][j]+15.*C[s][m-2][j]-16.*C0[s]);
         }
-	
+
 #endif
 
     }
@@ -504,8 +504,8 @@ void update_scalars(Data* data)
     double ***C_n_1 = data->C_n_1;
     double ***Cs = data->Cs;
 
-    double eta_c = 0.001;
-    double q = 0;
+    double eta_c = 0.1;
+    double q = 1;
 
     double alpha_f = data->alpha_f;
     double** alpha = data->alpha;
@@ -516,15 +516,16 @@ void update_scalars(Data* data)
     double **nSx = data->nSx;
     double **nSy = data->nSy;
 
-    double q_left, q_right, q_top, q_bottom;
-    double j_left, j_right, j_top, j_bottom;
+    //double q_left, q_right, q_top, q_bottom;
+    //double j_left, j_right, j_top, j_bottom;
 
     double dTdx, dTdy;
+    double d2Tdx2, d2Tdy2;
     double H_T_n, H_T_n_1, lapT;
     double H_C_n, H_C_n_1, lapC;
     double RHS;
     double x, y, xG, yG;
-    double d;
+    double r;
 
     double* rate = make1DDoubleArray(Ns);
 
@@ -536,9 +537,6 @@ void update_scalars(Data* data)
             get_rate(data, rate, C_n, T_n, i, j);
 
             // ADVECTIVE TERMS
-
-            dTdx = (T_n[i + 1][j] - T_n[i - 1][j]) / (2 * h);
-            dTdy = (T_n[i][j + 1] - T_n[i][j - 1]) / (2 * h);
 
             H_T_n = .5 * (u_n[i][j] * (T_n[i + 1][j] - T_n[i][j]) / h + u_n[i - 1][j] * (T_n[i][j] - T_n[i - 1][j]) / h)
                     + .5 * (v_n[i][j] * (T_n[i][j + 1] - T_n[i][j]) / h + v_n[i][j - 1] * (T_n[i][j] - T_n[i][j - 1]) / h);
@@ -573,17 +571,53 @@ void update_scalars(Data* data)
             x = (i - 0.5) * h;
             y = (j - 0.5) * h;
 
-            d = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
-//
-//            if (d > 0.9*data->rp[0])
-//            {
+            r = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
 
-            T_new[i][j] = T_n[i][j] + dt * ((1.-I_S[i][j])*RHS - (I_S[i][j]/eta_c)*(nSx[i][j] * dTdx + nSy[i][j] * dTdy - q));
+            if (r >= 0.8*data->rp[0]) {
+                if (x - xG < 0) // left quadrants
+                {
+                    dTdx = (T_n[i][j] - T_n[i - 1][j])/h;
+                }
+                else
+                {
+                    dTdx = (T_n[i + 1][j] - T_n[i][j])/h;
+                }
 
-//            } else
-//            {
-//                T_new[i][j] = T_n[i][j] + dt * ((1 - I_S[i][j])*RHS + I_S[i][j]*alpha_f*lapT) ;
-//            }
+                if (y - yG < 0) // left quadrants
+                {
+                    dTdy = (T_n[i][j] - T_n[i][j - 1])/h;
+                }
+                else
+                {
+                    dTdy = (T_n[i][j + 1] - T_n[i][j])/h;
+                }
+
+                T_new[i][j] = T_n[i][j] + dt * ((1. - I_S[i][j]) * RHS -
+                                                (I_S[i][j] / eta_c) * (nSx[i][j] * dTdx + nSy[i][j] * dTdy - q));
+            }
+            else
+            {
+                if (x - xG < 0) // left quadrants
+                {
+                    d2Tdx2 = (T_n[i + 2][j] - 2*T_n[i+1][j] + T_n[i][j])/(h*h);
+                }
+                else
+                {
+                    d2Tdx2 = (T_n[i][j] - 2*T_n[i-1][j] + T_n[i-2][j])/(h*h);
+                }
+
+                if (y - yG < 0) // left quadrants
+                {
+                    d2Tdy2 = (T_n[i][j+2] - 2*T_n[i][j+1] + T_n[i][j])/(h*h);
+                }
+                else
+                {
+                    d2Tdy2 = (T_n[i][j] - 2*T_n[i][j-1] + T_n[i][j-2])/(h*h);
+                }
+
+                lapT = d2Tdx2 + d2Tdy2;
+                T_new[i][j] = T_n[i][j] + dt * (I_S[i][j]*alpha_f*lapT) ;
+            }
 #else
             // IMPLICIT VERSION
             T_new[i][j] = (T_n[i][j] + dt * (-1.5 * H_T_n + 0.5 * H_T_n_1
@@ -678,17 +712,17 @@ void get_normal(Data* data){
         for(j = 0; j<n; j++){
             y = (j-0.5)*h;
             for(k = 0; k<Np; k++){
-//                xG = data->xg[k][2];
-//                yG = data->yg[k][2];
-//
-//                d = sqrt((x-xG)*(x-xG) + (y-yG)*(y-yG));
-//                nSx_p = -(x-xG)/d;
-//                nSy_p = -(y-yG)/d;
-//
-//                nSx[i][j] += chi_S[k][i][j]*nSx_p;
-//                nSy[i][j] += chi_S[k][i][j]*nSy_p;
-                nSx[i][j] = 0;
-                nSy[i][j] += -chi_S[k][i][j];
+                xG = data->xg[k][2];
+                yG = data->yg[k][2];
+
+                d = sqrt((x-xG)*(x-xG) + (y-yG)*(y-yG));
+                nSx_p = -(x-xG)/d;
+                nSy_p = -(y-yG)/d;
+
+                nSx[i][j] += chi_S[k][i][j]*nSx_p;
+                nSy[i][j] += chi_S[k][i][j]*nSy_p;
+                //nSx[i][j] = 0;
+                //nSy[i][j] += -chi_S[k][i][j];
 
             }
         }

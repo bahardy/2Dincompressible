@@ -9,7 +9,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
     data->Dp = 1;
-    data->d = 4.;
+    data->d = 3.;
     data->H = 0.5*data->d;
     data->L = 6.;
     data->h = data->Dp/30;
@@ -53,7 +53,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
-    data->T0 = 1; //  temperature at the inlet
+    data->T0 = 0; //  temperature at the inlet
     data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
@@ -78,7 +78,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.01; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = 0.2; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -222,18 +222,18 @@ void initialize_fields(Data* data)
 
     /*INLET BC*/
     for (int j = 0; j < data->n; j++) {
-        if (j > (int) (0.5/data->h))
-        {
+//        if (j > (int) (0.5/data->h))
+//        {
             data->u_n[0][j] = 1*data->u_m;
             data->u_n_1[0][j] = data->u_n[0][j];
             data->u_star[0][j] = data->u_n[0][j];
-        }
-        else
-        {
-            data->u_n[0][j] = 0 * data->u_m;
-            data->u_n_1[0][j] = data->u_n[0][j];
-            data->u_star[0][j] = data->u_n[0][j];
-        }
+//        }
+//        else
+//        {
+//            data->u_n[0][j] = 0 * data->u_m;
+//            data->u_n_1[0][j] = data->u_n[0][j];
+//            data->u_star[0][j] = data->u_n[0][j];
+//        }
     }
 
     /*Initialization of particles temperatures */

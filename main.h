@@ -11,7 +11,7 @@
 #define TWO_WAY
 //#define RAMPING
 #define WRITE
-#define RECTANGLE
+#define DISK
 #define SLIP
 #define EXPLICIT
 //#define GRAVITY
