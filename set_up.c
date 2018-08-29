@@ -27,9 +27,9 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->rho_f = 1.;
     data->rho_p = 100;
     data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
+    data->cp_s = 1000.;
+    data->cp_f = 1000.;
+    data->cr = data->cp_s/data->cp_f;
 
     // /* NON-DIMENSIONAL NUMBERS */
     data->Pr = 0.7;
@@ -37,7 +37,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Sc = data->Le*data->Pr;
     data->Rep = 40.;
     data->Fr = sqrt(1e3);
-    data->Da = 0.2;
+    data->Da = 10;
 
     data->g =  1/pow((data->Fr),2);
 
@@ -66,7 +66,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     }
 //    data->Df[0] = data->nu/data->Sc;
 //    data->Df[1] = data->nu/data->Sc;
-    data->dH = 0;
+    data->dH = -1e6;
     data->CA0 = 1.;
     data->CB0 = 0.;
 

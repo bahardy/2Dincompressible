@@ -193,8 +193,8 @@ void update_Tp(Data* data, int k)
     double rho_p = data->rho_p;
     double rho_f = data->rho_f;
     double cr = data->cr;
-    double cp = data->cp;
-    double cf = data->cf;
+    double cp = data->cp_s;
+    double cf = data->cp_f;
     double dt = data->dt;
     double dH = data->dH;
 

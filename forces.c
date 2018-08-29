@@ -265,7 +265,7 @@ void compute_forces_fluxes(Data* data, int k)
     double rho_p = data->rho_p;
     double rho_r = data->rho_r;
 
-    double cf = data->cf;
+    double cf = data->cp_f;
 
     dudt[k][0] = dudt[k][1];
     dudt[k][1] = dudt[k][2];

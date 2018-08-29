@@ -53,7 +53,7 @@ struct Data{
     double nu;
     double g;
     double rho_p, rho_f, rho_r;
-    double cp, cf, cr;
+    double cp_s, cp_f, cr;
     double Rep;
     double Pr;
     double Sc;

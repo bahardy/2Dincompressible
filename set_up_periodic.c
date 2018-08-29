@@ -21,9 +21,9 @@ void set_up_periodic(Data *data, int argc, char **argv, int rank)
     data->rho_f = 1.;
     data->rho_p = 100;
     data->rho_r = data->rho_p/data->rho_f;
-    data->cp = 1000.;
-    data->cf = 1000.;
-    data->cr = data->cp/data->cf;
+    data->cp_s = 1000.;
+    data->cp_f = 1000.;
+    data->cr = data->cp_s/data->cp_f;
     data->g = 0;
 
     /* NON-DIMENSIONAL NUMBERS */

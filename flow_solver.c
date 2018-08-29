@@ -486,8 +486,10 @@ void update_scalars(Data* data)
     double dtau = data->dtau;
     double dt = data->dt;
 
+    double rho_f = data->rho_f;
     double rho_p = data->rho_p;
-    double c_p = data->cp;
+    double cp_s = data->cp_s;
+    double cp_f = data->cp_f;
     double dH = data->dH;
 
     double **T_new = make2DDoubleArray(m, n);
@@ -520,7 +522,7 @@ void update_scalars(Data* data)
 #endif
 #ifdef NEUMANN_BC
     double eta_c = 0.1;
-    double q = 1;
+    double q = 0;
     double qC = 0;
     double dTdx, dTdy, dCdx, dCdy;
     double d2Tdx2, d2Tdy2, d2Cdx2, d2Cdy2;
@@ -573,14 +575,18 @@ void update_scalars(Data* data)
 
             RHS = (-1.5 * H_T_n + 0.5*H_T_n_1) + alpha_f*lapT;
 
+
 #ifdef NEUMANN_BC
             /** NEUMANN OR ROBIN BC **/
             xG = data->xg[0][2];
             yG = data->yg[0][2];
             x = (i - 0.5) * h;
             y = (j - 0.5) * h;
+            double T0 = 373.15;
+            double C0 = 1;
 
             r = sqrt((x - xG) * (x - xG) + (y - yG) * (y - yG));
+            q = fabs(rate[0])*(-dH)*(C0*data->Pr)/(T0*data->Sc*rho_f*cp_f);
 
             if (r >= 0.8*data->rp[0]) {
                 if (x - xG < 0) // left quadrants
@@ -664,6 +670,8 @@ void update_scalars(Data* data)
 
 #ifdef NEUMANN_BC
                 /** NEUMANN OR ROBIN BC **/
+                double a = data->Da;
+                double b = 1;
                 xG = data->xg[0][2];
                 yG = data->yg[0][2];
                 x = (i - 0.5) * h;
@@ -691,7 +699,7 @@ void update_scalars(Data* data)
                     }
 
                     C_new[s][i][j] = C_n[s][i][j] + dt * ((1. - I_S[i][j]) * RHS -
-                                                    (I_S[i][j] / eta_c) * (nSx[i][j] * dCdx + nSy[i][j] * dCdy - qC));
+                                                    (I_S[i][j] / eta_c) * (a*C_n[s][i][j] + b*(nSx[i][j] * dCdx + nSy[i][j] * dCdy) - qC));
                 }
                 else
                 {
