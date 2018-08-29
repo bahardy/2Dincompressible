@@ -36,7 +36,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
     data->Re_p = 40.; // sqrt(data->Gr);
-    data->Gr = 1221300
+    data->Gr = 1221300;
     data->Fr = sqrt(1e3);
     data->Da = 10;
 
