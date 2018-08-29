@@ -6,6 +6,7 @@
 #define INC_2DINCOMP_FLOW_SOLVER_H
 
 void get_masks(Data* data);
+void get_normal(Data* data);
 void get_Cs(Data* data);
 void get_Ts(Data* data);
 void get_Us_Vs(Data* data);

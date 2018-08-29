@@ -12,15 +12,16 @@
 //#define RAMPING
 #define WRITE
 #define DISK
-//#define SLIP
-//#define EXPLICIT
+#define SLIP
+#define EXPLICIT
+#define NEUMANN_BC
 //#define GRAVITY
 //#define SMOOTHING
 #define AB3
-#define INTRAPARTICLE
+//#define INTRAPARTICLE
 //#define ITERATIVE
 //#define SEDIMENTATION
-#define CAVITY
+//#define CAVITY
 
 /*--------------------------------------------------------*/
 /* INCLUDE HEADERS */
@@ -150,7 +151,8 @@ struct Data{
     double** I_S;
     double** I_U;
     double** I_V;
-
+    double** nSx;
+    double** nSy;
 
     double** P;
     double** phi;

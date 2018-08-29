@@ -8,14 +8,11 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
-    data->Np = 4;
-    double phi_f = 0.84; //void fraction
-    double phi_s = 1 - phi_f;
-    data->Dp = sqrt(4.*phi_s/(M_PI*data->Np));
-    data->d = 1;
+    data->Dp = 1;
+    data->d = 3.;
     data->H = 0.5*data->d;
-    data->L = 1;
-    data->h = data->Dp/40;
+    data->L = 6.;
+    data->h = data->Dp/30;
     data->eps = 0;
 #ifdef SMOOTHING
     data->eps = data->h;
@@ -35,13 +32,13 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->cr = data->cp_s/data->cp_f;
 
     // /* NON-DIMENSIONAL NUMBERS */
-    data->Pr = 1;
+    data->Pr = 0.7;
     data->Le = 1; /* Lewis number, ratio between Sc and Prandtl */
     data->Sc = data->Le*data->Pr;
-    data->Gr = 1221300;
-    data->Re_p = sqrt(data->Gr); //40.;
+    data->Re_p = 40.; // sqrt(data->Gr);
+    data->Gr = 1221300
     data->Fr = sqrt(1e3);
-    data->Da = 0;
+    data->Da = 10;
 
     data->g =  1/pow((data->Fr),2);
 
@@ -58,12 +55,12 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     /* ENERGY */
     data->alpha_f = data->nu/data->Pr;
     data->kappa_f = data->alpha_f;
-
-    data->T0 = 0; // cup-mixing temperature at the inlet
-    data->Tp0 = 1; // initial particle temperature
+    data->T0 = 0; //  temperature at the inlet
+    data->Tp0 = 0; // initial particle temperature
 
     /* SPECIES */
     data->Ns = 1;
+    data->Np = 1;
     data->Df = make1DDoubleArray(data->Ns);
     for (int i = 0; i < data->Ns; i++)
     {
@@ -71,7 +68,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     }
 //    data->Df[0] = data->nu/data->Sc;
 //    data->Df[1] = data->nu/data->Sc;
-    data->dH = 0;
+    data->dH = -1e6;
     data->CA0 = 1.;
     data->CB0 = 0.;
 
@@ -83,7 +80,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = 0.2; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -92,7 +89,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ratio_dtau_dt = 1;
 #endif
 #ifndef EXPLICIT
-    data->ratio_dtau_dt = 1e-3;
+    data->ratio_dtau_dt = 1e-4;
 #endif
     data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;
@@ -158,11 +155,16 @@ void initialize_fields(Data* data)
 #endif
     }
 
-    /* Initialization of particles position */
-    data->xg[0][0] = 0.25; data->yg[0][0] = 0.25;
-    data->xg[1][0] = 0.75; data->yg[1][0] = 0.25;
-    data->xg[2][0] = 0.25; data->yg[2][0] = 0.75;
-    data->xg[3][0] = 0.75; data->yg[3][0] = 0.75;
+    /** Initialization of particles position **/
+
+//    data->xg[0][0] = 0.25; data->yg[0][0] = 0.25;
+//    data->xg[1][0] = 0.75; data->yg[1][0] = 0.25;
+//    data->xg[2][0] = 0.25; data->yg[2][0] = 0.75;
+//    data->xg[3][0] = 0.75; data->yg[3][0] = 0.75;
+
+    data->xg[0][0] = 2;
+    data->yg[0][0] = data->H;
+    data->theta[0][0] = 0;
 
     for (int k = 0; k<data->Np; k++)
     {
@@ -175,9 +177,10 @@ void initialize_fields(Data* data)
     }
 
     /* DEDUCE MASK */
-    get_masks(data);
+    //get_masks(data);
 
-    /*Initialization of particles velocities */
+    /** Initialization of particles velocities **/
+
     for (int k = 0; k < data->Np; k++) {
         data->Up[k][2] = 0 * data->u_m;
         data->Up[k][1] = data->Up[k][2];
@@ -193,7 +196,7 @@ void initialize_fields(Data* data)
 
     }
 
-    /*Initialization of particles temperatures */
+    /** Initialization of particles temperatures **/
     for (int k = 0; k < data->Np; k++) {
         data->Tp[k] = data->Tp0;
     }
@@ -201,7 +204,7 @@ void initialize_fields(Data* data)
     /* VELOCITY : horizontal flow Um  */
     for (int i = 0; i < data->m; i++) {
         for (int j = 0; j < data->n; j++) {
-            data->u_n[i][j] = 0*data->u_m;
+            data->u_n[i][j] = 1*data->u_m;
             data->u_n_1[i][j] = data->u_n[i][j];
             data->u_star[i][j] = data->u_n[i][j];
             data->T_n[i][j] = 0;

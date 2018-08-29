@@ -68,17 +68,6 @@ void writeData(FILE* fichier_data, Data data)
     }
 }
 
-//void writeMask(Data* data)
-//{
-//	int m = data->m;
-//	int n = data->n;
-//
-//	FILE* fichier_Mask = NULL;
-//	fichier_Mask = fopen("results2/Mask.txt", "w");
-//	write2Darray(fichier_Mask, data->coloring, 1, m-1, 1, n-1);
-//	fclose(fichier_Mask);
-//}
-
 void writeFields(Data* data, char* folder, int it) {
     int m = data->m;
     int n = data->n;
@@ -90,6 +79,8 @@ void writeFields(Data* data, char* folder, int it) {
     FILE *fichier_YA = NULL;
     FILE *fichier_YB = NULL;
     FILE *fichier_Mask = NULL;
+    FILE *fichier_nx = NULL;
+    FILE *fichier_ny = NULL;
     FILE *fichier_Vtx = NULL;
 
     char buffer[10];
@@ -102,6 +93,22 @@ void writeFields(Data* data, char* folder, int it) {
     strcat(fileMask, buffer);
     strcat(fileMask, ".txt");
     fichier_Mask = fopen(fileMask, "w");
+
+    char fileNx[30];
+    strcpy(fileNx, folder);
+    strcat(fileNx, "/nx");
+    strcat(fileNx, "-");
+    strcat(fileNx, buffer);
+    strcat(fileNx, ".txt");
+    fichier_nx = fopen(fileNx, "w");
+
+    char fileNy[30];
+    strcpy(fileNy, folder);
+    strcat(fileNy, "/ny");
+    strcat(fileNy, "-");
+    strcat(fileNy, buffer);
+    strcat(fileNy, ".txt");
+    fichier_ny = fopen(fileNy, "w");
 
     char fileU[30];
     strcpy(fileU, folder);
@@ -162,6 +169,9 @@ void writeFields(Data* data, char* folder, int it) {
 
 #endif
     write2Darray(fichier_Mask, data->coloring, 1, m - 1, 1, n - 1);
+    write2Darray(fichier_nx, data->nSx, 1, m-1, 1, n-1);
+    write2Darray(fichier_ny, data->nSy, 1, m-1, 1, n-1);
+
     write2Darray(fichier_U, data->u_n, 0, m - 1, 1, n - 1);
     write2Darray(fichier_V, data->v_n, 1, m - 1, 0, n - 1);
     write2Darray(fichier_Vtx, data->omega, 1, m - 1, 1, n - 1);
@@ -174,6 +184,8 @@ void writeFields(Data* data, char* folder, int it) {
 
     //CLOSE FILES 
     fclose(fichier_Mask);
+    fclose(fichier_nx);
+    fclose(fichier_ny);
     fclose(fichier_U);
     fclose(fichier_V);
     fclose(fichier_Vtx);
