@@ -275,17 +275,17 @@ void compute_forces_fluxes(Data* data, int k)
     domegadt[k][0] = domegadt[k][1];
     domegadt[k][1] = domegadt[k][2];
 
-    PetscPrintf(PETSC_COMM_WORLD,"F integration = %1.6e \n", k+1, F[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"F integration = %1.6e \n", k+1, F[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"G integration = %1.6e \n", k+1, G[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"M integration = %1.6e \n", k+1, M[k][2]);
 
     dudt[k][2] = (Up[k][2]-Up[k][1])/dt;
     dvdt[k][2] = (Vp[k][2]-Vp[k][1])/dt;
     domegadt[k][2] = (Omega_p[k][2]-Omega_p[k][1])/dt;
 
-    PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k][2]);
-    PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"dudt = %1.6e \n", k+1, dudt[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"dvdt = %1.6e \n", k+1, dvdt[k][2]);
+    //PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k][2]);
 
     Fx[k] = rho_f*(Sp[k]*dudt[k][2] + F[k][2]);
     Fy[k] = rho_f*(Sp[k]*dvdt[k][2]  + G[k][2]);
@@ -294,9 +294,9 @@ void compute_forces_fluxes(Data* data, int k)
     Qm[k][0] = PP[k][0][2];
 
 
-    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n", k+1, Fx[k], Fbis, Fter);
-    PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m] \n", k+1, Fy[k]);
-    PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -x dir on particle %d = %1.6e [N/m] OR = %1.6e [N/m] OR = %1.6e [N/m] \n", k+1, Fx[k], Fbis, Fter);
+    //PetscPrintf(PETSC_COMM_WORLD,"Hydrodynamic force along -y dir on particle %d = %1.6e [N/m] \n", k+1, Fy[k]);
+    //PetscPrintf(PETSC_COMM_WORLD,"Torque on particle %d = %1.6e [N]  \n", k+1, Tz[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Heat flux on particle %d = %1.6e [W/m] \n", k+1, Q[k]);
     //PetscPrintf(PETSC_COMM_WORLD,"Molar flux of A on particle %d = %1.6e [mol/(m.s)] \n", k+1, Qm[k][0]);
 }

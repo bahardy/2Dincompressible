@@ -14,7 +14,7 @@ LIBS=/home/ucl/mema/jonathan/easybuild/software/PETSc/3.8.2-foss-2017a/lib/libpe
 
 all: $(EXEC)
 
-2Dincomp: main.o collision.o fields_memory.o flow_solver.o forces.o particle_motion.o poisson.o set_up.o write.o
+2Dincomp: main.o collision.o fields_memory.o flow_solver.o ghost_points.o forces.o particle_motion.o poisson.o set_up.o write.o
 	 $(CC) -I$(IDIR1) -I$(IDIR2) -I$(IDIR_LOCAL) -o $@ $^ $(CFLAGS) $(LIBS)
 
 %.o: %.c %.h

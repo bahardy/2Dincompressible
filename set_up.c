@@ -8,6 +8,11 @@
 void set_up(Data* data, int argc, char *argv[], int rank)
 {
     /* DIMENSIONS */
+    //data->Np = 4;
+    //double phi_f = 0.84; //void fraction
+    //double phi_s = 1 - phi_f;
+    //data->Dp = sqrt(4.*phi_s/(M_PI*data->Np));
+    //data->d = 1;
     data->Dp = 1;
     data->d = 3.;
     data->H = 0.5*data->d;
@@ -37,8 +42,9 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->Sc = data->Le*data->Pr;
     data->Re_p = 40.; // sqrt(data->Gr);
     data->Gr = 1221300;
+    //data->Re_p = sqrt(data->Gr); //40.;
     data->Fr = sqrt(1e3);
-    data->Da = 10;
+    data->Da = 0;
 
     data->g =  1/pow((data->Fr),2);
 
@@ -68,7 +74,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     }
 //    data->Df[0] = data->nu/data->Sc;
 //    data->Df[1] = data->nu/data->Sc;
-    data->dH = -1e6;
+    data->dH = 0;
     data->CA0 = 1.;
     data->CB0 = 0.;
 
@@ -80,7 +86,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
 
 
     /* TIME INTEGRATION */
-    data->CFL = 0.1; /*Courant-Freidrichs-Lewy condition on convective term */
+    data->CFL = 0.2; /*Courant-Freidrichs-Lewy condition on convective term */
     data->r = 0.2; /* Fourier condition on diffusive term */
     double dt_CFL = data->CFL*data->h/data->u_m;
     double dt_diff = data->r*data->h*data->h/data->nu;
@@ -89,7 +95,7 @@ void set_up(Data* data, int argc, char *argv[], int rank)
     data->ratio_dtau_dt = 1;
 #endif
 #ifndef EXPLICIT
-    data->ratio_dtau_dt = 1e-4;
+    data->ratio_dtau_dt = 1e-3;
 #endif
     data->dt = fmin(dt_CFL, dt_diff);
     data->dtau = data->ratio_dtau_dt*data->dt;

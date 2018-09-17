@@ -444,6 +444,7 @@ void update_scalars(Data* data)
     double** alpha = data->alpha;
     double ***D = data->D;
     double** kappa = data->kappa;
+    double kappa_left, kappa_right, kappa_top, kappa_bottom;
     double q_left, q_right, q_top, q_bottom;
     double j_left, j_right, j_top, j_bottom;
 #endif
@@ -481,16 +482,22 @@ void update_scalars(Data* data)
                 H_T_n_1 = data->H_T_n_1[i][j];
             }
 
+            // DIFFUSION TERM
 #ifdef INTRAPARTICLE
             // DIFFUSION TERM
 
             rho_star = 1; // (1-I_S[i][j])*rho_f + I_S[i][j]*rho_s;
             cp_star = 1; //(1-I_S[i][j])*cp_f + I_S[i][j]*cp_s;
 
-            q_left = -.5*(kappa[i][j] + kappa[i-1][j])*(T_n[i][j] - T_n[i-1][j])/dx;
-            q_right = -.5*(kappa[i+1][j] + kappa[i][j])*(T_n[i+1][j] - T_n[i][j])/dx;
-            q_top = -.5*(kappa[i][j+1] + kappa[i][j])*(T_n[i][j+1] - T_n[i][j])/dy;
-            q_bottom = -.5*(kappa[i][j] + kappa[i][j-1])*(T_n[i][j] - T_n[i][j-1])/dy;
+	    kappa_right = kappa[i][j]*kappa[i+1][j]/(.5*(kappa[i][j] + kappa[i+1][j]));
+	    kappa_left = kappa[i][j]*kappa[i-1][j]/(.5*(kappa[i][j] + kappa[i-1][j]));
+	    kappa_top = kappa[i][j]*kappa[i][j+1]/(.5*(kappa[i][j] + kappa[i][j+1]));
+	    kappa_bottom = kappa[i][j]*kappa[i][j-1]/(.5*(kappa[i][j] + kappa[i][j-1]));
+
+	    q_right = -kappa_right*(T_n[i+1][j] - T_n[i][j])/dx;
+            q_left = -kappa_left*(T_n[i][j] - T_n[i-1][j])/dx;
+            q_top = -kappa_top*(T_n[i][j+1] - T_n[i][j])/dy;
+            q_bottom = -kappa_bottom*(T_n[i][j] - T_n[i][j-1])/dy;
 
             diff_T = -((q_right-q_left)/dx + (q_top-q_bottom)/dy)/(rho_star*cp_star);
 
@@ -553,7 +560,7 @@ void update_scalars(Data* data)
             T_new[i][j] = T_n[i][j] + dt*RHS - ramp*I_S[i][j]*(dt/dtau)*(T_n[i][j]-Ts[i][j]);
 #else
             /** IMPLICIT VERSION **/
-            T_new[i][j] = (T_n[i][j] + dt * (RHS + ramp*I_S[i][j]*Ts[i][j]/dtau)) /
+            T_new[i][j] = (T_n[i][j] + dt * (RHS + ramp*I_S[i][j]*Ts[i][j]/dtau)) / (1. + ramp * I_S[i][j] * dt / dtau);
 #endif
 #endif
 
