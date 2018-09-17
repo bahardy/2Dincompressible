@@ -330,6 +330,10 @@ void update_quantities(Data* data)
         data->Fy_coll[k][1] =  data->Fy_coll[k][2];
         data->Fy_coll[k][2] = 0;
 
+        data->M_coll[k][0] =  data->M_coll[k][1];
+        data->M_coll[k][1] =  data->M_coll[k][2];
+        data->M_coll[k][2] = 0;
+
         /* Force along x-direction */
         data->F[k][0] = data->F[k][1]; /* n-2*/
         data->F[k][1] = data->F[k][2]; /* n-1*/
@@ -352,7 +356,7 @@ void update_quantities(Data* data)
         data->theta[k][1] = data->theta[k][2];
 #ifndef AB3
 	data->Up[k][0] = data->Up[k][1];
-        data->Up[k][1] = data->Up[k][2];
+    data->Up[k][1] = data->Up[k][2];
 
 	data->Vp[k][0] = data->Vp[k][1];
 	data->Vp[k][1] = data->Vp[k][2];

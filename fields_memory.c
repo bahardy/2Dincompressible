@@ -33,6 +33,7 @@ void allocate_fields(Data* data)
     data->Tz = make1DDoubleArray(Np);
     data->Fx_coll = make2DDoubleArray(Np,3);
     data->Fy_coll = make2DDoubleArray(Np,3);
+    data->M_coll = make2DDoubleArray(Np,3);
 
     data->F = make2DDoubleArray(Np,3);
     data->G = make2DDoubleArray(Np,3);
@@ -116,7 +117,7 @@ void free_fields(Data* data)
     free(data->dp), free(data->rp), free(data->Sp), free(data->J);
     free2Darray(data->dudt, Np), free2Darray(data->dvdt,Np), free2Darray(data->domegadt,Np), free(data->dTdt); free2Darray(data->dCdt, Np);
     free(data->Fx), free(data->Fy), free(data->Tz), free(data->Q), free2Darray(data->Qm, Np);
-    free2Darray(data->Fx_coll, Np), free2Darray(data->Fy_coll, Np);
+    free2Darray(data->Fx_coll, Np), free2Darray(data->Fy_coll, Np), free2Darray(data->M_coll, Np);
     free2Darray(data->u_n,m), free2Darray(data->u_n_1,m), free2Darray(data->u_star, m), free2Darray(data->u_s, m);
     free2Darray(data->H_u_n_1, m) , free2Darray(data->H_v_n_1, m), free2Darray(data->H_T_n_1, m), free3Darray(data->H_C_n_1, Ns, m);
     free2Darray(data->v_n,m), free2Darray(data->v_n_1,m), free2Darray(data->v_star,m), free2Darray(data->v_s,m);

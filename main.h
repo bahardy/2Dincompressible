@@ -139,6 +139,7 @@ struct Data{
 
     double** Fx_coll;
     double** Fy_coll;
+    double** M_coll;
 
     double* J;
 

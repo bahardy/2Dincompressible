@@ -288,8 +288,6 @@ void compute_forces_fluxes(Data* data, int k)
     PetscPrintf(PETSC_COMM_WORLD,"domegadt = %1.6e \n", k+1, domegadt[k][2]);
 
     Fx[k] = rho_f*(Sp[k]*dudt[k][2] + F[k][2]);
-//    Fbis = rho_s*Sp[k]*dudt[k];
-//    Fter = rho_f*(rho_r/(rho_r -1))*F[k][2];
     Fy[k] = rho_f*(Sp[k]*dvdt[k][2]  + G[k][2]);
     Tz[k] = rho_f*(J[k]*domegadt[k][2]  + M[k][2]);
     Q[k] = rho_f*cf*(Sp[k]*dTdt[k] + QQ[k][2]);
